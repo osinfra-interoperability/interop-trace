@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 authors = [
   { name = "Mariia Steeghs-Turchina", email = "m.a.steeghs-turchina@lumc.nl" },
 ]
-dependencies = ["typer"]
+dependencies = ["typer", "pooch (>=1.9,<2)"]
 keywords = ["interoperability", "workflow", "benchmarking"]
 classifiers = [
   "Programming Language :: Python :: 3",

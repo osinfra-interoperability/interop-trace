@@ -30,7 +30,8 @@ class Workflow(Protocol):
     ) -> WorkflowResult:
         """Analyse the supplied inputs and write outputs under ``output_dir``.
 
-        Implementations must reject unsupported inputs and raise on execution
-        failure. Successful execution does not establish scientific accuracy.
+        Input parsing and validation may be delegated to the analysis tool.
+        Implementations must raise on execution failure. Successful execution
+        does not establish scientific accuracy.
         """
         ...

@@ -45,7 +45,7 @@ class PrideProvider:
             filename="files.json",
             metadata={"project": self.project, "role": "file_catalogue"},
         )
-        selected = _select_files(json.loads(catalogue.path.read_text()), self.files)
+        selected = _select_files(json.loads(catalogue.path.read_bytes()), self.files)
         downloads = _download_files(cache, self.project, selected)
         record = {
             "project": self.project,

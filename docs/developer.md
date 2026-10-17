@@ -74,7 +74,8 @@ Benchmark expectations are distinct from the sequence database's candidate prote
 
 The contracts are typed interfaces and data records. `UniProtProvider` retrieves
 cached database files and records the original source release. `SageWorkflow` is a
-concrete local workflow implementation. Both use the Python standard library.
+concrete local workflow implementation. Download storage uses Pooch; the Sage
+wrapper uses the Python standard library.
 The data records do not read files or perform runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
 Implementations are responsible for checking inputs and raising exceptions on
@@ -84,18 +85,25 @@ failure; satisfying a Python protocol alone does not establish scientific validi
 
 `DownloadCache` is shared infrastructure, independent of the four domain protocols.
 `fetch(url, downloader)` reuses a completed file or calls the supplied downloader
-with the URL and a staging path. The downloader writes the bytes and returns source
+with the URL and a temporary path. The downloader writes the bytes and returns source
 metadata such as a release or software version. This keeps source-specific HTTP
 handling in the provider.
 
 Each exact URL has its own directory under `objects/`, containing `content` and
 `download.json`. The directory key is a hash of the request URL, not a checksum of
 file contents. Metadata records the source, path, size, download time and reported
-version. Files and metadata are published together after a successful transfer.
+version. The registry record is written after a successful transfer.
 Missing or size-changed files and unreadable records are treated as cache misses.
 
-The cache uses JSON records and the standard library. Clearing removes its managed
-`objects/` and `pending/` directories and requires the ownership marker. Recorded
+[Pooch](https://www.fatiando.org/pooch/latest/api/generated/pooch.retrieve.html)
+handles temporary files, transfer completion and cleanup after transfer failures.
+A small downloader adapter captures the provider's source metadata and rejects
+empty files. The wrapper keeps the JSON registry, presence and size checks, and
+cache ownership marker. UniProt query responses have no expected content checksum,
+so retrieval uses `known_hash=None`; cached files are not hashed on reuse.
+
+Clearing removes the managed `objects/` directory and any `pending/` directory left
+by the previous cache implementation. It requires the ownership marker. Recorded
 paths are informational; they never control deletion of files outside the cache.
 Use clearing between runs. Per-run metadata is stored separately by the provider.
 

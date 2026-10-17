@@ -102,6 +102,10 @@ requesting data. Matching URLs, including query and format settings, reuse the s
 completed file. If it is missing or its size has changed, the next preparation
 downloads it again.
 
+Downloads use [Pooch](https://www.fatiando.org/pooch/latest/), installed automatically
+by Poetry. It manages temporary transfers and cleanup; the project adds source
+release records and the cache commands below. Existing cache entries remain usable.
+
 Inspect the registered downloads:
 
 ```bash
@@ -111,7 +115,8 @@ poetry run interop-trace cache list
 The listing shows each file's status, size, source URL, local path, reported version
 and original download time. Each stored file also has a readable `download.json`
 registry record beside it. Cache reuse checks file presence and size, rather than
-reading large files to calculate a checksum on each request.
+reading large files to calculate a checksum on each request. UniProt queries do not
+provide an expected checksum, so the response is not verified against one.
 
 To fetch everything again on the next run, clear the download cache:
 

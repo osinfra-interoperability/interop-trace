@@ -43,6 +43,43 @@ def test_different_requests_get_separate_entries(tmp_path: Path) -> None:
     assert len(cache.entries()) == 2
 
 
+def test_component_labels_are_registered_and_preserved(
+    tmp_path: Path, http_transport: Mock
+) -> None:
+    cache = DownloadCache(tmp_path / "cache")
+    first = cache.fetch("https://example.org/file", name="sage", kind="workflow")
+
+    repeated = cache.fetch("https://example.org/file", name="other", kind="database")
+
+    http_transport.assert_called_once()
+    assert repeated == first
+    assert cache.entries()[0].name == "sage"
+    assert cache.entries()[0].kind == "workflow"
+
+
+def test_older_entry_gains_labels_without_redownloading_or_changing_provenance(
+    tmp_path: Path, http_transport: Mock
+) -> None:
+    cache = DownloadCache(tmp_path / "cache")
+    first = cache.fetch("https://example.org/file", metadata={"version": "original"})
+    registry = first.path.parent / "download.json"
+    record = json.loads(registry.read_text())
+    del record["name"], record["kind"]
+    registry.write_text(json.dumps(record))
+
+    labeled = cache.fetch(
+        first.url, name="sage", kind="workflow", metadata={"version": "changed"}
+    )
+
+    http_transport.assert_called_once()
+    assert labeled.path == first.path
+    assert labeled.downloaded_at == first.downloaded_at
+    assert labeled.metadata == first.metadata
+    assert cache.entries() == [labeled]
+    updated = json.loads(registry.read_text())
+    assert updated == {**record, "name": "sage", "kind": "workflow"}
+
+
 @pytest.mark.parametrize("changed", [False, True])
 def test_missing_or_size_changed_file_is_downloaded_again(
     tmp_path: Path, changed: bool, http_transport: Mock

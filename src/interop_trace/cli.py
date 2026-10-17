@@ -21,6 +21,43 @@ def callback() -> None:
     """Provide the command group."""
 
 
+@app.command("run")
+def run(
+    configuration: Annotated[
+        Path, typer.Argument(help="Experiment YAML file.", exists=True, dir_okay=False)
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="New directory for this run.")
+    ] = Path("results/run-001"),
+    cache_directory: Annotated[
+        Path, typer.Option("--cache-directory", help="Shared download cache.")
+    ] = DEFAULT_CACHE_DIR,
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check", help="Validate configuration without setup or execution."
+        ),
+    ] = False,
+) -> None:
+    """Load reusable component settings and execute the selected experiments."""
+    from interop_trace.experiments import load_configuration, run_experiments
+
+    try:
+        configured = load_configuration(configuration)
+        if check:
+            typer.echo(
+                f"Valid configuration: {len(configured.experiments)} experiment(s)."
+            )
+            return
+        results = run_experiments(
+            configured, output_dir=output, cache_dir=cache_directory
+        )
+    except Exception as error:
+        typer.echo(f"Run failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Completed {len(results)} experiment(s): {output.resolve()}")
+
+
 @cache_app.command("list")
 def list_downloads(
     directory: Annotated[

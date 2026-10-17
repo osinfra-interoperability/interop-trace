@@ -32,6 +32,15 @@ class Experiment:
     benchmark: Benchmark
     settings: dict[str, Any]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.id, str) or not re.fullmatch(
+            r"[a-zA-Z0-9][a-zA-Z0-9._-]*", self.id
+        ):
+            raise ValueError(
+                "Experiment id must be a simple directory name "
+                "starting with a letter or digit."
+            )
+
 
 @dataclass(frozen=True)
 class RunConfiguration:
@@ -39,6 +48,11 @@ class RunConfiguration:
 
     experiments: tuple[Experiment, ...]
     snapshot: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        names = [experiment.id for experiment in self.experiments]
+        if not names or len(set(names)) != len(names):
+            raise ValueError("Experiment ids must be unique and the run nonempty.")
 
 
 def load_configuration(path: Path) -> RunConfiguration:
@@ -65,9 +79,6 @@ def load_configuration(path: Path) -> RunConfiguration:
     if not isinstance(choices, list) or not choices:
         raise ValueError("experiments must be a nonempty list.")
     experiments = tuple(_build_experiment(choice, definitions) for choice in choices)
-    names = [experiment.id for experiment in experiments]
-    if len(set(names)) != len(names):
-        raise ValueError("Experiment ids must be unique within a run.")
     return RunConfiguration(experiments, {"source": str(path), "files": contents})
 
 
@@ -77,13 +88,6 @@ def _build_experiment(
     choice = _mapping(choice, "experiment")
     _keys(choice, {"id", *_ROLES}, "experiment")
     name = choice["id"]
-    if not isinstance(name, str) or not re.fullmatch(
-        r"[a-zA-Z0-9][a-zA-Z0-9._-]*", name
-    ):
-        raise ValueError(
-            "Experiment id must be a simple directory name "
-            "starting with a letter or digit."
-        )
     components, settings = {}, {}
     for role, layer in _ROLES.items():
         source, available = definitions[layer]

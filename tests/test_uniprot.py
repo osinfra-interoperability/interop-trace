@@ -34,7 +34,9 @@ def test_download_passes_query_and_records_release(
     query = "accession:P69905 OR accession:P68871"
     output = tmp_path / "database"
 
-    database = UniProtProvider(query=query, format=format).prepare(output_dir=output)
+    database = UniProtProvider(
+        query=query, format=format, cache_dir=tmp_path / "cache"
+    ).prepare(output_dir=output)
 
     request = opener.call_args.args[0]
     assert urlparse(request.full_url).path == "/uniprotkb/stream"
@@ -51,7 +53,9 @@ def test_download_passes_query_and_records_release(
     assert record["release_date"] == "test_date"
     assert record["query"] == query
     assert record["url"] == request.full_url
-    assert {path.name for path in output.iterdir()} == {"database", "uniprot.json"}
+    assert {path.name for path in output.iterdir()} == {"uniprot.json"}
+    assert record["cache_path"] == str(database.path)
+    assert not database.path.is_relative_to(output)
 
 
 def test_http_error_is_propagated(
@@ -64,7 +68,9 @@ def test_http_error_is_propagated(
     output = tmp_path / "failed"
 
     with pytest.raises(HTTPError) as caught:
-        UniProtProvider(query="invalid query").prepare(output_dir=output)
+        UniProtProvider(query="invalid query", cache_dir=tmp_path / "cache").prepare(
+            output_dir=output
+        )
 
     assert caught.value is error
     assert list(output.iterdir()) == []
@@ -81,7 +87,9 @@ def test_incomplete_or_empty_download_is_not_published(
     output = tmp_path / "failed"
 
     with pytest.raises((OSError, ValueError)):
-        UniProtProvider(query="accession:P69905").prepare(output_dir=output)
+        UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache").prepare(
+            output_dir=output
+        )
 
     assert list(output.iterdir()) == []
 
@@ -97,7 +105,9 @@ def test_interrupted_download_removes_partial_file(
     output = tmp_path / "failed"
 
     with pytest.raises(TimeoutError):
-        UniProtProvider(query="accession:P69905").prepare(output_dir=output)
+        UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache").prepare(
+            output_dir=output
+        )
 
     assert list(output.iterdir()) == []
 
@@ -113,7 +123,9 @@ def test_existing_download_is_preserved(
     monkeypatch.setattr("interop_trace.databases.uniprot.urlopen", opener)
 
     with pytest.raises(FileExistsError):
-        UniProtProvider(query="accession:P69905").prepare(output_dir=output)
+        UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache").prepare(
+            output_dir=output
+        )
 
     assert previous.read_bytes() == b"existing database"
     opener.assert_not_called()
@@ -128,7 +140,56 @@ def test_missing_release_is_recorded_as_unknown(
     )
     output = tmp_path / "database"
 
-    UniProtProvider(query="accession:P69905").prepare(output_dir=output)
+    UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache").prepare(
+        output_dir=output
+    )
 
     record = json.loads((output / "uniprot.json").read_text())
     assert record["release"] is None
+
+
+def test_repeated_preparation_reuses_download_and_original_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opener = Mock(
+        return_value=Response(
+            b">protein\nSEQUENCE\n", {"X-UniProt-Release": "original"}
+        )
+    )
+    monkeypatch.setattr("interop_trace.databases.uniprot.urlopen", opener)
+    provider = UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache")
+
+    first = provider.prepare(output_dir=tmp_path / "first")
+    second = provider.prepare(output_dir=tmp_path / "second")
+
+    opener.assert_called_once()
+    assert first.path == second.path
+    assert first.path.read_bytes() == b">protein\nSEQUENCE\n"
+    record = json.loads((tmp_path / "second/uniprot.json").read_text())
+    assert record["release"] == "original"
+
+
+def test_clear_forces_a_new_response_and_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from interop_trace.downloads import DownloadCache
+
+    opener = Mock(
+        side_effect=[
+            Response(b">old\nSEQUENCE\n", {"X-UniProt-Release": "old"}),
+            Response(b">new\nSEQUENCE\n", {"X-UniProt-Release": "new"}),
+        ]
+    )
+    monkeypatch.setattr("interop_trace.databases.uniprot.urlopen", opener)
+    provider = UniProtProvider(query="accession:P69905", cache_dir=tmp_path / "cache")
+    provider.prepare(output_dir=tmp_path / "first")
+
+    DownloadCache(provider.cache_dir).clear()
+    database = provider.prepare(output_dir=tmp_path / "second")
+
+    assert opener.call_count == 2
+    assert database.path.read_bytes() == b">new\nSEQUENCE\n"
+    assert json.loads((tmp_path / "first/uniprot.json").read_text())["release"] == "old"
+    assert (
+        json.loads((tmp_path / "second/uniprot.json").read_text())["release"] == "new"
+    )

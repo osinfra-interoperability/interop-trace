@@ -8,44 +8,49 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from interop_trace.databases.base import Database
+from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
 
 
 @dataclass(frozen=True)
 class UniProtProvider:
     """A UniProtKB query and native export format, interpreted by UniProt.
 
-    ``prepare`` creates one working file and a release record in the requested
-    directory. It maintains no separate cache or archive of downloaded files.
+    ``prepare`` reuses downloaded content from ``cache_dir`` and writes a release
+    record in the requested output directory. The database points to the cached
+    file, so preparation creates no duplicate copy of the database.
     """
 
     query: str
     format: str = "fasta"
+    cache_dir: Path = DEFAULT_CACHE_DIR
 
     def prepare(self, *, output_dir: Path) -> Database:
-        """Retrieve a database into a new directory and record its source release.
+        """Retrieve or reuse a database and record its original source release.
 
         UniProt validates the query and requested export format. HTTP and transfer
-        errors propagate; incomplete working files are removed. The caller owns
-        the working directory and can remove it after the workflow has used it.
+        errors propagate; incomplete downloads are not cached. ``output_dir``
+        must be new and holds metadata only. Clear the download cache between
+        runs to fetch a fresh response for the same query.
         """
         output_dir = output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=False)
         url = "https://rest.uniprot.org/uniprotkb/stream?" + urlencode(
             {"query": self.query, "format": self.format, "compressed": "false"}
         )
-        partial = output_dir / "database.part"
-        destination = output_dir / "database"
-        try:
-            release = self._download(url, partial)
-            record = {"query": self.query, "format": self.format, "url": url, **release}
-            (output_dir / "uniprot.json").write_text(
-                json.dumps(record, indent=2) + "\n", encoding="utf-8"
-            )
-            partial.replace(destination)
-        finally:
-            partial.unlink(missing_ok=True)
+        download = DownloadCache(self.cache_dir).fetch(url, self._download)
+        record = {
+            "query": self.query,
+            "format": self.format,
+            "url": url,
+            "cache_path": str(download.path),
+            "downloaded_at": download.downloaded_at,
+            **download.metadata,
+        }
+        (output_dir / "uniprot.json").write_text(
+            json.dumps(record, indent=2) + "\n", encoding="utf-8"
+        )
         return Database(
-            path=destination,
+            path=download.path,
             format="fasta" if self.format == "fasta" else f"uniprot_{self.format}",
         )
 

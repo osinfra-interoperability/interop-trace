@@ -134,8 +134,13 @@ Inspect the registered downloads:
 poetry run interop-trace cache list
 ```
 
-The listing shows each file's status, size, source URL, local path, reported version
-and original download time. Each stored file also has a readable `download.json`
+The listing shows the component name and type (`sage` / `workflow`, or `uniprot` /
+`database`), status, size, source URL, local path, reported version and original
+download time. Unlabeled entries show `unknown`; older entries gain missing labels
+when their component next reuses them, without another download or a change to
+their recorded release and download time.
+
+Each stored file also has a readable `download.json`
 registry record beside it. Cache reuse checks file presence and size, rather than
 reading large files to calculate a checksum on each request. UniProt queries do not
 provide an expected checksum, so the response is not verified against one.

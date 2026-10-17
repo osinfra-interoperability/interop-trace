@@ -86,13 +86,16 @@ failure; satisfying a Python protocol alone does not establish scientific validi
 ## Download storage
 
 `DownloadCache` is shared infrastructure, independent of the four domain protocols.
-Components explicitly call `fetch(url, metadata=..., metadata_headers=...)`.
+Components explicitly call `fetch(url, name=..., kind=..., metadata=...,
+metadata_headers=...)`.
 It reuses a completed file and its original provenance, or downloads and registers
 a new response. HTTP transfers use Pooch with a 60-second timeout and the
 `interop-trace` user agent.
 
 | Argument | Purpose |
 | --- | --- |
+| `name` | Component name, such as `sage` or `uniprot` |
+| `kind` | Component type, such as `workflow` or `database` |
 | `metadata` | Known source information, such as Sage's requested release version |
 | `metadata_headers` | Mapping from record fields to response header names, such as `release` to `X-UniProt-Release` |
 
@@ -101,6 +104,10 @@ Redirects use the final response's headers. Missing headers become `None`; mappe
 headers take precedence over literal metadata for matching fields. Metadata is
 registered only after the content has downloaded successfully. Cache hits retain
 the original metadata even if the caller supplies different values.
+Name and kind are stored separately from source metadata. Older records gain
+missing labels on reuse; existing labels, source versions and download times are
+preserved. The cache listing displays kind as `type` and uses `unknown` for missing
+labels.
 
 `download_sage(version, cache_dir=...)` uses the same cache for a pinned GitHub
 release archive. Pooch handles HTTP transfers and archive extraction. Extracted

@@ -50,7 +50,7 @@ both from `__init__.py`. They use only the Python standard library.
 | Protocol | Method | Returns |
 | --- | --- | --- |
 | `DatasetProvider` | `prepare(output_dir=...)` | Measurement paths and optional sample metadata |
-| `DatabaseProvider` | `prepare(output_dir=...)` | A protein FASTA path |
+| `DatabaseProvider` | `prepare(output_dir=...)` | A database path and its format identifier |
 | `Workflow` | `run(dataset, database, output_dir=...)` | Native output format and named file paths |
 | `Benchmark` | `evaluate(result, dataset, database, output_dir=...)` | Named metrics and optional report paths for one run |
 
@@ -58,7 +58,10 @@ The protocols describe configured components: source selection, software version
 analysis settings and benchmark expectations belong to each implementation.
 There is no shared parameter dictionary or parameter schema.
 
-Providers return existing absolute paths. Workflows preserve their native output
+Providers return existing absolute paths. Database formats are explicit, for
+example `fasta` or `uniprot_xml`; consumers must check compatibility rather than
+assume all representations are interchangeable. The record performs no conversion.
+Workflows preserve their native output
 formats; benchmarks must understand those formats and the experimental design.
 The dataset and database passed to a benchmark must be the inputs for that run.
 Benchmark expectations are distinct from the sequence database's candidate proteins.

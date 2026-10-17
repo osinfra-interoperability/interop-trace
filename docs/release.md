@@ -1,14 +1,10 @@
 # Releases
 
-`pyproject.toml` is the source of truth for the project version. The metadata workflow validates the software metadata.
+`project.version` in `pyproject.toml` is the source of the installed package version.
+Run records include that version; provider and workflow reports separately identify
+external data releases and executable versions where available.
 
-| Policy | Value |
-| --- | --- |
-| Current version | `0.1.0` |
-| Versioning scheme | SemVer |
-
-## Release process
-
-1. Update `project.version` in `pyproject.toml`.
-2. Move completed entries from `Unreleased` in `CHANGELOG.md` into a section for the new version.
-3. Run the metadata, test, documentation, and release checks configured for the project.
+When changing the package version, update `pyproject.toml` and run the
+[development checks](developer.md#setup-and-checks). The metadata workflow checks
+public software metadata. Source changes are available in the
+[repository history](https://github.com/thatmariia/interop_trace/commits/).

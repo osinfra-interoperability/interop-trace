@@ -1,12 +1,9 @@
-# Legal and licensing
+# License
 
-This project is licensed under `https://spdx.org/licenses/Apache-2.0`. See the project
-license file for the complete terms.
+Interop Trace is licensed under
+[Apache-2.0](https://github.com/thatmariia/interop_trace/blob/main/LICENSE).
+External tools, libraries and scientific datasets retain their own licenses and
+terms. Downloaded Sage archives include the upstream license and README.
 
-## Access
-
-**Access type:** free.
-
-This project is licensed under `https://spdx.org/licenses/Apache-2.0`. See `LICENSE` for the full license text.
-
-Automated dependency-license checking is selected. Configure a compatible checker when implementation dependencies are added.
+For citation metadata, see
+[CITATION.cff](https://github.com/thatmariia/interop_trace/blob/main/CITATION.cff).

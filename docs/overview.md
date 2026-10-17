@@ -1,29 +1,16 @@
-# Interop Trace overview
+# Project scope
 
-A research software project for empirically testing interoperability across bioinformatics databases and workflows. It runs controlled database–workflow configurations against reference benchmarks, traces where interoperability succeeds or breaks, and produces evidence about the causes of incompatibility.
+Interop Trace investigates whether independently developed bioinformatics
+components can exchange usable data. Experiments make the selected sources,
+formats, software and parameters explicit, then retain native outputs and failure
+records so outcomes can be explained and compared.
 
-## Research topics
+The current implementation covers proteomics: HTTP/PRIDE measurements, UniProt
+exports, Sage searches and optional evaluation. The small example establishes a
+working combination; it does not certify other datasets, formats or tools.
+Scientific benchmarking requires reference expectations appropriate to the data.
 
-- [bioinformatics](http://edamontology.org/topic_0091)- [database management](http://edamontology.org/topic_3489)- [proteomics](http://edamontology.org/topic_0121)
-
-## Purpose Categories
-
-- Integration & interfacing
-- Data analysis
-
-## Access
-
-**Access type:** Free.
-
-## Programming languages
-
-- Python >=3.12
-
-## Interfaces
-
-- Command-line tool (Stable)
-- Library (Stable)
-
-## Platform support
-
-- Platform independent
+Experiments execute locally and sequentially. There is no automatic format
+conversion, compatibility matrix, workflow-result reuse or benchmark leaderboard
+submission. Python 3.12+ is required; native workflows have their own platform
+requirements. See [components](components.md) for supported scope.

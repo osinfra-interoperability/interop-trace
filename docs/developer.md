@@ -138,6 +138,9 @@ The script defaults to its own checkout; `--root` selects another checkout.
 It preserves all text outside the marker pairs. Tests check that committed tables
 match the registrations. Table rendering and repository-file editing live in
 `scripts/`; the installed application's `components` command only lists entries.
+Documentation CI runs the script before building on every branch push and PR to
+`main`. The test suite checks committed tables separately, so registry changes
+should include regenerated Markdown. CI does not create bot commits.
 
 ## Experiment execution
 

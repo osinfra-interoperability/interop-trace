@@ -36,7 +36,15 @@ poetry run python -m interop_trace --help
 
 The package provides component contracts and Python interfaces for retrieving
 UniProt databases and running Sage. See [the usage examples](docs/usage.md).
-The CLI exposes help.
+Inspect downloads or clear them before a fresh run:
+
+```bash
+poetry run interop-trace cache list
+poetry run interop-trace cache clear
+```
+
+Downloads are reused from `.interop_trace/cache/`. Clearing asks for confirmation;
+use `--yes` for scripts.
 
 ## Documentation
 

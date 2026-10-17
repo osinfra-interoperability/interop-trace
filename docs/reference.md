@@ -6,7 +6,7 @@ Python >=3.12.
 
 ## Interfaces
 
-- Command-line help through `interop-trace` or `python -m interop_trace`.
+- CLI help and cache commands through `interop-trace` or `python -m interop_trace`.
 - Package version through `interop_trace.__version__`.
 - Component protocols and records, exported by the four domain subpackages.
 
@@ -35,3 +35,7 @@ Python >=3.12.
 ## Evaluation
 
 ::: interop_trace.evaluation.base
+
+## Download cache
+
+::: interop_trace.downloads

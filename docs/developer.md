@@ -38,6 +38,7 @@ src/interop_trace/
     evaluation/   # Benchmark and EvaluationResult
 tests/
     test_system.py  # Module entry-point help check
+    test_sage.py    # Sage subprocess behaviour using a local test executable
 ```
 
 The installed command and module entry point both call `cli.main`.
@@ -59,15 +60,17 @@ analysis settings and benchmark expectations belong to each implementation.
 There is no shared parameter dictionary or parameter schema.
 
 Providers return existing absolute paths. Database formats are explicit, for
-example `fasta` or `uniprot_xml`; consumers must check compatibility rather than
-assume all representations are interchangeable. The record performs no conversion.
-Workflows preserve their native output
-formats; benchmarks must understand those formats and the experimental design.
+example `fasta` or `uniprot_xml`; consumers decide how to handle them. The record
+performs no conversion. `SageWorkflow` delegates input interpretation to Sage
+without checking declared formats or file extensions.
+Workflows preserve their native output formats; benchmarks must understand those
+formats and the experimental design.
 The dataset and database passed to a benchmark must be the inputs for that run.
 Benchmark expectations are distinct from the sequence database's candidate proteins.
 
-These are typed interfaces and data records, not working providers or analysis
-implementations. The dataclasses do not read files or perform runtime validation.
+The contracts are typed interfaces and data records. `SageWorkflow` is a concrete
+local workflow implementation. The data records do not read files or perform
+runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
 Implementations are responsible for checking inputs and raising exceptions on
 failure; satisfying a Python protocol alone does not establish scientific validity.

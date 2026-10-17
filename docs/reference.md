@@ -28,6 +28,8 @@ Python >=3.12.
 
 ::: interop_trace.workflows.base
 
+::: interop_trace.workflows.sage
+
 ## Evaluation
 
 ::: interop_trace.evaluation.base

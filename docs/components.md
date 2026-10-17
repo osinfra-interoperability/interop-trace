@@ -8,6 +8,7 @@ Registering, listing or constructing a component does not download resources.
 
 | Layer | Component | Description |
 | --- | --- | --- |
+| datasets | [`http`](components.md#http) | A named measurement file from an HTTP URL |
 | datasets | [`pride`](components.md#pride) | Selected public PRIDE measurements |
 | databases | [`uniprot`](components.md#uniprot) | Query-based UniProtKB exports |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
@@ -30,6 +31,13 @@ their native format and compression; this provider does not convert RAW to mzML
 or infer sample metadata. Published checksums are recorded without verification.
 
 See [PRIDE usage](usage.md#retrieve-selected-pride-measurements).
+
+## http
+
+Retrieves one measurement file using `url` and an explicit `filename`.
+Setup uses the shared download cache; preparation writes `http.json` with source,
+path and original download time. Contents and compression are preserved. Prefer
+immutable source URLs when reproducing experiments.
 
 ## uniprot
 

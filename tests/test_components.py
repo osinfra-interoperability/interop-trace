@@ -75,7 +75,7 @@ def test_all_builtin_implementations_register_without_requests(
     from interop_trace.workflows.registry import registry as workflows
 
     assert set(databases) == {"uniprot"}
-    assert set(datasets) == {"pride"}
+    assert set(datasets) == {"pride", "http"}
     assert set(workflows) == {"sage"}
     assert set(benchmarks) == {"proteobench_dda"}
     assert not isinstance(benchmarks["proteobench_dda"].factory(), RequiresSetup)

@@ -45,6 +45,7 @@ See [the usage examples](docs/usage.md).
 
 | Layer | Component |
 | --- | --- |
+| datasets | [`http`](docs/components.md#http) |
 | datasets | [`pride`](docs/components.md#pride) |
 | databases | [`uniprot`](docs/components.md#uniprot) |
 | workflows | [`sage`](docs/components.md#sage) |

@@ -9,6 +9,7 @@ import pytest
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.downloads import DownloadCache
 from interop_trace.workflows import SageWorkflow
 
 
@@ -57,7 +58,7 @@ def inputs(tmp_path: Path) -> tuple[Dataset, Database, Path]:
 
 @pytest.mark.parametrize("quantification", [False, True])
 def test_run_passes_inputs_and_collects_native_files(
-    executable: Path,
+    workflow: SageWorkflow,
     inputs: tuple[Dataset, Database, Path],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -67,9 +68,7 @@ def test_run_passes_inputs_and_collects_native_files(
     if quantification:
         monkeypatch.setenv("FAKE_SAGE_LFQ", "1")
     output = tmp_path / "results with spaces"
-    result = SageWorkflow(executable, configuration, threads=3).run(
-        dataset, database, output_dir=output
-    )
+    result = workflow.run(dataset, database, output_dir=output)
 
     record = json.loads(result.files["invocation.json"].read_text())
     args = record["args"]
@@ -89,7 +88,7 @@ def test_run_passes_inputs_and_collects_native_files(
 
 
 def test_failure_preserves_log(
-    executable: Path,
+    workflow: SageWorkflow,
     inputs: tuple[Dataset, Database, Path],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -99,16 +98,14 @@ def test_failure_preserves_log(
     output = tmp_path / "failed"
 
     with pytest.raises(subprocess.CalledProcessError) as error:
-        SageWorkflow(executable, configuration).run(
-            dataset, database, output_dir=output
-        )
+        workflow.run(dataset, database, output_dir=output)
 
     assert error.value.returncode == 7
     assert "sage stderr" in (output / "sage.log").read_text()
 
 
 def test_existing_results_are_preserved(
-    executable: Path, inputs: tuple[Dataset, Database, Path], tmp_path: Path
+    workflow: SageWorkflow, inputs: tuple[Dataset, Database, Path], tmp_path: Path
 ) -> None:
     dataset, database, configuration = inputs
     output = tmp_path / "existing"
@@ -117,22 +114,27 @@ def test_existing_results_are_preserved(
     previous_log.write_text("previous run")
 
     with pytest.raises(FileExistsError):
-        SageWorkflow(executable, configuration).run(
-            dataset, database, output_dir=output
-        )
+        workflow.run(dataset, database, output_dir=output)
 
     assert previous_log.read_text() == "previous run"
 
 
 def test_empty_dataset_cannot_fall_back_to_configuration(
-    executable: Path, inputs: tuple[Dataset, Database, Path], tmp_path: Path
+    workflow: SageWorkflow, inputs: tuple[Dataset, Database, Path], tmp_path: Path
 ) -> None:
     _, database, configuration = inputs
     output = tmp_path / "empty"
 
     with pytest.raises(ValueError, match="at least one measurement"):
-        SageWorkflow(executable, configuration).run(
-            Dataset(()), database, output_dir=output
-        )
+        workflow.run(Dataset(()), database, output_dir=output)
 
     assert not output.exists()
+
+
+@pytest.fixture
+def workflow(
+    executable: Path, inputs: tuple[Dataset, Database, Path], tmp_path: Path
+) -> SageWorkflow:
+    workflow = SageWorkflow(configuration=inputs[2], executable=executable, threads=3)
+    workflow.setup(cache=DownloadCache(tmp_path / "cache"))
+    return workflow

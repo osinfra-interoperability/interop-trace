@@ -13,7 +13,7 @@ import pytest
 from requests import Response
 
 from interop_trace.downloads import DownloadCache
-from interop_trace.workflows import download_sage
+from interop_trace.workflows import SageWorkflow, download_sage
 
 
 def archive_bytes(url: str, *, include_binary: bool = True) -> bytes:
@@ -116,6 +116,18 @@ def test_repeat_call_reuses_download_and_extraction(
     downloader.assert_called_once()
     assert repeated == executable
     assert repeated.stat().st_mtime == 42
+
+
+def test_workflow_setup_resolves_and_reuses_release(
+    tmp_path: Path, downloader: Mock
+) -> None:
+    workflow = SageWorkflow(configuration=tmp_path / "configuration.json")
+    downloader.assert_not_called()
+    cache = DownloadCache(tmp_path / "cache")
+    workflow.setup(cache=cache)
+    workflow.setup(cache=cache)
+    downloader.assert_called_once()
+    assert len(cache.entries()) == 1
 
 
 def test_missing_executable_is_restored_without_downloading(

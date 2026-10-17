@@ -11,12 +11,18 @@ from typing import Any
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
 from interop_trace.evaluation.base import EvaluationResult
+from interop_trace.evaluation.registry import registry
 from interop_trace.workflows import WorkflowResult
 
 _MODULE = "quant_lfq_DDA_ion_QExactive"
 _SETTINGS = ("module_settings.toml", "parse_settings_sage.toml")
 
 
+@registry.register(
+    "proteobench_dda",
+    summary="Q Exactive DDA precursor-ion quantification",
+    documentation="components.md#proteobench-dda",
+)
 @dataclass(frozen=True)
 class ProteoBenchDDA:
     """ProteoBench's six-run Q Exactive DDA ion benchmark, using Sage outputs.

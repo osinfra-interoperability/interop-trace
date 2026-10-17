@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from interop_trace.downloads import DownloadCache
 
@@ -38,7 +38,7 @@ class ComponentEntry[T]:
 class Registry[T](dict[str, ComponentEntry[T]]):
     """One layer's explicitly imported implementations, keyed by stable name."""
 
-    def register[F: Callable[..., T]](
+    def register[F: Callable[..., Any]](
         self,
         name: str,
         *,
@@ -51,7 +51,9 @@ class Registry[T](dict[str, ComponentEntry[T]]):
         def decorate(factory: F) -> F:
             if name in self:
                 raise ValueError(f"Component {name!r} is already registered.")
-            self[name] = ComponentEntry(factory, summary, documentation, paths)
+            self[name] = ComponentEntry(
+                cast(Callable[..., T], factory), summary, documentation, paths
+            )
             return factory
 
         return decorate

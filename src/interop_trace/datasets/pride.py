@@ -1,39 +1,46 @@
 """Retrieve explicitly selected files from a public PRIDE project."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from interop_trace.datasets.base import Dataset
-from interop_trace.downloads import DEFAULT_CACHE_DIR, Download, DownloadCache
+from interop_trace.datasets.registry import registry
+from interop_trace.downloads import Download, DownloadCache
 
 
-@dataclass(frozen=True)
+@registry.register(
+    "pride",
+    summary="Selected public PRIDE measurements",
+    documentation="components.md#pride",
+)
+@dataclass
 class PrideProvider:
     """A public project accession and exact filenames to use as measurements.
 
-    Files keep their native names and contents in the shared cache. ``prepare``
+    ``setup`` resolves files in the shared cache with their native names. ``prepare``
     writes a provenance record; it does not convert files or infer sample metadata.
     """
 
     project: str
     files: tuple[str, ...]
-    cache_dir: Path = DEFAULT_CACHE_DIR
+    _catalogue: Download | None = field(default=None, init=False, repr=False)
+    _selected: list[dict[str, Any]] = field(
+        default_factory=list, init=False, repr=False
+    )
+    _downloads: list[Download] = field(default_factory=list, init=False, repr=False)
 
-    def prepare(self, *, output_dir: Path) -> Dataset:
-        """Prepare selected measurements and record their original source metadata.
+    def setup(self, *, cache: DownloadCache) -> None:
+        """Resolve the catalogue and all selections, then fetch or reuse files.
 
-        ``output_dir`` must be new. Resolve every requested name and download URL
-        before fetching measurement files. Cached catalogues and files are reused
-        until cleared or missing. Failures leave no completed provenance record.
+        Resolve every filename and URL before measurement downloads. Cache hits
+        preserve original source records. Failed setup leaves the component unready.
         """
+        self._catalogue = None
         if not self.files or len(set(self.files)) != len(self.files):
             raise ValueError("Select at least one PRIDE file, without duplicate names.")
-        output_dir = output_dir.resolve()
-        output_dir.mkdir(parents=True, exist_ok=False)
-        cache = DownloadCache(self.cache_dir)
         url = (
             "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/"
             f"{quote(self.project, safe='')}/files/all"
@@ -47,18 +54,32 @@ class PrideProvider:
         )
         selected = _select_files(json.loads(catalogue.path.read_bytes()), self.files)
         downloads = _download_files(cache, self.project, selected)
+        self._catalogue, self._selected, self._downloads = (
+            catalogue,
+            selected,
+            downloads,
+        )
+
+    def prepare(self, *, output_dir: Path) -> Dataset:
+        """Return resolved measurements and write provenance in a new directory."""
+        if self._catalogue is None:
+            raise RuntimeError("Call PrideProvider.setup(cache=...) before prepare().")
+        output_dir = output_dir.resolve()
+        output_dir.mkdir(parents=True, exist_ok=False)
         record = {
             "project": self.project,
-            "catalogue": asdict(catalogue),
+            "catalogue": asdict(self._catalogue),
             "files": [
                 {"source": source, "download": asdict(download)}
-                for source, download in zip(selected, downloads, strict=True)
+                for source, download in zip(
+                    self._selected, self._downloads, strict=True
+                )
             ],
         }
         (output_dir / "pride.json").write_text(
             json.dumps(record, default=str, indent=2) + "\n", encoding="utf-8"
         )
-        return Dataset(files=tuple(download.path for download in downloads))
+        return Dataset(files=tuple(download.path for download in self._downloads))
 
 
 def _select_files(

@@ -3,7 +3,7 @@
 import os
 import platform
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pooch
@@ -12,6 +12,7 @@ from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
 from interop_trace.workflows.base import WorkflowResult
+from interop_trace.workflows.registry import registry
 
 
 def download_sage(
@@ -60,17 +61,37 @@ def _sage_target() -> str:
         raise ValueError(f"No Sage download for {system}/{machine}.") from None
 
 
-@dataclass(frozen=True)
+@registry.register(
+    "sage",
+    summary="Local proteomics search and LFQ",
+    documentation="components.md#sage",
+    paths=("configuration", "executable"),
+)
+@dataclass
 class SageWorkflow:
-    """A local Sage executable and configuration, with a thread limit.
+    """A pinned Sage release or managed executable, with native search settings.
 
-    ``executable`` is the path to the Sage binary. ``configuration`` is a native
-    Sage JSON file. Sage interprets the file contents and scientific settings.
+    ``setup`` resolves ``executable`` or downloads ``version`` through the cache.
+    ``configuration`` is a native Sage JSON file, interpreted by Sage itself.
     """
 
-    executable: Path
     configuration: Path
+    executable: Path | None = None
     threads: int = 2
+    version: str = "0.14.7"
+    _executable: Path | None = field(default=None, init=False, repr=False)
+
+    def setup(self, *, cache: DownloadCache) -> None:
+        """Resolve a local executable or fetch and extract the pinned release."""
+        self._executable = None
+        executable = (
+            self.executable.resolve()
+            if self.executable is not None
+            else download_sage(self.version, cache_dir=cache.root)
+        )
+        if not executable.is_file():
+            raise FileNotFoundError(executable)
+        self._executable = executable
 
     def run(
         self, dataset: Dataset, database: Database, *, output_dir: Path
@@ -84,13 +105,15 @@ class SageWorkflow:
         written remain available for inspection. Existing output directories are
         never reused. Database format labels and file extensions are not checked.
         """
+        if self._executable is None:
+            raise RuntimeError("Call SageWorkflow.setup(cache=...) before run().")
         if not dataset.files:
             raise ValueError("SageWorkflow requires at least one measurement file.")
         output_dir = output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=False)
         configuration = self.configuration.resolve()
         self._execute(
-            [str(self.executable.resolve()), "--version"],
+            [str(self._executable), "--version"],
             output_dir / "version.txt",
             configuration.parent,
         )
@@ -112,7 +135,7 @@ class SageWorkflow:
         self, dataset: Dataset, database: Database, output_dir: Path
     ) -> list[str]:
         return [
-            str(self.executable.resolve()),
+            str(self._executable),
             str(self.configuration.resolve()),
             "--disable-telemetry-i-dont-want-to-improve-sage",
             "--fasta",

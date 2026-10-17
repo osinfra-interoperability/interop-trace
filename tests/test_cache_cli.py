@@ -8,15 +8,12 @@ from interop_trace.cli import app
 from interop_trace.downloads import DownloadCache
 
 
-def download(url: str, destination: Path) -> dict[str, str | None]:
-    destination.write_bytes(b"downloaded content")
-    return {"release": "test_release"}
-
-
 def test_list_shows_source_release_path_and_missing_status(tmp_path: Path) -> None:
     cache = DownloadCache(tmp_path / "cache")
-    first = cache.fetch("https://example.org/first", download)
-    missing = cache.fetch("https://example.org/missing", download)
+    first = cache.fetch(
+        "https://example.org/first", metadata={"release": "test_release"}
+    )
+    missing = cache.fetch("https://example.org/missing")
     missing.path.unlink()
 
     result = CliRunner().invoke(app, ["cache", "list", "--directory", str(cache.root)])
@@ -31,7 +28,7 @@ def test_list_shows_source_release_path_and_missing_status(tmp_path: Path) -> No
 
 def test_clear_can_be_cancelled(tmp_path: Path) -> None:
     cache = DownloadCache(tmp_path / "cache")
-    entry = cache.fetch("https://example.org/file", download)
+    entry = cache.fetch("https://example.org/file")
 
     result = CliRunner().invoke(
         app, ["cache", "clear", "--directory", str(cache.root)], input="n\n"
@@ -43,7 +40,7 @@ def test_clear_can_be_cancelled(tmp_path: Path) -> None:
 
 def test_clear_yes_removes_cache_but_keeps_run_metadata(tmp_path: Path) -> None:
     cache = DownloadCache(tmp_path / "cache")
-    entry = cache.fetch("https://example.org/file", download)
+    entry = cache.fetch("https://example.org/file")
     metadata = tmp_path / "run-uniprot.json"
     metadata.write_text('{"release": "test_release"}')
 

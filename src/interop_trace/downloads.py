@@ -3,16 +3,38 @@
 import hashlib
 import json
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pooch
 
 DEFAULT_CACHE_DIR = Path(".interop_trace/cache")
 _MARKER = ".interop-trace-cache"
 _SIGNATURE = "interop-trace download cache v1\n"
+
+
+def _download_http(
+    url: str, destination: Path, metadata_headers: Mapping[str, str]
+) -> dict[str, str | None]:
+    metadata: dict[str, str | None] = {}
+
+    def capture_headers(response: Any, **_: Any) -> None:
+        metadata.update(
+            {
+                key: response.headers.get(header)
+                for key, header in metadata_headers.items()
+            }
+        )
+
+    pooch.HTTPDownloader(
+        timeout=60,
+        headers={"User-Agent": "interop-trace"},
+        hooks={"response": capture_headers},
+    )(url, str(destination), None)
+    return metadata
 
 
 @dataclass(frozen=True)
@@ -43,12 +65,17 @@ class DownloadCache:
     def fetch(
         self,
         url: str,
-        downloader: Callable[[str, Path], dict[str, str | None]],
+        downloader: Callable[[str, Path], dict[str, str | None]] | None = None,
+        *,
+        metadata: Mapping[str, str | None] | None = None,
+        metadata_headers: Mapping[str, str] | None = None,
     ) -> Download:
         """Reuse a completed file or download and register it after success.
 
-        ``downloader`` writes the requested bytes to the supplied path and returns
-        source metadata. Pooch manages temporary files and removes failed transfers.
+        Pooch handles HTTP transfers and temporary files. ``metadata`` supplies
+        known source information; ``metadata_headers`` maps record fields to
+        response headers captured during that same transfer. Missing headers are
+        recorded as ``None``. Cache hits preserve the original metadata.
         """
         self._managed(create=True)
         directory = self.root / "objects" / hashlib.sha256(url.encode()).hexdigest()
@@ -57,11 +84,15 @@ class DownloadCache:
             return cached
         if directory.exists():
             shutil.rmtree(directory)
-        metadata: dict[str, str | None] = {}
+        source_metadata = dict(metadata or {})
 
         def transfer(url: str, destination: str, _pooch: pooch.Pooch | None) -> None:
             path = Path(destination)
-            metadata.update(downloader(url, path))
+            source_metadata.update(
+                downloader(url, path)
+                if downloader is not None
+                else _download_http(url, path, metadata_headers or {})
+            )
             if path.stat().st_size == 0:
                 raise ValueError("Cannot register an empty download.")
 
@@ -69,7 +100,7 @@ class DownloadCache:
         pooch.retrieve(
             url, known_hash=None, path=directory, fname="content", downloader=transfer
         )
-        return self._record(url, directory, metadata)
+        return self._record(url, directory, source_metadata)
 
     def entries(self) -> list[Download]:
         """List registered downloads, including files that are now missing."""

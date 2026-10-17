@@ -37,6 +37,8 @@ class UniProtProvider:
         )
         download = DownloadCache(self.cache_dir).fetch(
             url,
+            name="uniprot",
+            kind="database",
             metadata_headers={
                 "release": "X-UniProt-Release",
                 "release_date": "X-UniProt-Release-Date",

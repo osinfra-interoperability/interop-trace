@@ -57,6 +57,9 @@ def test_download_passes_query_and_records_release(
     assert {path.name for path in output.iterdir()} == {"uniprot.json"}
     assert record["cache_path"] == str(database.path)
     assert not database.path.is_relative_to(output)
+    cached = json.loads((database.path.parent / "download.json").read_text())
+    assert cached["name"] == "uniprot"
+    assert cached["kind"] == "database"
 
 
 def test_http_error_is_propagated(

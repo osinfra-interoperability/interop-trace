@@ -11,7 +11,10 @@ from interop_trace.downloads import DownloadCache
 def test_list_shows_source_release_path_and_missing_status(tmp_path: Path) -> None:
     cache = DownloadCache(tmp_path / "cache")
     first = cache.fetch(
-        "https://example.org/first", metadata={"release": "test_release"}
+        "https://example.org/first",
+        name="sage",
+        kind="workflow",
+        metadata={"release": "test_release"},
     )
     missing = cache.fetch("https://example.org/missing")
     missing.path.unlink()
@@ -19,6 +22,8 @@ def test_list_shows_source_release_path_and_missing_status(tmp_path: Path) -> No
     result = CliRunner().invoke(app, ["cache", "list", "--directory", str(cache.root)])
 
     assert result.exit_code == 0, result.output
+    assert "sage | type: workflow | ready" in result.output
+    assert "unknown | type: unknown | missing/changed" in result.output
     assert "test_release" in result.output
     assert "https://example.org/first" in result.output
     assert str(first.path) in result.output

@@ -27,7 +27,7 @@ def list_downloads(
         Path, typer.Option("--directory", help="Cache directory.")
     ] = DEFAULT_CACHE_DIR,
 ) -> None:
-    """Show registered files, their sources, sizes, releases and download times."""
+    """Show names, component types, sources, sizes, releases and download times."""
     cache = DownloadCache(directory)
     try:
         entries = cache.entries()
@@ -40,6 +40,7 @@ def list_downloads(
         status = "ready" if entry.available else "missing/changed"
         version = entry.metadata.get("release") or entry.metadata.get("version")
         typer.echo(
+            f"{entry.name or 'unknown'} | type: {entry.kind or 'unknown'} | "
             f"{status} | {_size(entry.size_bytes)} | version: {version or 'unknown'}"
         )
         typer.echo(

@@ -93,6 +93,8 @@ def test_download_selects_build_and_records_provenance(
     assert (executable.parent / "LICENSE").is_file()
     assert len(cache.entries()) == 1
     entry = cache.entries()[0]
+    assert entry.name == "sage"
+    assert entry.kind == "workflow"
     assert entry.url == url
     assert entry.metadata == {"version": "0.14.7"}
     assert entry.downloaded_at

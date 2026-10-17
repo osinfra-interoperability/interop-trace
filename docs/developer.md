@@ -39,6 +39,7 @@ src/interop_trace/
 tests/
     test_system.py  # Module entry-point help check
     test_sage.py    # Sage subprocess behaviour using a local test executable
+    test_uniprot.py # UniProt download behaviour using offline responses
 ```
 
 The installed command and module entry point both call `cli.main`.
@@ -68,9 +69,10 @@ formats and the experimental design.
 The dataset and database passed to a benchmark must be the inputs for that run.
 Benchmark expectations are distinct from the sequence database's candidate proteins.
 
-The contracts are typed interfaces and data records. `SageWorkflow` is a concrete
-local workflow implementation. The data records do not read files or perform
-runtime validation.
+The contracts are typed interfaces and data records. `UniProtProvider` retrieves
+working database files and records the source release. `SageWorkflow` is a
+concrete local workflow implementation. Both use the Python standard library.
+The data records do not read files or perform runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
 Implementations are responsible for checking inputs and raising exceptions on
 failure; satisfying a Python protocol alone does not establish scientific validity.

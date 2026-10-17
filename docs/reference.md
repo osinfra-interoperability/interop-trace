@@ -24,6 +24,8 @@ Python >=3.12.
 
 ::: interop_trace.databases.base
 
+::: interop_trace.databases.uniprot
+
 ## Workflows
 
 ::: interop_trace.workflows.base

@@ -34,8 +34,9 @@ poetry install
 poetry run python -m interop_trace --help
 ```
 
-The package provides component contracts and a Python interface for running Sage.
-See [the Sage usage example](docs/usage.md#run-sage-from-python). The CLI exposes help.
+The package provides component contracts and Python interfaces for retrieving
+UniProt databases and running Sage. See [the usage examples](docs/usage.md).
+The CLI exposes help.
 
 ## Documentation
 

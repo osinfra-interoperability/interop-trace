@@ -81,6 +81,12 @@ class SageWorkflow:
     version: str = "0.14.7"
     _executable: Path | None = field(default=None, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        if type(self.threads) is not int or self.threads < 1:
+            raise ValueError("Sage threads must be a positive integer.")
+        if not isinstance(self.version, str) or not self.version.strip():
+            raise ValueError("Sage version must be a nonempty string.")
+
     def setup(self, *, cache: DownloadCache) -> None:
         """Resolve a local executable or fetch and extract the pinned release."""
         self._executable = None

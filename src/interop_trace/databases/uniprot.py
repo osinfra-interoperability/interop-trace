@@ -27,6 +27,12 @@ class UniProtProvider:
     format: str = "fasta"
     _download: Download | None = field(default=None, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.query, str) or not self.query.strip():
+            raise ValueError("UniProt query must be a nonempty string.")
+        if not isinstance(self.format, str) or not self.format.strip():
+            raise ValueError("UniProt format must be a nonempty string.")
+
     def setup(self, *, cache: DownloadCache) -> None:
         """Fetch or reuse the query response and its original release metadata."""
         self._download = None

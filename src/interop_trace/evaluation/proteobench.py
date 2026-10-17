@@ -34,6 +34,13 @@ class ProteoBenchDDA:
 
     min_observations: int = 3
 
+    def __post_init__(self) -> None:
+        if (
+            type(self.min_observations) is not int
+            or not 1 <= self.min_observations <= 6
+        ):
+            raise ValueError("min_observations must be between 1 and 6.")
+
     def evaluate(
         self,
         result: WorkflowResult,
@@ -50,8 +57,6 @@ class ProteoBenchDDA:
         """
         if result.format != "sage":
             raise ValueError("ProteoBenchDDA currently accepts Sage results only.")
-        if not 1 <= self.min_observations <= 6:
-            raise ValueError("min_observations must be between 1 and 6.")
         try:
             lfq = result.files["lfq.tsv"]
             parameters = json.loads(result.files["results.json"].read_bytes())

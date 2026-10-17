@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 authors = [
   { name = "Mariia Steeghs-Turchina", email = "m.a.steeghs-turchina@lumc.nl" },
 ]
-dependencies = ["typer", "pooch (>=1.9,<2)"]
+dependencies = ["typer", "pooch (>=1.9,<2)", "pyyaml (>=6,<8)"]
 keywords = ["interoperability", "workflow", "benchmarking"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -21,7 +21,7 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["pytest"]
-quality = ["pre-commit", "ruff", "mypy"]
+quality = ["pre-commit", "ruff", "mypy", "types-pyyaml (>=6.0.12.20260906,<7.0.0.0)"]
 docs = ["zensical", "mkdocstrings[python]"]
 proteobench = ["proteobench (==0.18.6)"]
 

@@ -32,6 +32,17 @@ class PrideProvider:
     )
     _downloads: list[Download] = field(default_factory=list, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.project, str) or not self.project.strip():
+            raise ValueError("PRIDE project must be a nonempty string.")
+        if not isinstance(self.files, (list, tuple)) or not all(
+            isinstance(name, str) and name for name in self.files
+        ):
+            raise ValueError("PRIDE files must be a list of filenames.")
+        self.files = tuple(self.files)
+        if not self.files or len(set(self.files)) != len(self.files):
+            raise ValueError("Select at least one PRIDE file, without duplicate names.")
+
     def setup(self, *, cache: DownloadCache) -> None:
         """Resolve the catalogue and all selections, then fetch or reuse files.
 
@@ -39,8 +50,6 @@ class PrideProvider:
         preserve original source records. Failed setup leaves the component unready.
         """
         self._catalogue = None
-        if not self.files or len(set(self.files)) != len(self.files):
-            raise ValueError("Select at least one PRIDE file, without duplicate names.")
         url = (
             "https://www.ebi.ac.uk/pride/ws/archive/v3/projects/"
             f"{quote(self.project, safe='')}/files/all"

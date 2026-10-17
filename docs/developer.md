@@ -36,7 +36,7 @@ src/interop_trace/
     datasets/     # Dataset, DatasetProvider and PrideProvider
     databases/    # Database and DatabaseProvider
     workflows/    # Workflow and WorkflowResult
-    evaluation/   # Benchmark and EvaluationResult
+    evaluation/   # Benchmark, EvaluationResult and ProteoBenchDDA
 tests/
     test_system.py  # Module entry-point help check
     test_sage.py    # Sage subprocess behaviour using a local test executable
@@ -44,6 +44,7 @@ tests/
     conftest.py     # Offline HTTP transport; Pooch and Requests still run normally
     test_uniprot.py # UniProt queries and release records using offline responses
     test_pride.py   # PRIDE selection, source records, reuse and failures
+    test_proteobench.py # Installed ProteoBench scoring on tiny Sage-format tables
     test_downloads.py # HTTP metadata, cache reuse, failure cleanup and deletion scope
     test_cache_cli.py # Cache inspection and clearing commands
 ```
@@ -80,6 +81,20 @@ selected public dataset files and records their source metadata. `UniProtProvide
 retrieves cached database files and records the original source release.
 `SageWorkflow` is a concrete local workflow implementation. Download storage uses Pooch; the Sage
 wrapper uses the Python standard library.
+`ProteoBenchDDA` implements local evaluation for Sage LFQ results from the six-run
+Q Exactive DDA mixture. It uses the optional, pinned ProteoBench library's parser
+and scoring functions directly. Imports are deferred until evaluation, so other
+components work without this extra. The benchmark settings ship with ProteoBench
+and are copied to each evaluation's reports; no separate reference download or
+cache entry is needed. The adapter does not instantiate ProteoBench's web modules,
+which would initialize leaderboard repositories.
+
+Its tests exercise the installed scoring library with known intensity ratios,
+deliberate bias, missing observations and incompatible inputs. They require the
+`proteobench` extra and are skipped without it; development and CI install all
+extras. Synthetic tables test the integration, rather than establish performance
+on the published measurements. No measurement downloads are needed for tests.
+
 The data records do not read files or perform runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
 Implementations are responsible for checking inputs and raising exceptions on

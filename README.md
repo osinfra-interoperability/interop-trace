@@ -35,8 +35,19 @@ poetry run python -m interop_trace --help
 ```
 
 The package provides component contracts and Python interfaces for retrieving
-PRIDE datasets and UniProt databases, downloading Sage, and running it.
+PRIDE datasets and UniProt databases, downloading and running Sage, and evaluating
+its LFQ results with ProteoBench's Q Exactive DDA benchmark.
 See [the usage examples](docs/usage.md).
+
+ProteoBench evaluation is optional:
+
+```bash
+poetry install --extras proteobench
+```
+
+It requires the benchmark's published six-run mixture design and Sage LFQ output;
+it does not apply to arbitrary datasets or download measurements automatically.
+
 Inspect downloads or clear them before a fresh run:
 
 ```bash

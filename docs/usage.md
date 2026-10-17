@@ -84,6 +84,99 @@ outputs when produced. A nonzero Sage exit raises `subprocess.CalledProcessError
 and preserves the log. A zero exit status reports process completion; interpret
 warnings and scientific results separately.
 
+## Evaluate Sage quantification with ProteoBench
+
+Install the optional, pinned ProteoBench library:
+
+```bash
+poetry install --extras proteobench
+```
+
+`ProteoBenchDDA` implements the benchmark protocol using ProteoBench 0.18.6.
+This first implementation scores Sage's precursor-ion LFQ results for the
+[Q Exactive DDA module](https://proteobench.readthedocs.io/en/latest/modules/dda/dda-ion-qexactive/).
+It evaluates quantification accuracy and yield on the module's published
+human/yeast/E. coli mixture. It cannot score an arbitrary PRIDE dataset or the
+small Sage demonstration: those experiments do not supply the expected mixture.
+It does not download measurements or run Sage automatically.
+
+Use all six published runs from the alpha series of
+[PXD028735](https://www.ebi.ac.uk/pride/archive/projects/PXD028735), retaining
+these names after conversion to mzML:
+
+```text
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_01.mzML
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_02.mzML
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_03.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_01.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_02.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_03.mzML
+```
+
+Compressed `.mzML.gz` names are also supported. Run Sage with LFQ enabled and
+charge states kept separate. Include this section in its JSON configuration:
+
+```json
+{
+  "quant": {
+    "lfq": true,
+    "lfq_settings": {"combine_charge_states": false}
+  }
+}
+```
+
+This is a configuration fragment; Sage still needs its usual search settings.
+Charge-state combination defaults to `true` in Sage 0.14.7; combined output
+cannot be evaluated as precursor ions. Use validated LFQ results; the adapter
+does not add a q-value filter or impute missing intensities.
+
+After `SageWorkflow.run(...)`, pass its `result` and the same `dataset` and
+`database` to the evaluator:
+
+```python
+from pathlib import Path
+
+from interop_trace.evaluation import ProteoBenchDDA
+
+evaluation = ProteoBenchDDA(min_observations=3).evaluate(
+    result, dataset, database, output_dir=Path("results/evaluation-001")
+)
+print(evaluation.metrics)
+print(evaluation.reports)
+```
+
+The evaluator reads `lfq.tsv` and `results.json` from the workflow result.
+Protein identifiers must retain the `_HUMAN`, `_YEAST` and `_ECOLI` species flags
+used by the packaged Sage parser. Expected A/B intensity ratios are 1, 2 and 0.25,
+respectively. These known sample proportions supply the benchmark expectations;
+the search database supplies candidate sequences and is recorded as provenance.
+Filenames establish the expected design but do not prove that file contents are
+the published measurements.
+
+`min_observations` ranges from 1 to 6 and counts observations across all six runs,
+rather than requiring that number in each condition. Summary metrics include
+`nr_feature` (quantified precursor-ion count), `mean_abs_epsilon_global`
+(absolute error in log2 A/B ratios) and `CV_median` (within-condition variation).
+More quantified ions and smaller errors describe different aspects of performance;
+there is no single overall score.
+
+Each evaluation requires a new output directory and returns absolute report paths:
+
+- `proteobench.json`: numeric metrics, undefined metric names, threshold, library
+  version, Sage parameters and the supplied dataset, database and output paths.
+- `ions.tsv`: ProteoBench's processed per-ion table, including observation counts
+  and expected and measured ratios. The threshold applies to summary metrics;
+  this table retains ions below the threshold for inspection.
+- `module_settings.toml` and `parse_settings_sage.toml`: copies of the packaged
+  benchmark expectations and Sage parsing settings used for the evaluation.
+
+Undefined metrics are omitted from `EvaluationResult.metrics` and named in the
+JSON report. For example, ROC AUC is undefined when only one species is present.
+An empty scored table raises an error. Unsupported workflow formats, unrelated
+run names and combined-charge LFQ outputs also raise errors.
+Evaluation uses the installed library locally and does not submit results,
+clone leaderboard repositories or apply public-submission validation.
+
 ## Retrieve selected PRIDE measurements
 
 `PrideProvider` retrieves named files from a public

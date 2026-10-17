@@ -23,35 +23,20 @@ poetry install --all-extras
 
 See `CONTRIBUTING.md` in the repository root for the complete contribution policy.
 
-## Interface contracts
+## Package layout
 
-Keep public interface descriptions aligned with implementation files, documentation, and stability status.
-
-- Command-line tool (Stable)
-- Library (Stable)
-
-## Project architecture
-
-The generated Python package uses a `src` layout.
-Runtime dependencies point inward: public entry points delegate reusable
-behavior to the service layer.
+The Python package uses a `src` layout:
 
 ```text
-public entry points
-    -> adapters/
-    -> services/
+src/interop_trace/
+    __init__.py   # Package version metadata
+    __main__.py   # Module entry point
+    cli.py        # Shared command-line application
+tests/
+    test_system.py  # Module entry-point help check
 ```
 
-Services must not import interface adapters.
-
-Generated component paths:
-- `src/interop_trace/services/`
-- `src/interop_trace/adapters/`
-- `tests/`
-
-### Command-line tool
-
-See the generated component paths above.
+The installed command and module entry point both call `cli.main`.
 
 ## Generated automation
 

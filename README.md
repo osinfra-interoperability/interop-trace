@@ -25,14 +25,16 @@ A research software project for empirically testing interoperability across bioi
 Install from a source checkout:
 
 ```bash
-python -m pip install .
+poetry install
 ```
 
 ## Usage
 
 ```bash
-python -m interop_trace
+poetry run python -m interop_trace --help
 ```
+
+The package currently provides version metadata and CLI help. No analysis commands are registered.
 
 ## Documentation
 

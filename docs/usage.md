@@ -4,29 +4,19 @@ Tracing interoperability across bioinformatics databases and workflows.
 
 ## Installation
 
-Install the package from a source checkout:
+Install from a source checkout:
 
 ```bash
-python -m pip install .
+poetry install
 ```
 
-## Run the software
+## Command-line help
+
+Both entry points expose the same CLI:
 
 ```bash
-python -m interop_trace
+poetry run interop-trace --help
+poetry run python -m interop_trace --help
 ```
 
-## Access interfaces
-
-- Command-line tool (Stable)
-- Library (Stable)
-
-## Platform support
-
-- Platform independent
-
-## Generated entry points
-
-```bash
-interop-trace process "example input"
-```
+The CLI currently provides help. No analysis commands are registered.

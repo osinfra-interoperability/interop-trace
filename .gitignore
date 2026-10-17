@@ -27,3 +27,6 @@ docs/build/
 
 # Private project notes and local artifacts
 _misc/
+
+# Project download cache and local runtime state
+.interop_trace/

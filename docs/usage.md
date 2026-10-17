@@ -84,6 +84,56 @@ outputs when produced. A nonzero Sage exit raises `subprocess.CalledProcessError
 and preserves the log. A zero exit status reports process completion; interpret
 warnings and scientific results separately.
 
+## Retrieve selected PRIDE measurements
+
+`PrideProvider` retrieves named files from a public
+[PRIDE project](https://www.ebi.ac.uk/pride/archive/projects/PXD000001).
+Choose exact filenames from the project's file list; there is no default selection
+that downloads the entire project. The example below selects a published compressed
+peak-list file of about 16 MB:
+
+```python
+from pathlib import Path
+
+from interop_trace.datasets import PrideProvider
+
+provider = PrideProvider(
+    project="PXD000001",
+    files=("PRIDE_Exp_Complete_Ac_22134.pride.mgf.gz",),
+)
+dataset = provider.prepare(output_dir=Path("results/dataset-001"))
+```
+
+Save this as `prepare_dataset.py` and run it through Poetry:
+
+```bash
+poetry run python prepare_dataset.py
+```
+
+`Dataset.files` contains absolute cached paths in the requested order, with their
+original filenames and extensions. The provider preserves the submitted contents,
+including compression. It does not convert measurements or infer sample metadata;
+`Dataset.sample_metadata` is `None`. The consuming workflow interprets the files.
+
+Each preparation requires a new output directory and writes only `pride.json`.
+It records the project, cached catalogue and its original retrieval time, plus
+each selected file's complete PRIDE metadata, download URL, local path, byte count
+and original download time. Published file identifiers, checksums, sizes and dates
+are retained when available. Reported checksums are recorded without being verified
+against the downloaded content.
+
+Both the project catalogue and selected files use the shared cache, listed as
+`pride | type: dataset`. Later preparations reuse them without contacting PRIDE.
+Clear the cache between runs to retrieve a fresh catalogue and file contents.
+Set `cache_dir` on the provider to use another dedicated cache location.
+
+Empty or duplicate selections fail before requests. Missing or ambiguous filenames,
+and unsupported download locations, fail before measurement downloads. Published
+HTTP(S) locations are preferred; PRIDE FTP locations use the repository's HTTPS
+mirror. HTTP and transfer errors propagate. If a later file fails, successfully
+cached files remain reusable, and the output directory contains no completed
+`pride.json` record.
+
 ## Retrieve a UniProt database
 
 `UniProtProvider` retrieves a query result from the
@@ -134,9 +184,9 @@ Inspect the registered downloads:
 poetry run interop-trace cache list
 ```
 
-The listing shows the component name and type (`sage` / `workflow`, or `uniprot` /
-`database`), status, size, source URL, local path, reported version and original
-download time. Unlabeled entries show `unknown`; older entries gain missing labels
+The listing shows the component name and type (`sage` / `workflow`, `uniprot` /
+`database`, or `pride` / `dataset`), status, size, source URL, local path, reported
+version and original download time. Unlabeled entries show `unknown`; older entries gain missing labels
 when their component next reuses them, without another download or a change to
 their recorded release and download time.
 
@@ -184,4 +234,4 @@ poetry run interop-trace cache clear --directory /path/to/dedicated-cache
 
 Use an empty, dedicated directory for a new cache. The default location is relative
 to the current working directory. Other downloaded components can share the same
-storage through `DownloadCache`; UniProt and Sage currently use it.
+storage through `DownloadCache`; PRIDE, UniProt and Sage currently use it.

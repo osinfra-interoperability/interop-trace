@@ -20,6 +20,8 @@ Python >=3.12.
 
 ::: interop_trace.datasets.base
 
+::: interop_trace.datasets.pride
+
 ## Databases
 
 ::: interop_trace.databases.base

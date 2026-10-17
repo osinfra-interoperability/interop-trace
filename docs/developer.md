@@ -33,7 +33,7 @@ src/interop_trace/
     __main__.py   # Module entry point
     cli.py        # Shared command-line application
     downloads.py  # Managed download storage and registry
-    datasets/     # Dataset and DatasetProvider
+    datasets/     # Dataset, DatasetProvider and PrideProvider
     databases/    # Database and DatabaseProvider
     workflows/    # Workflow and WorkflowResult
     evaluation/   # Benchmark and EvaluationResult
@@ -43,6 +43,7 @@ tests/
     test_sage_download.py # Sage release selection, reuse and extraction
     conftest.py     # Offline HTTP transport; Pooch and Requests still run normally
     test_uniprot.py # UniProt queries and release records using offline responses
+    test_pride.py   # PRIDE selection, source records, reuse and failures
     test_downloads.py # HTTP metadata, cache reuse, failure cleanup and deletion scope
     test_cache_cli.py # Cache inspection and clearing commands
 ```
@@ -74,9 +75,10 @@ formats and the experimental design.
 The dataset and database passed to a benchmark must be the inputs for that run.
 Benchmark expectations are distinct from the sequence database's candidate proteins.
 
-The contracts are typed interfaces and data records. `UniProtProvider` retrieves
-cached database files and records the original source release. `SageWorkflow` is a
-concrete local workflow implementation. Download storage uses Pooch; the Sage
+The contracts are typed interfaces and data records. `PrideProvider` retrieves
+selected public dataset files and records their source metadata. `UniProtProvider`
+retrieves cached database files and records the original source release.
+`SageWorkflow` is a concrete local workflow implementation. Download storage uses Pooch; the Sage
 wrapper uses the Python standard library.
 The data records do not read files or perform runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
@@ -96,6 +98,7 @@ a new response. HTTP transfers use Pooch with a 60-second timeout and the
 | --- | --- |
 | `name` | Component name, such as `sage` or `uniprot` |
 | `kind` | Component type, such as `workflow` or `database` |
+| `filename` | Local basename for a new download; defaults to `content` |
 | `metadata` | Known source information, such as Sage's requested release version |
 | `metadata_headers` | Mapping from record fields to response header names, such as `release` to `X-UniProt-Release` |
 
@@ -117,9 +120,12 @@ The helper returns a path for the existing `SageWorkflow` interface; manual
 executable paths remain supported. The cache records the requested release tag,
 while `version.txt` in each workflow run records the executable's own version string.
 
-Each exact URL has its own directory under `objects/`, containing `content` and
-`download.json`. The directory key is a hash of the request URL, not a checksum of
-file contents. Metadata records the source, path, size, download time and reported
+Each exact URL has its own directory under `objects/`, containing the payload and
+`download.json`. PRIDE measurements retain their filenames and extensions; the
+project catalogue uses `files.json`. Existing Sage and UniProt payloads use
+`content`. Cache reuse retains the original stored filename. The directory key is
+a hash of the request URL, not a checksum of file contents. Metadata records the
+source, path, size, download time and reported
 version. The registry record is written after a successful transfer.
 Missing or size-changed files and unreadable records are treated as cache misses.
 
@@ -127,8 +133,9 @@ Missing or size-changed files and unreadable records are treated as cache misses
 handles temporary files, transfer completion and cleanup after transfer failures.
 A shared HTTP downloader captures selected response headers and rejects empty
 files. The wrapper keeps the JSON registry, presence and size checks, and
-cache ownership marker. Providers currently supply no expected content checksum,
-so retrieval uses `known_hash=None`; cached files are not hashed on reuse.
+cache ownership marker. Retrieval uses `known_hash=None`; cached files are not
+hashed on reuse. Reported PRIDE checksums are stored as source metadata without
+verifying the payload against them.
 
 Clearing removes the managed `objects/` directory and any `pending/` directory left
 by the previous cache implementation. It requires the ownership marker. Recorded

@@ -58,6 +58,33 @@ def run(
     typer.echo(f"Completed {len(results)} experiment(s): {output.resolve()}")
 
 
+@app.command("components")
+def list_components(
+    update_docs: Annotated[
+        bool, typer.Option("--update-docs", help="Update marked catalogue tables.")
+    ] = False,
+    check_docs: Annotated[
+        bool, typer.Option("--check-docs", help="Fail if catalogue tables are stale.")
+    ] = False,
+    root: Annotated[
+        Path, typer.Option("--root", help="Repository root for documentation tables.")
+    ] = Path("."),
+) -> None:
+    """List available implementations without downloads or optional scoring imports."""
+    from interop_trace.catalogue import component_table, update_catalogue
+
+    if update_docs and check_docs:
+        raise typer.BadParameter("Choose --update-docs or --check-docs.")
+    if update_docs or check_docs:
+        try:
+            update_catalogue(root.resolve(), check=check_docs)
+        except (OSError, ValueError) as error:
+            raise typer.BadParameter(str(error)) from error
+        typer.echo("Component catalogue is current.")
+    else:
+        typer.echo(component_table(detailed=True))
+
+
 @cache_app.command("list")
 def list_downloads(
     directory: Annotated[

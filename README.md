@@ -39,6 +39,22 @@ PRIDE datasets and UniProt databases, downloading and running Sage, and evaluati
 its LFQ results with ProteoBench's Q Exactive DDA benchmark.
 See [the usage examples](docs/usage.md).
 
+## Available components
+
+<!-- components:start -->
+
+| Layer | Component |
+| --- | --- |
+| datasets | [`pride`](docs/components.md#pride) |
+| databases | [`uniprot`](docs/components.md#uniprot) |
+| workflows | [`sage`](docs/components.md#sage) |
+| benchmarks | [`proteobench_dda`](docs/components.md#proteobench-dda) |
+
+<!-- components:end -->
+
+The tables are generated from the layer registries. See the
+[component catalogue](docs/components.md) for parameters and scope.
+
 ProteoBench evaluation is optional:
 
 ```bash

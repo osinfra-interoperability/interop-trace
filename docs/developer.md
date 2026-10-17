@@ -10,6 +10,7 @@ locations, and keep generated public files synchronized with that metadata.
 
 ```bash
 poetry install --all-extras
+poetry run pre-commit install
 ```
 
 ## Local checks
@@ -138,6 +139,10 @@ The script defaults to its own checkout; `--root` selects another checkout.
 It preserves all text outside the marker pairs. Tests check that committed tables
 match the registrations. Table rendering and repository-file editing live in
 `scripts/`; the installed application's `components` command only lists entries.
+The local pre-commit hook runs the generator before commits. If tables change,
+the commit pauses: review and stage the updated README and catalogue, then commit
+again. Local hooks use the installed Poetry environment, including lint and type
+checks; Poetry must be available on your `PATH` when committing.
 Documentation CI runs the script before building on every branch push and PR to
 `main`. The test suite checks committed tables separately, so registry changes
 should include regenerated Markdown. CI does not create bot commits.

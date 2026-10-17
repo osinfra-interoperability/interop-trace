@@ -12,7 +12,6 @@ from interop_trace.databases import DatabaseProvider
 from interop_trace.datasets import DatasetProvider
 from interop_trace.evaluation import Benchmark
 from interop_trace.registries import (
-    REGISTRIES,
     benchmarks,
     databases,
     datasets,
@@ -29,7 +28,7 @@ class Experiment:
     dataset: DatasetProvider
     database: DatabaseProvider
     workflow: Workflow
-    benchmark: Benchmark
+    benchmark: Benchmark | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -86,7 +85,12 @@ def _read_component_files(
     sources: object, directory: Path
 ) -> tuple[dict[str, tuple[Path, dict[str, Any]]], dict[str, str]]:
     sources = _mapping(sources, "components")
-    _keys(sources, set(REGISTRIES), "components")
+    _keys(
+        sources,
+        {"datasets", "databases", "workflows"},
+        "components",
+        optional={"benchmarks"},
+    )
     definitions, contents = {}, {}
     for layer, relative in sources.items():
         if not isinstance(relative, str):
@@ -102,7 +106,21 @@ def _build_experiment(
     choice: object, definitions: dict[str, tuple[Path, dict[str, Any]]]
 ) -> Experiment:
     choice = _mapping(choice, "experiment")
-    _keys(choice, {"id", "dataset", "database", "workflow", "benchmark"}, "experiment")
+    _keys(
+        choice,
+        {"id", "dataset", "database", "workflow"},
+        "experiment",
+        optional={"benchmark"},
+    )
+    benchmark = None
+    if choice.get("benchmark") is not None:
+        if "benchmarks" not in definitions:
+            raise ValueError(
+                "An experiment selects a benchmark but no benchmarks file is provided."
+            )
+        benchmark = _build_component(
+            benchmarks, choice["benchmark"], definitions["benchmarks"]
+        )
     return Experiment(
         id=choice["id"],
         dataset=_build_component(datasets, choice["dataset"], definitions["datasets"]),
@@ -112,9 +130,7 @@ def _build_experiment(
         workflow=_build_component(
             workflows, choice["workflow"], definitions["workflows"]
         ),
-        benchmark=_build_component(
-            benchmarks, choice["benchmark"], definitions["benchmarks"]
-        ),
+        benchmark=benchmark,
     )
 
 

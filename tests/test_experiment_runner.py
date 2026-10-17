@@ -255,3 +255,28 @@ def test_cli_executes_run(
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
         assert record["status"] == "completed"
+
+
+def test_run_without_benchmark_preserves_workflow_results(
+    pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    document = yaml.safe_load(pipeline.read_text())
+    del document["components"]["benchmarks"]
+    for choice in document["experiments"]:
+        del choice["benchmark"]
+    pipeline.write_text(yaml.safe_dump(document))
+    evaluator = Mock(side_effect=AssertionError("benchmark was not requested"))
+    monkeypatch.setattr(ProteoBenchDDA, "evaluate", evaluator)
+    output = tmp_path / "unscored"
+    assert run_experiments(
+        load_configuration(pipeline),
+        output_dir=output,
+        cache_dir=tmp_path / "cache",
+    ) == (None, None)
+    evaluator.assert_not_called()
+    for name in ("first", "second"):
+        record = json.loads((output / name / "experiment.json").read_text())
+        assert record["status"] == "completed"
+        assert record["evaluation"] == {"status": "not_requested"}
+        assert (output / name / "workflow/lfq.tsv").is_file()
+        assert not (output / name / "evaluation").exists()

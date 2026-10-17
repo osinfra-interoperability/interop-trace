@@ -49,6 +49,7 @@ See [the usage examples](docs/usage.md).
 | datasets | [`pride`](docs/components.md#pride) |
 | databases | [`uniprot`](docs/components.md#uniprot) |
 | workflows | [`sage`](docs/components.md#sage) |
+| benchmarks | [`expected_peptides`](docs/components.md#expected-peptides) |
 | benchmarks | [`proteobench_dda`](docs/components.md#proteobench-dda) |
 
 <!-- components:end -->

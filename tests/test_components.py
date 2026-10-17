@@ -77,6 +77,6 @@ def test_all_builtin_implementations_register_without_requests(
     assert set(databases) == {"uniprot"}
     assert set(datasets) == {"pride", "http"}
     assert set(workflows) == {"sage"}
-    assert set(benchmarks) == {"proteobench_dda"}
+    assert set(benchmarks) == {"proteobench_dda", "expected_peptides"}
     assert not isinstance(benchmarks["proteobench_dda"].factory(), RequiresSetup)
     http_transport.assert_not_called()

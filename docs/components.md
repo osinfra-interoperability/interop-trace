@@ -12,6 +12,7 @@ Registering, listing or constructing a component does not download resources.
 | datasets | [`pride`](components.md#pride) | Selected public PRIDE measurements |
 | databases | [`uniprot`](components.md#uniprot) | Query-based UniProtKB exports |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
+| benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from Sage target matches |
 | benchmarks | [`proteobench_dda`](components.md#proteobench-dda) | Q Exactive DDA precursor-ion quantification |
 
 <!-- components:end -->
@@ -73,6 +74,16 @@ native outputs, a log and the executable's own version response.
 
 See [Sage usage](usage.md#run-sage-from-python) and the
 [ProteoBench LFQ requirements](usage.md#evaluate-sage-quantification-with-proteobench).
+
+## Expected peptides
+
+`expected_peptides` reads Sage's `results.sage.tsv` and compares rank-one target
+matches with an explicit list of exact peptide strings (`peptides`).
+`max_q_value` defaults to `0.01` and filters on `spectrum_q`.
+The report records recovery before and after that threshold, counting each peptide
+once. Expectations must come from a reference independent of the search database.
+This diagnostic does not estimate precision, FDR or quantification accuracy.
+No extra dependencies or downloads are needed.
 
 ## ProteoBench DDA
 

@@ -53,6 +53,8 @@ Python >=3.12.
 
 ::: interop_trace.evaluation.base
 
+::: interop_trace.evaluation.expected_peptides
+
 ::: interop_trace.evaluation.proteobench
 
 ## Download cache

@@ -24,3 +24,6 @@ dist/
 build/
 site/
 docs/build/
+
+# Private project notes and local artifacts
+_misc/

@@ -25,7 +25,7 @@ quality = ["pre-commit", "ruff", "mypy"]
 docs = ["zensical", "mkdocstrings[python]"]
 
 [project.scripts]
-"interop-trace" = "interop_trace.adapters.cli.app:main"
+"interop-trace" = "interop_trace.cli:main"
 
 [project.urls]
 "Source Code" = "https://github.com/thatmariia/interop_trace"
@@ -49,5 +49,5 @@ strict = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["fastapi.*", "typer.*"]
+module = ["typer.*"]
 ignore_missing_imports = true

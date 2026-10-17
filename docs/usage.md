@@ -23,19 +23,20 @@ The CLI provides help and download cache management. Analysis runs use the Pytho
 
 ## Run Sage from Python
 
-`SageWorkflow` runs a local [Sage executable](https://github.com/lazear/sage/releases)
-with a native [JSON configuration](https://sage-docs.vercel.app/docs/configuration).
-Set the paths below to your executable, settings, and input files in `run_sage.py`:
+`download_sage` retrieves a pinned [Sage release](https://github.com/lazear/sage/releases/tag/v0.14.7).
+`SageWorkflow` runs that executable with a native
+[JSON configuration](https://sage-docs.vercel.app/docs/configuration).
+Set the paths below to your settings and input files in `run_sage.py`:
 
 ```python
 from pathlib import Path
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
-from interop_trace.workflows import SageWorkflow
+from interop_trace.workflows import SageWorkflow, download_sage
 
 workflow = SageWorkflow(
-    executable=Path("/path/to/sage"),
+    executable=download_sage("0.14.7"),
     configuration=Path("configuration.json"),
 )
 result = workflow.run(
@@ -51,6 +52,24 @@ Run the script through Poetry:
 ```bash
 poetry run python run_sage.py
 ```
+
+The first call downloads the release archive into the shared cache and extracts
+Sage, its license and README. Later calls reuse both the archive and executable.
+A missing executable is restored from the archive without another download.
+`download_sage()` defaults to `"0.14.7"`; it never selects a moving `latest` release.
+Set `cache_dir=Path("/path/to/dedicated-cache")` to use another cache location.
+To use an executable you already manage, pass `executable=Path("/path/to/sage")`.
+
+The helper selects macOS builds for Apple silicon or Intel, Linux builds for ARM64
+or x86-64 using musl, and Windows builds for x86-64. Other platforms raise
+`ValueError` before downloading. Release URLs and the requested release version
+appear in `poetry run interop-trace cache list`; clearing this cache removes both
+the archive and extracted files.
+
+The cache's version field identifies the downloaded release tag. Each run's
+`version.txt` preserves the executable's own response to `--version`; these can
+differ. The official 0.14.7 Apple silicon archive reports `sage 0.14.6` in our
+local check. The helper preserves the requested release without relabeling it.
 
 The selected dataset and database override input paths in the JSON configuration.
 Sage runs from the configuration's directory and interprets the inputs itself.
@@ -157,4 +176,4 @@ poetry run interop-trace cache clear --directory /path/to/dedicated-cache
 
 Use an empty, dedicated directory for a new cache. The default location is relative
 to the current working directory. Other downloaded components can share the same
-storage through `DownloadCache`; UniProt is currently the provider connected to it.
+storage through `DownloadCache`; UniProt and Sage currently use it.

@@ -40,6 +40,7 @@ src/interop_trace/
 tests/
     test_system.py  # Module entry-point help check
     test_sage.py    # Sage subprocess behaviour using a local test executable
+    test_sage_download.py # Sage release selection, reuse and extraction
     test_uniprot.py # UniProt download behaviour using offline responses
     test_downloads.py # Cache reuse, failure cleanup and deletion scope
     test_cache_cli.py # Cache inspection and clearing commands
@@ -89,6 +90,14 @@ with the URL and a temporary path. The downloader writes the bytes and returns s
 metadata such as a release or software version. This keeps source-specific HTTP
 handling in the provider.
 
+`download_sage(version, cache_dir=...)` uses the same cache for a pinned GitHub
+release archive. Pooch handles HTTP transfers and archive extraction. Extracted
+files live beside the archive under `extracted/`, so the same clear command removes
+both. Missing extracted files are restored without downloading the archive again.
+The helper returns a path for the existing `SageWorkflow` interface; manual
+executable paths remain supported. The cache records the requested release tag,
+while `version.txt` in each workflow run records the executable's own version string.
+
 Each exact URL has its own directory under `objects/`, containing `content` and
 `download.json`. The directory key is a hash of the request URL, not a checksum of
 file contents. Metadata records the source, path, size, download time and reported
@@ -99,7 +108,7 @@ Missing or size-changed files and unreadable records are treated as cache misses
 handles temporary files, transfer completion and cleanup after transfer failures.
 A small downloader adapter captures the provider's source metadata and rejects
 empty files. The wrapper keeps the JSON registry, presence and size checks, and
-cache ownership marker. UniProt query responses have no expected content checksum,
+cache ownership marker. Providers currently supply no expected content checksum,
 so retrieval uses `known_hash=None`; cached files are not hashed on reuse.
 
 Clearing removes the managed `objects/` directory and any `pending/` directory left

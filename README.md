@@ -35,7 +35,8 @@ poetry run python -m interop_trace --help
 ```
 
 The package provides component contracts and Python interfaces for retrieving
-UniProt databases and running Sage. See [the usage examples](docs/usage.md).
+UniProt databases, downloading Sage, and running it.
+See [the usage examples](docs/usage.md).
 Inspect downloads or clear them before a fresh run:
 
 ```bash

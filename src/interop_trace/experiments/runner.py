@@ -36,10 +36,6 @@ def run_experiments(
             **configuration.snapshot,
             "interop_trace_version": __version__,
             "cache": str(cache.root),
-            "experiments": [
-                {"id": experiment.id, **experiment.settings}
-                for experiment in configuration.experiments
-            ],
         },
     )
     record: dict[str, Any] = {
@@ -70,7 +66,6 @@ def _run_experiment(
     path = directory / "experiment.json"
     record: dict[str, Any] = {
         "id": experiment.id,
-        "settings": experiment.settings,
         "stage": "setup",
     }
     with _status(path, record):

@@ -142,10 +142,12 @@ match the registrations. Table rendering and repository-file editing live in
 ## Experiment execution
 
 `load_configuration` uses PyYAML's safe constructors with duplicate-key rejection.
-It resolves explicitly referenced component files and constructs fresh selected
-instances for each experiment before setup. Component file paths resolve relative
-to their own files. Selected definitions and original YAML contents are retained
-for the run snapshot; no experiment data is downloaded while loading.
+Reading component files and constructing experiments are separate functions.
+Construction names the four fields explicitly and resolves each selected definition
+through its typed registry. Instances are fresh for each experiment, before setup.
+Component file paths resolve relative to their own files. Experiment choices and
+original YAML contents are retained once in the run snapshot; no experiment data
+is downloaded while loading.
 
 `run_experiments` executes the optional setup methods and four domain operations
 sequentially. It records timestamps, stages and statuses and stops on the first

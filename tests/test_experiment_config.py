@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from interop_trace.databases import UniProtProvider
 from interop_trace.experiments import load_configuration
 from interop_trace.workflows import SageWorkflow
 
@@ -66,9 +67,11 @@ def test_load_resolves_paths_and_keeps_definition_contents(
     assert isinstance(experiment.workflow, SageWorkflow)
     assert experiment.workflow.configuration == configuration.parent / "settings.json"
     assert experiment.workflow.threads == 3
-    assert experiment.settings["database"]["parameters"]["query"] == "accession:P69905"
+    assert isinstance(experiment.database, UniProtProvider)
+    assert experiment.database.query == "accession:P69905"
     assert len(loaded.snapshot["files"]) == 5
     assert loaded.snapshot["files"][str(configuration)] == configuration.read_text()
+    assert loaded.snapshot["experiments"][0]["database"] == "selected"
     http_transport.assert_not_called()
 
 
@@ -81,7 +84,7 @@ def test_reused_definitions_construct_independent_instances(
     first, second = load_configuration(configuration).experiments
     assert first.dataset is not second.dataset
     assert first.workflow is not second.workflow
-    assert first.settings == second.settings
+    assert first.database == second.database
 
 
 @pytest.mark.parametrize(
@@ -139,7 +142,7 @@ def test_unknown_reference_in_later_experiment_fails_before_setup(
         {**document["experiments"][0], "id": "second", "database": "missing"}
     )
     configuration.write_text(yaml.safe_dump(document))
-    with pytest.raises(ValueError, match="Unknown database definition"):
+    with pytest.raises(ValueError, match="Unknown component definition"):
         load_configuration(configuration)
     http_transport.assert_not_called()
 

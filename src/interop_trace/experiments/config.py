@@ -7,18 +7,18 @@ from typing import Any
 
 import yaml
 
+from interop_trace.components import Registry
 from interop_trace.databases import DatabaseProvider
 from interop_trace.datasets import DatasetProvider
 from interop_trace.evaluation import Benchmark
-from interop_trace.registries import REGISTRIES
+from interop_trace.registries import (
+    REGISTRIES,
+    benchmarks,
+    databases,
+    datasets,
+    workflows,
+)
 from interop_trace.workflows import Workflow
-
-_ROLES = {
-    "dataset": "datasets",
-    "database": "databases",
-    "workflow": "workflows",
-    "benchmark": "benchmarks",
-}
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,6 @@ class Experiment:
     database: DatabaseProvider
     workflow: Workflow
     benchmark: Benchmark
-    settings: dict[str, Any]
 
     def __post_init__(self) -> None:
         if (
@@ -66,47 +65,72 @@ def load_configuration(path: Path) -> RunConfiguration:
     The loader never downloads resources or starts workflow processes.
     """
     path = path.resolve()
-    contents: dict[str, str] = {}
-    document = _read_yaml(path, contents)
+    document, text = _read_yaml(path)
     _keys(document, {"components", "experiments"}, str(path))
-    sources = _mapping(document["components"], "components")
-    _keys(sources, set(REGISTRIES), "components")
-    definitions = {}
-    for layer, relative in sources.items():
-        if not isinstance(relative, str):
-            raise ValueError(f"components.{layer} must reference a YAML file.")
-        source = (path.parent / relative).resolve()
-        definitions[layer] = (source, _read_yaml(source, contents))
+    definitions, contents = _read_component_files(document["components"], path.parent)
     choices = document["experiments"]
     if not isinstance(choices, list) or not choices:
         raise ValueError("experiments must be a nonempty list.")
     experiments = tuple(_build_experiment(choice, definitions) for choice in choices)
-    return RunConfiguration(experiments, {"source": str(path), "files": contents})
+    return RunConfiguration(
+        experiments,
+        {
+            "source": str(path),
+            "files": {str(path): text, **contents},
+            "experiments": choices,
+        },
+    )
+
+
+def _read_component_files(
+    sources: object, directory: Path
+) -> tuple[dict[str, tuple[Path, dict[str, Any]]], dict[str, str]]:
+    sources = _mapping(sources, "components")
+    _keys(sources, set(REGISTRIES), "components")
+    definitions, contents = {}, {}
+    for layer, relative in sources.items():
+        if not isinstance(relative, str):
+            raise ValueError(f"components.{layer} must reference a YAML file.")
+        path = (directory / relative).resolve()
+        document, text = _read_yaml(path)
+        definitions[layer] = (path, document)
+        contents[str(path)] = text
+    return definitions, contents
 
 
 def _build_experiment(
     choice: object, definitions: dict[str, tuple[Path, dict[str, Any]]]
 ) -> Experiment:
     choice = _mapping(choice, "experiment")
-    _keys(choice, {"id", *_ROLES}, "experiment")
-    name = choice["id"]
-    components, settings = {}, {}
-    for role, layer in _ROLES.items():
-        source, available = definitions[layer]
-        reference = choice[role]
-        if not isinstance(reference, str) or reference not in available:
-            raise ValueError(f"Unknown {role} definition {reference!r} in {source}.")
-        definition = _mapping(available[reference], f"{layer}.{reference}")
-        _keys(definition, {"type"}, f"{layer}.{reference}", optional={"parameters"})
-        implementation = definition["type"]
-        if not isinstance(implementation, str):
-            raise ValueError(f"{layer}.{reference}.type must be a registered name.")
-        parameters = _mapping(definition.get("parameters", {}), "parameters")
-        components[role] = REGISTRIES[layer].create(
-            implementation, parameters, base_dir=source.parent
-        )
-        settings[role] = {"reference": reference, "source": str(source), **definition}
-    return Experiment(name, **components, settings=settings)
+    _keys(choice, {"id", "dataset", "database", "workflow", "benchmark"}, "experiment")
+    return Experiment(
+        id=choice["id"],
+        dataset=_build_component(datasets, choice["dataset"], definitions["datasets"]),
+        database=_build_component(
+            databases, choice["database"], definitions["databases"]
+        ),
+        workflow=_build_component(
+            workflows, choice["workflow"], definitions["workflows"]
+        ),
+        benchmark=_build_component(
+            benchmarks, choice["benchmark"], definitions["benchmarks"]
+        ),
+    )
+
+
+def _build_component[T](
+    registry: Registry[T], reference: object, definitions: tuple[Path, dict[str, Any]]
+) -> T:
+    source, available = definitions
+    if not isinstance(reference, str) or reference not in available:
+        raise ValueError(f"Unknown component definition {reference!r} in {source}.")
+    definition = _mapping(available[reference], f"{source}:{reference}")
+    _keys(definition, {"type"}, reference, optional={"parameters"})
+    implementation = definition["type"]
+    if not isinstance(implementation, str):
+        raise ValueError(f"{reference}.type must be a registered name.")
+    parameters = _mapping(definition.get("parameters", {}), "parameters")
+    return registry.create(implementation, parameters, base_dir=source.parent)
 
 
 def _mapping(value: object, context: str) -> dict[str, Any]:
@@ -143,14 +167,13 @@ class _UniqueSafeLoader(yaml.SafeLoader):
     """Safe YAML construction that also rejects silently overwritten settings."""
 
 
-def _read_yaml(path: Path, contents: dict[str, str]) -> dict[str, Any]:
+def _read_yaml(path: Path) -> tuple[dict[str, Any], str]:
     _UniqueSafeLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping
     )
     text = path.read_text(encoding="utf-8")
-    contents[str(path)] = text
     try:
         value = yaml.load(text, Loader=_UniqueSafeLoader)
     except yaml.YAMLError as error:
         raise ValueError(f"Invalid YAML in {path}: {error}") from error
-    return _mapping(value, str(path))
+    return _mapping(value, str(path)), text

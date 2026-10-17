@@ -8,6 +8,8 @@ from interop_trace.datasets.registry import registry as datasets
 from interop_trace.evaluation.registry import registry as benchmarks
 from interop_trace.workflows.registry import registry as workflows
 
+__all__ = ["REGISTRIES", "benchmarks", "databases", "datasets", "workflows"]
+
 REGISTRIES: dict[str, Registry[Any]] = {
     "datasets": datasets,
     "databases": databases,

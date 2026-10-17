@@ -1,43 +1,26 @@
 # Interop Trace
 
-[![CI](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml/badge.svg)](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml) [![Documentation](https://img.shields.io/badge/docs-online-blue?labelColor=gray)](https://thatmariia.github.io/interop_trace/) ![Tool Type](https://img.shields.io/badge/tool%20type-Command--line%20tool%20%7C%20Library-blue?labelColor=gray)
+[![CI](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml/badge.svg)](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://thatmariia.github.io/interop_trace/)
 
-Tracing interoperability across bioinformatics databases and workflows.
+Test interoperability between bioinformatics datasets, databases, workflows and
+benchmarks. Explicit configurations select combinations; each run records sources,
+settings, native outputs and failures. Proteomics is the first application.
 
-Documentation: https://thatmariia.github.io/interop_trace/
+## Run the first experiment
 
-## Purpose
-
-A research software project for empirically testing interoperability across bioinformatics databases and workflows. It runs controlled database–workflow configurations against reference benchmarks, traces where interoperability succeeds or breaks, and produces evidence about the causes of incompatibility.
-
-
-## Purpose Categories
-
-- Integration & interfacing
-- Data analysis
-
-## Research Topics
-
-- [bioinformatics](http://edamontology.org/topic_0091) - [database management](http://edamontology.org/topic_3489) - [proteomics](http://edamontology.org/topic_0121)
-
-## Installation
-
-Install from a source checkout:
+With Python 3.12+ and Poetry installed, from a source checkout:
 
 ```bash
 poetry install
+poetry run interop-trace run experiments/simple/run.yaml --output results/simple-001
 ```
 
-## Usage
-
-```bash
-poetry run python -m interop_trace --help
-```
-
-The package provides component contracts and Python interfaces for retrieving
-PRIDE datasets and UniProt databases, downloading and running Sage, and evaluating
-its LFQ results with ProteoBench's Q Exactive DDA benchmark.
-See [the usage examples](docs/usage.md).
+This downloads a 12 KB real spectrum, one UniProt protein and a pinned Sage binary
+(about 6.6 MB on Apple silicon). Sage is installed automatically and downloads are
+cached. The expected peptide appears, but does **not** pass the 1% confidence
+threshold: this example checks component integration, not scientific accuracy.
+See [the first experiment](docs/first-experiment.md) for results and an unscored run.
 
 ## Available components
 
@@ -54,71 +37,30 @@ See [the usage examples](docs/usage.md).
 
 <!-- components:end -->
 
-The tables are generated from the layer registries. See the
-[component catalogue](docs/components.md) for parameters and scope.
-
-## Configured experiments
-
-Reusable YAML files define components; an experiment file selects one of each
-layer. A run executes the listed experiments sequentially:
-
-```bash
-poetry run interop-trace run experiments/first.yaml --check
-poetry run interop-trace run experiments/first.yaml --output results/run-001
-```
-
-Create the configuration files using [the experiment guide](docs/experiments.md).
-`--check` validates configuration without downloads or execution. Each run uses a
-new directory and records settings, status and results. Downloads share the cache;
-workflow outputs remain separate. The runner does not convert measurement formats.
-
-ProteoBench evaluation is optional:
-
-```bash
-poetry install --extras proteobench
-```
-
-It requires the benchmark's published six-run mixture design and Sage LFQ output;
-it does not apply to arbitrary datasets or download measurements automatically.
-
-Inspect downloads or clear them before a fresh run:
-
-```bash
-poetry run interop-trace cache list
-poetry run interop-trace cache clear
-```
-
-Downloads are reused from `.interop_trace/cache/`. Clearing asks for confirmation;
-use `--yes` for scripts.
+Generated from the registries. See [parameters and scope](docs/components.md).
 
 ## Documentation
 
-- User guide: installation, configuration, usage, and examples
-- Developer guide: development, tests, contribution, and reference
+- **Users:** [first experiment](docs/first-experiment.md),
+  [configuration](docs/experiments.md), [CLI and cache](docs/usage.md).
+- **Developers:** [development guide](docs/developer.md),
+  [API reference](docs/reference.md), [documentation builds](docs/documentation.md).
 
-## Development
+Benchmarking is optional. Runs use new output directories and share downloaded
+resources. Components preserve native formats; interoperability failures remain
+visible rather than being silently converted.
 
-Set up the development environment with:
+## Contributing
 
 ```bash
 poetry install --all-extras
 poetry run pre-commit install
 ```
-Run the configured checks:
 
-```bash
-poetry run ruff format --check .
-poetry run ruff check .
-poetry run mypy src
-poetry run python -m pytest
-poetry run python scripts/update_component_tables.py --check
-```
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution and code-review policy.
+See [the developer guide](docs/developer.md) for checks and
+[CONTRIBUTING.md](CONTRIBUTING.md) for review policy.
 
-## Citation
+## Citation and license
 
-If you use this software, cite it using [`CITATION.cff`](CITATION.cff).
-
-## Legal and Licensing
-
-This project is licensed under `https://spdx.org/licenses/Apache-2.0`. See `LICENSE` for the full license text.
+Cite using [CITATION.cff](CITATION.cff). Licensed under
+[Apache-2.0](LICENSE).

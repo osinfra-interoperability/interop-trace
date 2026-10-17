@@ -1,8 +1,8 @@
-# Component catalogue
+# Components and scope
 
-These names come from the four layer registries. Each YAML component definition
-selects a `type` below and supplies that implementation's `parameters`.
-Registering, listing or constructing a component does not download resources.
+Component YAML definitions select a registered `type` and its `parameters`.
+Listing or constructing components never downloads resources. The runner calls
+setup before execution where needed. These tables are generated from the registries.
 
 <!-- components:start -->
 
@@ -17,89 +17,113 @@ Registering, listing or constructing a component does not download resources.
 
 <!-- components:end -->
 
-## pride
+## http
 
-Retrieves explicitly selected files from a public PRIDE project.
+Retrieves one measurement using `url` (HTTP or HTTPS) and `filename` (a basename).
+Contents and compression are preserved. Preparation returns the cached path and
+writes `http.json` with the source and original download record. Prefer immutable
+source URLs, as in [the first experiment](first-experiment.md).
+
+## pride
 
 | Parameter | Meaning |
 | --- | --- |
-| `project` | Public project accession |
+| `project` | Public PRIDE project accession |
 | `files` | Nonempty list of exact, distinct filenames |
 
-Setup retrieves or reuses the catalogue and selected measurements through the
-shared cache. Preparation returns their paths and writes `pride.json`. Files keep
-their native format and compression; this provider does not convert RAW to mzML
-or infer sample metadata. Published checksums are recorded without verification.
-
-See [PRIDE usage](usage.md#retrieve-selected-pride-measurements).
-
-## http
-
-Retrieves one measurement file using `url` and an explicit `filename`.
-Setup uses the shared download cache; preparation writes `http.json` with source,
-path and original download time. Contents and compression are preserved. Prefer
-immutable source URLs when reproducing experiments.
+Retrieves selected measurements from a public project. Preparation writes
+`pride.json` with catalogue and file metadata. It preserves filenames, native
+formats and compression. It does not convert RAW to mzML or infer sample metadata.
+Published checksums are recorded without verifying downloaded contents.
+Select files explicitly and check their sizes in PRIDE before running.
 
 ## uniprot
 
-Retrieves query results from UniProtKB.
-
 | Parameter | Meaning |
 | --- | --- |
-| `query` | Nonempty UniProt query string, interpreted by UniProt |
-| `format` | Export format; defaults to `fasta` |
+| `query` | Nonempty [UniProt query](https://www.uniprot.org/help/api_queries) |
+| `format` | Native export format; defaults to `fasta` |
 
-Setup retrieves or reuses the response and original release headers. Preparation
-returns the cached database and writes `uniprot.json`. Cache reuse does not check
-for newer releases. The database supplies search candidates; it does not supply
-the benchmark's experimental expectations.
-
-See [UniProt usage](usage.md#retrieve-a-uniprot-database).
+Preparation returns the cached response and writes `uniprot.json`, recording the
+query and original release headers. Other exports, such as XML, are allowed;
+consumers decide whether they can read them. Cache reuse does not check for newer
+releases. The database supplies search candidates, not benchmark ground truth.
 
 ## sage
 
-Runs local Sage searches and optional quantification with native JSON settings.
-
 | Parameter | Meaning |
 | --- | --- |
-| `configuration` | Path to a native Sage JSON configuration |
-| `version` | Downloaded release tag; defaults to `"0.14.7"` |
-| `executable` | Optional existing executable, used instead of downloading a release |
+| `configuration` | Path to native Sage JSON settings |
+| `version` | Release tag; defaults to `"0.14.7"` |
+| `executable` | Optional existing executable instead of a download |
 | `threads` | Positive integer; defaults to `2` |
 
-The two path parameters resolve relative to the component YAML file. Quote version
-strings. Setup resolves the executable, downloading and extracting the pinned
-release if needed. Execution delegates input interpretation to Sage and preserves
-native outputs, a log and the executable's own version response.
+Quote version strings. Paths resolve relative to the component YAML file.
+Setup downloads and extracts a pinned [Sage release](https://github.com/lazear/sage/releases/tag/v0.14.7)
+for supported macOS (Intel/ARM), Linux (x86-64/ARM64) or Windows (x86-64) systems.
+A supplied executable skips downloading. Selected dataset and database paths
+override inputs in the native JSON. Sage interprets formats and search settings;
+the wrapper does not validate declared compatibility or convert files.
 
-See [Sage usage](usage.md#run-sage-from-python) and the
-[ProteoBench LFQ requirements](usage.md#evaluate-sage-quantification-with-proteobench).
+Each run preserves native outputs, `sage.log` and `version.txt`. The official
+0.14.7 Apple silicon binary reports `sage 0.14.6`; we preserve both the requested
+release and executable response. A nonzero exit records a workflow failure.
+Native warnings and confidence estimates still require interpretation after a
+successful exit.
 
 ## Expected peptides
 
-`expected_peptides` reads Sage's `results.sage.tsv` and compares rank-one target
-matches with an explicit list of exact peptide strings (`peptides`).
-`max_q_value` defaults to `0.01` and filters on `spectrum_q`.
-The report records recovery before and after that threshold, counting each peptide
-once. Expectations must come from a reference independent of the search database.
-This diagnostic does not estimate precision, FDR or quantification accuracy.
-No extra dependencies or downloads are needed.
+| Parameter | Meaning |
+| --- | --- |
+| `peptides` | Nonempty list of distinct exact peptide strings |
+| `max_q_value` | Spectrum q-value threshold in [0, 1]; defaults to `0.01` |
+
+`expected_peptides` reads Sage's `results.sage.tsv`, selecting rank-one target
+matches (`rank=1`, `label=1`). It reports how many expected peptides appear before
+and after filtering on `spectrum_q`, counting each peptide once. Modified sequences
+must use Sage's exact output notation. An empty, correctly headed table gives zero
+recovery; missing columns or invalid target q-values raise an error.
+
+`expected_peptides.json` records the reference, threshold, matching and missing
+peptides, source table and metrics. Expectations must come from an independent
+reference. This diagnostic does not estimate precision, FDR or quantification
+accuracy, and unlisted peptides are not assumed incorrect. No extras are needed.
 
 ## ProteoBench DDA
 
-Scores Sage LFQ output using the installed ProteoBench 0.18.6 library.
-
 | Parameter | Meaning |
 | --- | --- |
-| `min_observations` | Integer from 1 to 6; defaults to `3` |
+| `min_observations` | Minimum observations across all six runs; integer 1–6, default `3` |
 
-This benchmark supports only the published six-run Q Exactive DDA HYE mixture,
-with its expected run names and species flags. Sage must keep charge states
-separate. The threshold counts observations across all six runs. Reports preserve
-numeric metrics, undefined metric names, the per-ion table and packaged settings.
+Install with `poetry install --extras proteobench`.
+`proteobench_dda` uses ProteoBench 0.18.6 to score Sage's `lfq.tsv` and `results.json`
+for the [published Q Exactive DDA HYE design](https://proteobench.readthedocs.io/en/stable/modules/dda/dda-ion-qexactive/).
+It requires all six runs from [PXD028735](https://www.ebi.ac.uk/pride/archive/projects/PXD028735):
 
-No setup step or reference download is needed. Install the optional library with
-`poetry install --extras proteobench`. Evaluation stays local and does not submit
-results or perform public-submission validation.
+```text
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_01.mzML
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_02.mzML
+LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_03.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_01.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_02.mzML
+LFQ_Orbitrap_DDA_Condition_B_Sample_Alpha_03.mzML
+```
 
-See [ProteoBench usage](usage.md#evaluate-sage-quantification-with-proteobench).
+`.mzML.gz` is also accepted. Preserve `_HUMAN`, `_YEAST` and `_ECOLI` protein flags;
+expected A/B intensity ratios are 1, 2 and 0.25. Enable Sage LFQ while keeping
+charge states separate in its native configuration:
+
+```json
+{"quant": {"lfq": true, "lfq_settings": {"combine_charge_states": false}}}
+```
+
+The adapter does not add confidence filtering or impute missing intensities.
+Reports contain metrics and provenance (`proteobench.json`), a per-ion table
+(`ions.tsv`) and copies of packaged settings. Metrics cover quantified ion count,
+ratio error and within-condition variation; undefined metrics are named separately.
+Evaluation is local, with no leaderboard submission or reference download.
+
+This adapter cannot score the single-spectrum example. ProteoBench also offers a
+[small offline walkthrough](https://proteobench.readthedocs.io/en/stable/contributing/local-usage/)
+using bundled **precomputed MaxQuant output**. That exercises its scorer on a laptop,
+but does not rerun Sage on a smaller version of the six-run reference experiment.

@@ -8,9 +8,26 @@ Python >=3.12.
 
 - Command-line help through `interop-trace` or `python -m interop_trace`.
 - Package version through `interop_trace.__version__`.
+- Component protocols and records, exported by the four domain subpackages.
 
 ## Python API
 
 ::: interop_trace
 
 ::: interop_trace.cli
+
+## Datasets
+
+::: interop_trace.datasets.base
+
+## Databases
+
+::: interop_trace.databases.base
+
+## Workflows
+
+::: interop_trace.workflows.base
+
+## Evaluation
+
+::: interop_trace.evaluation.base

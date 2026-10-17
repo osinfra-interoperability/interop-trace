@@ -34,7 +34,7 @@ poetry install
 poetry run python -m interop_trace --help
 ```
 
-The package currently provides version metadata and CLI help. No analysis commands are registered.
+The package currently provides version metadata, component contracts, and CLI help. No analysis commands are registered.
 
 ## Documentation
 

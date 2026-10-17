@@ -65,7 +65,7 @@ class DownloadCache:
             if path.stat().st_size == 0:
                 raise ValueError("Cannot register an empty download.")
 
-        # Live query endpoints do not supply an expected content checksum.
+        # Providers do not supply an expected content checksum.
         pooch.retrieve(
             url, known_hash=None, path=directory, fname="content", downloader=transfer
         )

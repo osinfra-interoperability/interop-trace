@@ -1,13 +1,65 @@
 """Run the Sage command-line tool with its native JSON configuration."""
 
 import os
+import platform
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+import pooch
+
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
 from interop_trace.workflows.base import WorkflowResult
+
+
+def download_sage(
+    version: str = "0.14.7", *, cache_dir: Path = DEFAULT_CACHE_DIR
+) -> Path:
+    """Download a pinned Sage release once and return its cached executable.
+
+    Select the published build for this operating system and CPU. Pooch reuses
+    extracted files and restores missing ones from the cached archive. The shared
+    cache records the release URL, version and original download time.
+    """
+    target = _sage_target()
+    name = f"sage-v{version}-{target}"
+    windows = target.endswith("windows-msvc")
+    asset = name + (".zip" if windows else ".tar.gz")
+    url = f"https://github.com/lazear/sage/releases/download/v{version}/{asset}"
+
+    def transfer(url: str, destination: Path) -> dict[str, str | None]:
+        pooch.HTTPDownloader(timeout=60)(url, str(destination), None)
+        return {"version": version}
+
+    archive = DownloadCache(cache_dir).fetch(url, transfer)
+    binary = "sage.exe" if windows else "sage"
+    extractor = pooch.Unzip if windows else pooch.Untar
+    extractor(
+        members=[f"{name}/{file}" for file in (binary, "LICENSE", "README.md")],
+        extract_dir="extracted",
+    )(str(archive.path), "fetch", None)
+    executable = archive.path.parent / "extracted" / name / binary
+    if not executable.is_file():
+        raise FileNotFoundError(f"Sage release does not contain {name}/{binary}")
+    return executable
+
+
+def _sage_target() -> str:
+    system, machine = platform.system(), platform.machine().lower()
+    machine = {"arm64": "aarch64", "amd64": "x86_64"}.get(machine, machine)
+    targets = {
+        ("Darwin", "aarch64"): "aarch64-apple-darwin",
+        ("Darwin", "x86_64"): "x86_64-apple-darwin",
+        ("Linux", "aarch64"): "aarch64-unknown-linux-musl",
+        ("Linux", "x86_64"): "x86_64-unknown-linux-musl",
+        ("Windows", "x86_64"): "x86_64-pc-windows-msvc",
+    }
+    try:
+        return targets[system, machine]
+    except KeyError:
+        raise ValueError(f"No Sage download for {system}/{machine}.") from None
 
 
 @dataclass(frozen=True)

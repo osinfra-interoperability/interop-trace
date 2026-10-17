@@ -52,10 +52,10 @@ class UniProtProvider:
     def prepare(self, *, output_dir: Path) -> Database:
         """Return the resolved database and record its original source release.
 
-        UniProt validates the query and requested export format. HTTP and transfer
-        errors propagate; incomplete downloads are not cached. ``output_dir``
-        must be new and holds metadata only. Clear the download cache between
-        runs to fetch a fresh response for the same query.
+        Setup must have completed. ``output_dir`` must be new and holds metadata
+        only; this method does not request data. UniProt interprets query/export
+        settings during setup. Clear the cache between runs and set up again to
+        fetch a fresh response for the same query.
         """
         download = self._download
         if download is None:

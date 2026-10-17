@@ -19,12 +19,13 @@ poetry run interop-trace --help
 poetry run python -m interop_trace --help
 ```
 
-The CLI provides help and download cache management. Analysis runs use the Python interfaces below.
+The CLI runs [configured experiments](experiments.md), lists components and manages
+the download cache. The Python interfaces below also support direct use.
 
 ## Run Sage from Python
 
-`download_sage` retrieves a pinned [Sage release](https://github.com/lazear/sage/releases/tag/v0.14.7).
-`SageWorkflow` runs that executable with a native
+`SageWorkflow.setup` resolves a pinned [Sage release](https://github.com/lazear/sage/releases/tag/v0.14.7).
+`SageWorkflow.run` executes it with a native
 [JSON configuration](https://sage-docs.vercel.app/docs/configuration).
 Set the paths below to your settings and input files in `run_sage.py`:
 
@@ -33,12 +34,14 @@ from pathlib import Path
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
-from interop_trace.workflows import SageWorkflow, download_sage
+from interop_trace.downloads import DownloadCache
+from interop_trace.workflows import SageWorkflow
 
 workflow = SageWorkflow(
-    executable=download_sage("0.14.7"),
+    version="0.14.7",
     configuration=Path("configuration.json"),
 )
+workflow.setup(cache=DownloadCache())
 result = workflow.run(
     Dataset(files=(Path("sample.mzML").resolve(),)),
     Database(path=Path("proteins.fasta").resolve(), format="fasta"),
@@ -53,12 +56,14 @@ Run the script through Poetry:
 poetry run python run_sage.py
 ```
 
-The first call downloads the release archive into the shared cache and extracts
+The first setup downloads the release archive into the shared cache and extracts
 Sage, its license and README. Later calls reuse both the archive and executable.
 A missing executable is restored from the archive without another download.
-`download_sage()` defaults to `"0.14.7"`; it never selects a moving `latest` release.
-Set `cache_dir=Path("/path/to/dedicated-cache")` to use another cache location.
+`version` defaults to `"0.14.7"`; it never selects a moving `latest` release.
+Pass `DownloadCache(Path("/path/to/dedicated-cache"))` to setup for another location.
 To use an executable you already manage, pass `executable=Path("/path/to/sage")`.
+Setup is still required. The standalone `download_sage(version, cache_dir=...)`
+helper remains available for retrieving an executable without running a workflow.
 
 The helper selects macOS builds for Apple silicon or Intel, Linux builds for ARM64
 or x86-64 using musl, and Windows builds for x86-64. Other platforms raise
@@ -189,11 +194,13 @@ peak-list file of about 16 MB:
 from pathlib import Path
 
 from interop_trace.datasets import PrideProvider
+from interop_trace.downloads import DownloadCache
 
 provider = PrideProvider(
     project="PXD000001",
     files=("PRIDE_Exp_Complete_Ac_22134.pride.mgf.gz",),
 )
+provider.setup(cache=DownloadCache())
 dataset = provider.prepare(output_dir=Path("results/dataset-001"))
 ```
 
@@ -218,7 +225,7 @@ against the downloaded content.
 Both the project catalogue and selected files use the shared cache, listed as
 `pride | type: dataset`. Later preparations reuse them without contacting PRIDE.
 Clear the cache between runs to retrieve a fresh catalogue and file contents.
-Set `cache_dir` on the provider to use another dedicated cache location.
+Pass a different `DownloadCache` to setup for another dedicated cache location.
 
 Empty or duplicate selections fail before requests. Missing or ambiguous filenames,
 and unsupported download locations, fail before measurement downloads. Published
@@ -240,8 +247,10 @@ The following example retrieves one entry and records its release:
 from pathlib import Path
 
 from interop_trace.databases import UniProtProvider
+from interop_trace.downloads import DownloadCache
 
 provider = UniProtProvider(query="accession:P69905", format="fasta")
+provider.setup(cache=DownloadCache())
 database = provider.prepare(output_dir=Path("results/database-001"))
 ```
 
@@ -254,7 +263,7 @@ the downloaded database.
 time, reported UniProt release and release date. Missing release headers are
 recorded as `null`. Reusing a download preserves its original release information.
 Release headers are captured during the database download, without a separate
-version request. HTTP errors raise `requests.exceptions.HTTPError`; transfer errors
+version request. During setup, HTTP errors raise `requests.exceptions.HTTPError`; transfer errors
 also propagate. Empty responses fail, and partial downloads
 are removed rather than registered as completed files.
 
@@ -263,7 +272,7 @@ are removed rather than registered as completed files.
 From the repository root, downloads are stored in the Git-ignored
 `.interop_trace/cache/` directory. UniProt automatically checks this cache before
 requesting data. Matching URLs, including query and format settings, reuse the same
-completed file. If it is missing or its size has changed, the next preparation
+completed file. If it is missing or its size has changed, the next setup
 downloads it again.
 
 Downloads use [Pooch](https://www.fatiando.org/pooch/latest/), installed automatically
@@ -311,13 +320,13 @@ are reused until cleared or missing; listing a cache does not contact the source
 check for newer releases. The recorded version identifies the stored response and
 does not select a historical release for a future request.
 
-For another storage location, use the same path in the provider and CLI:
+For another storage location, use the same path for setup and the CLI:
 
 ```python
-provider = UniProtProvider(
-    query="accession:P69905",
-    cache_dir=Path("/path/to/dedicated-cache"),
-)
+from interop_trace.downloads import DownloadCache
+
+provider = UniProtProvider(query="accession:P69905")
+provider.setup(cache=DownloadCache(Path("/path/to/dedicated-cache")))
 ```
 
 ```bash
@@ -328,3 +337,11 @@ poetry run interop-trace cache clear --directory /path/to/dedicated-cache
 Use an empty, dedicated directory for a new cache. The default location is relative
 to the current working directory. Other downloaded components can share the same
 storage through `DownloadCache`; PRIDE, UniProt and Sage currently use it.
+
+Constructors never download. PRIDE and UniProt require `setup(cache=...)` before
+`prepare(...)`; Sage requires it before `run(...)`. Calling execution too early
+raises a clear error. Repeated setup rechecks the shared cache. After clearing it,
+call setup again before using existing component objects. Preparation itself does
+not perform downloads. ProteoBench has no setup method because its settings are
+bundled with its optional installed library. The experiment runner coordinates
+these steps automatically.

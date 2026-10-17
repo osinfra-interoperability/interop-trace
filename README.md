@@ -55,6 +55,21 @@ See [the usage examples](docs/usage.md).
 The tables are generated from the layer registries. See the
 [component catalogue](docs/components.md) for parameters and scope.
 
+## Configured experiments
+
+Reusable YAML files define components; an experiment file selects one of each
+layer. A run executes the listed experiments sequentially:
+
+```bash
+poetry run interop-trace run experiments/first.yaml --check
+poetry run interop-trace run experiments/first.yaml --output results/run-001
+```
+
+Create the configuration files using [the experiment guide](docs/experiments.md).
+`--check` validates configuration without downloads or execution. Each run uses a
+new directory and records settings, status and results. Downloads share the cache;
+workflow outputs remain separate. The runner does not convert measurement formats.
+
 ProteoBench evaluation is optional:
 
 ```bash
@@ -93,6 +108,7 @@ poetry run ruff format --check .
 poetry run ruff check .
 poetry run mypy src
 poetry run python -m pytest
+poetry run interop-trace components --check-docs
 ```
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution and code-review policy.
 

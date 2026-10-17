@@ -20,6 +20,7 @@ poetry install --all-extras
 | Lint | `poetry run ruff check .` |
 | Type check | `poetry run mypy src` |
 | Tests | `poetry run python -m pytest` |
+| Catalogue | `poetry run interop-trace components --check-docs` |
 
 See `CONTRIBUTING.md` in the repository root for the complete contribution policy.
 
@@ -33,10 +34,13 @@ src/interop_trace/
     __main__.py   # Module entry point
     cli.py        # Shared command-line application
     downloads.py  # Managed download storage and registry
+    components.py # Optional setup protocol and shared registry implementation
+    catalogue.py  # Layer registry collection and Markdown table generation
     datasets/     # Dataset, DatasetProvider and PrideProvider
     databases/    # Database and DatabaseProvider
     workflows/    # Workflow and WorkflowResult
     evaluation/   # Benchmark, EvaluationResult and ProteoBenchDDA
+    experiments/  # YAML loading and sequential execution
 tests/
     test_system.py  # Module entry-point help check
     test_sage.py    # Sage subprocess behaviour using a local test executable
@@ -47,6 +51,10 @@ tests/
     test_proteobench.py # Installed ProteoBench scoring on tiny Sage-format tables
     test_downloads.py # HTTP metadata, cache reuse, failure cleanup and deletion scope
     test_cache_cli.py # Cache inspection and clearing commands
+    test_components.py # Setup contract, registration and construction
+    test_experiment_config.py # YAML structure, references and path resolution
+    test_experiment_runner.py # Offline orchestration, processes and failure records
+    test_catalogue.py # Registry-driven tables and committed-document drift check
 ```
 
 The installed command and module entry point both call `cli.main`.
@@ -80,7 +88,7 @@ The contracts are typed interfaces and data records. `PrideProvider` retrieves
 selected public dataset files and records their source metadata. `UniProtProvider`
 retrieves cached database files and records the original source release.
 `SageWorkflow` is a concrete local workflow implementation. Download storage uses Pooch; the Sage
-wrapper uses the Python standard library.
+process wrapper uses the Python standard library.
 `ProteoBenchDDA` implements local evaluation for Sage LFQ results from the six-run
 Q Exactive DDA mixture. It uses the optional, pinned ProteoBench library's parser
 and scoring functions directly. Imports are deferred until evaluation, so other
@@ -95,6 +103,62 @@ deliberate bias, missing observations and incompatible inputs. They require the
 extras. Synthetic tables test the integration, rather than establish performance
 on the published measurements. No measurement downloads are needed for tests.
 
+## Component setup and registration
+
+`RequiresSetup` is an optional, runtime-checkable protocol shared across layers.
+Its `setup(cache=...)` method resolves external resources through the supplied
+`DownloadCache`. Components own their setup behavior; the registry does not store
+a separate setup callback. Construction and registration never download.
+
+PRIDE and UniProt keep resolved download records after setup. Their `prepare`
+methods only return paths and write provenance. Sage resolves a pinned release or
+provided executable during setup; `run` performs no installation. These methods
+raise if setup has not completed. Repeating setup consults the shared cache; after
+clearing the cache, set up existing objects again. ProteoBench does not implement
+setup because its settings are bundled with the installed optional package.
+
+Each domain package owns a `registry.py`. Implementations decorate their
+constructors with `@registry.register(...)`, supplying a stable identifier, brief
+summary, documentation link and any file-path parameter names. Its package
+`__init__.py` explicitly imports implementations so their decorators run. Do not
+scan directories or import optional scientific libraries eagerly.
+
+To add an implementation, satisfy its domain protocol, implement setup if resources
+are needed, decorate the constructor, import the implementation from its package
+and document its parameters and scope. Registries construct components using native
+constructor arguments; they do not define a common scientific parameter schema.
+
+Regenerate the marked README and documentation tables after changing registrations:
+
+```bash
+poetry run interop-trace components --update-docs
+```
+
+`--root` selects a checkout when running outside the repository. The generation
+command preserves all text outside its marker pairs. Tests check that committed
+tables match the registrations.
+
+## Experiment execution
+
+`load_configuration` uses PyYAML's safe constructors with duplicate-key rejection.
+It resolves explicitly referenced component files and constructs fresh selected
+instances for each experiment before setup. Component file paths resolve relative
+to their own files. Selected definitions and original YAML contents are retained
+for the run snapshot; no experiment data is downloaded while loading.
+
+`run_experiments` executes the optional setup methods and four domain operations
+sequentially. It records timestamps, stages and statuses and stops on the first
+failure, preserving partial output. Dataset, database and native workflow records
+are retained as each stage completes. Later experiments remain `not_started`.
+Runs use new output directories and share only download storage.
+
+The offline integration test exercises actual provider setup, Pooch extraction,
+a local subprocess emitting synthetic Sage LFQ output and the installed
+ProteoBench scorer. It is an orchestration check, not a full scientific reference
+experiment or an input-format conversion test.
+
+## Data records
+
 The data records do not read files or perform runtime validation.
 Their fields cannot be reassigned, but contained mappings are not deeply immutable.
 Implementations are responsible for checking inputs and raising exceptions on
@@ -104,7 +168,7 @@ failure; satisfying a Python protocol alone does not establish scientific validi
 
 `DownloadCache` is shared infrastructure, independent of the four domain protocols.
 Components explicitly call `fetch(url, name=..., kind=..., metadata=...,
-metadata_headers=...)`.
+metadata_headers=...)` during setup.
 It reuses a completed file and its original provenance, or downloads and registers
 a new response. HTTP transfers use Pooch with a 60-second timeout and the
 `interop-trace` user agent.
@@ -155,7 +219,7 @@ verifying the payload against them.
 Clearing removes the managed `objects/` directory and any `pending/` directory left
 by the previous cache implementation. It requires the ownership marker. Recorded
 paths are informational; they never control deletion of files outside the cache.
-Use clearing between runs. Per-run metadata is stored separately by the provider.
+Use clearing between runs. Per-experiment metadata is stored separately by the provider.
 
 ## Generated automation
 

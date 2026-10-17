@@ -62,8 +62,6 @@ class UniProtProvider:
             expected = response.headers.get("Content-Length")
             if expected is not None and size != int(expected):
                 raise OSError("UniProt download ended before the expected length.")
-            if size == 0:
-                raise ValueError("UniProt returned an empty database.")
             return {
                 "release": response.headers.get("X-UniProt-Release"),
                 "release_date": response.headers.get("X-UniProt-Release-Date"),

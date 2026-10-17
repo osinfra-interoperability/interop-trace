@@ -4,7 +4,7 @@ import hashlib
 import json
 import shutil
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -51,7 +51,7 @@ class DownloadCache:
         source metadata. Pooch manages temporary files and removes failed transfers.
         """
         self._managed(create=True)
-        directory = self._directory(url)
+        directory = self.root / "objects" / hashlib.sha256(url.encode()).hexdigest()
         cached = self._read(directory)
         if cached is not None and cached.available:
             return cached
@@ -93,10 +93,6 @@ class DownloadCache:
                 if path.exists():
                     shutil.rmtree(path)
 
-    def _directory(self, url: str) -> Path:
-        key = hashlib.sha256(url.encode()).hexdigest()
-        return self.root / "objects" / key
-
     def _managed(self, *, create: bool = False) -> bool:
         if not self.root.exists():
             if not create:
@@ -114,13 +110,8 @@ class DownloadCache:
     def _read(self, directory: Path) -> Download | None:
         try:
             data = json.loads((directory / "download.json").read_text())
-            return Download(
-                url=data["url"],
-                path=directory / "content",
-                size_bytes=data["size_bytes"],
-                downloaded_at=data["downloaded_at"],
-                metadata=data["metadata"],
-            )
+            data["path"] = directory / "content"
+            return Download(**data)
         except (OSError, ValueError, KeyError, TypeError):
             return None
 
@@ -130,14 +121,11 @@ class DownloadCache:
         directory: Path,
         metadata: dict[str, str | None],
     ) -> Download:
-        size = (directory / "content").stat().st_size
-        timestamp = datetime.now(UTC).isoformat()
-        data = {
-            "url": url,
-            "path": str(directory / "content"),
-            "size_bytes": size,
-            "downloaded_at": timestamp,
-            "metadata": metadata,
-        }
-        (directory / "download.json").write_text(json.dumps(data, indent=2) + "\n")
-        return Download(url, directory / "content", size, timestamp, metadata)
+        path = directory / "content"
+        record = Download(
+            url, path, path.stat().st_size, datetime.now(UTC).isoformat(), metadata
+        )
+        (directory / "download.json").write_text(
+            json.dumps(asdict(record), default=str, indent=2) + "\n"
+        )
+        return record

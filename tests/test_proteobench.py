@@ -193,6 +193,21 @@ def test_unrecognized_species_cannot_produce_a_success_report(
     assert not (output / "proteobench.json").exists()
 
 
+def test_combined_charge_states_are_rejected(
+    inputs: tuple[Dataset, Database, WorkflowResult],
+    rows: list[list[str | int]],
+    tmp_path: Path,
+) -> None:
+    dataset, database, result = inputs
+    for row in rows:
+        row[1] = -1  # Sage's marker for LFQ with combined charge states.
+    _write_lfq(result.files["lfq.tsv"], dataset, rows)
+    output = tmp_path / "combined"
+    with pytest.raises(ValueError, match="combine_charge_states=false"):
+        ProteoBenchDDA().evaluate(result, dataset, database, output_dir=output)
+    assert not (output / "proteobench.json").exists()
+
+
 @pytest.mark.parametrize("threshold", [0, 7])
 def test_invalid_observation_threshold(
     inputs: tuple[Dataset, Database, WorkflowResult], tmp_path: Path, threshold: int

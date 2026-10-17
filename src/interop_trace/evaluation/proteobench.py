@@ -118,6 +118,11 @@ def _score(
     from proteobench.score.quantscoresHYE import QuantScoresHYE
 
     data = load_input_file(str(lfq), "Sage")
+    if not data["charge"].gt(0).all():
+        raise ValueError(
+            "ProteoBenchDDA requires separate precursor charge states. "
+            "Set quant.lfq_settings.combine_charge_states=false in Sage."
+        )
     data = data.rename(
         columns={str(path.resolve()): path.name for path in dataset.files}
     )

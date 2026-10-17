@@ -110,7 +110,9 @@ the downloaded database.
 `uniprot.json` records the query, format, request URL, cache path, original download
 time, reported UniProt release and release date. Missing release headers are
 recorded as `null`. Reusing a download preserves its original release information.
-HTTP and transfer errors propagate, empty responses fail, and partial downloads
+Release headers are captured during the database download, without a separate
+version request. HTTP errors raise `requests.exceptions.HTTPError`; transfer errors
+also propagate. Empty responses fail, and partial downloads
 are removed rather than registered as completed files.
 
 ## Inspect and clear downloaded files
@@ -122,8 +124,9 @@ completed file. If it is missing or its size has changed, the next preparation
 downloads it again.
 
 Downloads use [Pooch](https://www.fatiando.org/pooch/latest/), installed automatically
-by Poetry. It manages temporary transfers and cleanup; the project adds source
-release records and the cache commands below. Existing cache entries remain usable.
+by Poetry. UniProt and Sage share its HTTP downloader and temporary-file cleanup;
+the project adds source release records and the cache commands below. Existing
+cache entries remain usable.
 
 Inspect the registered downloads:
 

@@ -41,8 +41,9 @@ tests/
     test_system.py  # Module entry-point help check
     test_sage.py    # Sage subprocess behaviour using a local test executable
     test_sage_download.py # Sage release selection, reuse and extraction
-    test_uniprot.py # UniProt download behaviour using offline responses
-    test_downloads.py # Cache reuse, failure cleanup and deletion scope
+    conftest.py     # Offline HTTP transport; Pooch and Requests still run normally
+    test_uniprot.py # UniProt queries and release records using offline responses
+    test_downloads.py # HTTP metadata, cache reuse, failure cleanup and deletion scope
     test_cache_cli.py # Cache inspection and clearing commands
 ```
 
@@ -85,10 +86,21 @@ failure; satisfying a Python protocol alone does not establish scientific validi
 ## Download storage
 
 `DownloadCache` is shared infrastructure, independent of the four domain protocols.
-`fetch(url, downloader)` reuses a completed file or calls the supplied downloader
-with the URL and a temporary path. The downloader writes the bytes and returns source
-metadata such as a release or software version. This keeps source-specific HTTP
-handling in the provider.
+Components explicitly call `fetch(url, metadata=..., metadata_headers=...)`.
+It reuses a completed file and its original provenance, or downloads and registers
+a new response. HTTP transfers use Pooch with a 60-second timeout and the
+`interop-trace` user agent.
+
+| Argument | Purpose |
+| --- | --- |
+| `metadata` | Known source information, such as Sage's requested release version |
+| `metadata_headers` | Mapping from record fields to response header names, such as `release` to `X-UniProt-Release` |
+
+Selected headers are captured during the same GET request through a response hook.
+Redirects use the final response's headers. Missing headers become `None`; mapped
+headers take precedence over literal metadata for matching fields. Metadata is
+registered only after the content has downloaded successfully. Cache hits retain
+the original metadata even if the caller supplies different values.
 
 `download_sage(version, cache_dir=...)` uses the same cache for a pinned GitHub
 release archive. Pooch handles HTTP transfers and archive extraction. Extracted
@@ -106,8 +118,8 @@ Missing or size-changed files and unreadable records are treated as cache misses
 
 [Pooch](https://www.fatiando.org/pooch/latest/api/generated/pooch.retrieve.html)
 handles temporary files, transfer completion and cleanup after transfer failures.
-A small downloader adapter captures the provider's source metadata and rejects
-empty files. The wrapper keeps the JSON registry, presence and size checks, and
+A shared HTTP downloader captures selected response headers and rejects empty
+files. The wrapper keeps the JSON registry, presence and size checks, and
 cache ownership marker. Providers currently supply no expected content checksum,
 so retrieval uses `known_hash=None`; cached files are not hashed on reuse.
 

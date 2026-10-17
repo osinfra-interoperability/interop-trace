@@ -38,25 +38,10 @@ def run_experiments(
             "cache": str(cache.root),
         },
     )
-    record: dict[str, Any] = {
-        "experiments": {
-            experiment.id: "not_started" for experiment in configuration.experiments
-        }
-    }
-    results = []
-    with _status(output_dir / "run.json", record):
-        for experiment in configuration.experiments:
-            record["experiments"][experiment.id] = "running"
-            _write(output_dir / "run.json", record)
-            try:
-                results.append(
-                    _run_experiment(experiment, output_dir / experiment.id, cache)
-                )
-            except BaseException:
-                record["experiments"][experiment.id] = "failed"
-                raise
-            record["experiments"][experiment.id] = "completed"
-    return tuple(results)
+    return tuple(
+        _run_experiment(experiment, output_dir / experiment.id, cache)
+        for experiment in configuration.experiments
+    )
 
 
 def _run_experiment(
@@ -69,35 +54,31 @@ def _run_experiment(
         "stage": "setup",
     }
     with _status(path, record):
-        for role in ("dataset", "database", "workflow", "benchmark"):
+        for role, component in (
+            ("dataset", experiment.dataset),
+            ("database", experiment.database),
+            ("workflow", experiment.workflow),
+            ("benchmark", experiment.benchmark),
+        ):
             _stage(path, record, f"setup:{role}")
-            component = getattr(experiment, role)
             if isinstance(component, RequiresSetup):
                 component.setup(cache=cache)
-        evaluation = _execute(experiment, directory, record)
-    return evaluation
-
-
-def _execute(
-    experiment: Experiment, directory: Path, record: dict[str, Any]
-) -> EvaluationResult:
-    path = directory / "experiment.json"
-    _stage(path, record, "dataset")
-    dataset = experiment.dataset.prepare(output_dir=directory / "dataset")
-    record["dataset"] = asdict(dataset)
-    _stage(path, record, "database")
-    database = experiment.database.prepare(output_dir=directory / "database")
-    record["database"] = asdict(database)
-    _stage(path, record, "workflow")
-    result = experiment.workflow.run(
-        dataset, database, output_dir=directory / "workflow"
-    )
-    record["workflow"] = asdict(result)
-    _stage(path, record, "evaluation")
-    evaluation = experiment.benchmark.evaluate(
-        result, dataset, database, output_dir=directory / "evaluation"
-    )
-    record["evaluation"] = asdict(evaluation)
+        _stage(path, record, "dataset")
+        dataset = experiment.dataset.prepare(output_dir=directory / "dataset")
+        record["dataset"] = asdict(dataset)
+        _stage(path, record, "database")
+        database = experiment.database.prepare(output_dir=directory / "database")
+        record["database"] = asdict(database)
+        _stage(path, record, "workflow")
+        result = experiment.workflow.run(
+            dataset, database, output_dir=directory / "workflow"
+        )
+        record["workflow"] = asdict(result)
+        _stage(path, record, "evaluation")
+        evaluation = experiment.benchmark.evaluate(
+            result, dataset, database, output_dir=directory / "evaluation"
+        )
+        record["evaluation"] = asdict(evaluation)
     return evaluation
 
 

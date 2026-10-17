@@ -162,7 +162,6 @@ poetry run interop-trace run experiments/first.yaml --output results/run-002 --c
 ```text
 results/run-001/
     configuration.json
-    run.json
     first_experiment/
         experiment.json
         dataset/pride.json
@@ -172,13 +171,15 @@ results/run-001/
 ```
 
 `configuration.json` preserves the loaded experiment/component YAML contents,
-selected definitions, source paths, package version and cache location. Native
-workflow outputs record effective scientific settings. `run.json` records timestamps,
-run status and each experiment's status. `experiment.json` records the active stage,
-prepared paths and completed results. Errors include their exception type and message.
+experiment choices, source paths, package version and cache location. Native
+workflow outputs record effective scientific settings. Each `experiment.json`
+records its timestamps, status, active stage, prepared paths and completed results.
+Errors include their exception type and message. Settings are kept in the run's
+configuration snapshot rather than copied into each execution record.
 
 Every run requires a new output directory. Failed runs preserve partial outputs
-and cached downloads; later experiments remain `not_started`. Retry in a new
+and cached downloads; later experiments have no output directory. The configuration
+snapshot lists all requested experiments, including those not started. Retry in a new
 directory. There is no automatic resume or workflow-result cache. Experiments use
 fresh component instances and separate workflow outputs, while downloads are reused
 across the run and subsequent runs until the shared cache is cleared or files go

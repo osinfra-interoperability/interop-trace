@@ -149,15 +149,14 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     assert [result.metrics["nr_feature"] for result in evaluations] == [3, 3]
     assert all(result.metrics["mean_abs_epsilon_global"] == 0 for result in evaluations)
     assert http_transport.call_count == 9  # catalogue, six measurements, FASTA, Sage
-    record = json.loads((output / "run.json").read_text())
-    assert record["status"] == "completed"
-    assert record["experiments"] == {"first": "completed", "second": "completed"}
     snapshot = json.loads((output / "configuration.json").read_text())
     pipeline.write_text("changed after execution")
     assert "experiments:" in snapshot["files"][str(pipeline)]
+    assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
         assert record["status"] == "completed"
+        assert record["started_at"] <= record["finished_at"]
         assert record["evaluation"]["metrics"]["nr_feature"] == 3
         assert record["database"]["path"]
         assert (
@@ -167,15 +166,17 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
 
 
 @pytest.mark.parametrize("stage", ["setup:database", "workflow", "evaluation"])
+@pytest.mark.parametrize("error_type", [RuntimeError, KeyboardInterrupt])
 def test_failure_records_stage_and_does_not_start_later_experiment(
     pipeline: Path,
     tmp_path: Path,
     stage: str,
+    error_type: type[BaseException],
     monkeypatch: pytest.MonkeyPatch,
     http_transport: Mock,
 ) -> None:
     def fail(*args: Any, **kwargs: Any) -> Any:
-        raise RuntimeError("deliberate failure")
+        raise error_type("deliberate failure")
 
     if stage == "setup:database":
         from interop_trace.databases import UniProtProvider
@@ -186,7 +187,7 @@ def test_failure_records_stage_and_does_not_start_later_experiment(
     else:
         monkeypatch.setattr(ProteoBenchDDA, "evaluate", fail)
     output = tmp_path / "failed"
-    with pytest.raises(RuntimeError, match="deliberate failure"):
+    with pytest.raises(error_type, match="deliberate failure"):
         run_experiments(
             load_configuration(pipeline),
             output_dir=output,
@@ -195,10 +196,10 @@ def test_failure_records_stage_and_does_not_start_later_experiment(
     record = json.loads((output / "first/experiment.json").read_text())
     assert record["status"] == "failed"
     assert record["stage"] == stage
-    assert record["error"]["type"] == "RuntimeError"
-    run = json.loads((output / "run.json").read_text())
-    assert run["status"] == "failed"
-    assert run["experiments"] == {"first": "failed", "second": "not_started"}
+    assert record["error"]["type"] == error_type.__name__
+    snapshot = json.loads((output / "configuration.json").read_text())
+    assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
+    assert record["finished_at"]
     assert not (output / "second").exists()
     if stage == "evaluation":
         assert (output / "first/workflow/lfq.tsv").is_file()
@@ -210,7 +211,7 @@ def test_existing_run_is_preserved_before_setup(
 ) -> None:
     output = tmp_path / "existing"
     output.mkdir()
-    previous = output / "run.json"
+    previous = output / "configuration.json"
     previous.write_text("previous run")
     with pytest.raises(FileExistsError):
         run_experiments(load_configuration(pipeline), output_dir=output)
@@ -251,4 +252,6 @@ def test_cli_executes_run(
     )
     assert result.exit_code == 0, result.output
     assert "Completed 2 experiment(s)" in result.output
-    assert json.loads((output / "run.json").read_text())["status"] == "completed"
+    for name in ("first", "second"):
+        record = json.loads((output / name / "experiment.json").read_text())
+        assert record["status"] == "completed"

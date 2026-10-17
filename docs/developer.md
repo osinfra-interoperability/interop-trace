@@ -152,8 +152,13 @@ is downloaded while loading.
 `run_experiments` executes the optional setup methods and four domain operations
 sequentially. It records timestamps, stages and statuses and stops on the first
 failure, preserving partial output. Dataset, database and native workflow records
-are retained as each stage completes. Later experiments remain `not_started`.
-Runs use new output directories and share only download storage.
+are retained as each stage completes in that experiment's `experiment.json`.
+The root `configuration.json` holds the original files and experiment choices;
+there is no additional batch status ledger or copied settings per experiment.
+Later experiments have no output directory. Runs use new output directories and
+share only download storage. The four execution calls appear together in
+`_run_experiment`; a small context manager records completion or failure and
+re-raises errors, including interruptions.
 
 The offline integration test exercises actual provider setup, Pooch extraction,
 a local subprocess emitting synthetic Sage LFQ output and the installed

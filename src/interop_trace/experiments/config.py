@@ -35,12 +35,12 @@ class Experiment:
         if (
             not isinstance(self.id, str)
             or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", self.id)
-            or self.id in {"configuration.json", "run.json"}
+            or self.id == "configuration.json"
         ):
             raise ValueError(
                 "Experiment id must be a simple directory name "
                 "starting with a letter or digit, "
-                "excluding configuration.json and run.json."
+                "excluding configuration.json."
             )
 
 

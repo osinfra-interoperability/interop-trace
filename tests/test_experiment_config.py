@@ -89,7 +89,7 @@ def test_reused_definitions_construct_independent_instances(
 
 @pytest.mark.parametrize(
     "experiment_id",
-    ["../outside", "/absolute", ".", "", False, "run.json", "configuration.json"],
+    ["../outside", "/absolute", ".", "", False, "configuration.json"],
 )
 def test_ids_cannot_escape_run_directory(
     configuration: Path, experiment_id: object

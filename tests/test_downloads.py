@@ -75,7 +75,8 @@ def test_failed_or_empty_download_is_not_registered(
         cache.fetch("https://example.org/file", incomplete)
 
     assert cache.entries() == []
-    assert list((cache.root / "pending").iterdir()) == []
+    assert not any(path.is_file() for path in (cache.root / "objects").rglob("*"))
+    assert cache.fetch("https://example.org/file", download).available
 
 
 def test_clear_removes_only_managed_downloads(tmp_path: Path) -> None:
@@ -87,7 +88,7 @@ def test_clear_removes_only_managed_downloads(tmp_path: Path) -> None:
     record = json.loads(registry.read_text())
     record["path"] = str(results)
     registry.write_text(json.dumps(record))
-    (cache.root / "pending" / "interrupted").mkdir()
+    (cache.root / "pending" / "interrupted").mkdir(parents=True)
     (cache.root / "pending" / "interrupted" / "content").write_bytes(b"partial")
 
     cache.clear()

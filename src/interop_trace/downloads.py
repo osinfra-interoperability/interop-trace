@@ -7,7 +7,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
+
+import pooch
 
 DEFAULT_CACHE_DIR = Path(".interop_trace/cache")
 _MARKER = ".interop-trace-cache"
@@ -47,24 +48,28 @@ class DownloadCache:
         """Reuse a completed file or download and register it after success.
 
         ``downloader`` writes the requested bytes to the supplied path and returns
-        source metadata. Exceptions leave no completed file or registry entry.
+        source metadata. Pooch manages temporary files and removes failed transfers.
         """
         self._managed(create=True)
         directory = self._directory(url)
         cached = self._read(directory)
         if cached is not None and cached.available:
             return cached
-        pending = self.root / "pending"
-        pending.mkdir(exist_ok=True)
-        with TemporaryDirectory(dir=pending) as temporary:
-            staging = Path(temporary)
-            metadata = downloader(url, staging / "content")
-            record = self._record(url, directory, staging, metadata)
-            if directory.exists():
-                shutil.rmtree(directory)
-            directory.parent.mkdir(exist_ok=True)
-            staging.replace(directory)
-        return record
+        if directory.exists():
+            shutil.rmtree(directory)
+        metadata: dict[str, str | None] = {}
+
+        def transfer(url: str, destination: str, _pooch: pooch.Pooch | None) -> None:
+            path = Path(destination)
+            metadata.update(downloader(url, path))
+            if path.stat().st_size == 0:
+                raise ValueError("Cannot register an empty download.")
+
+        # Live query endpoints do not supply an expected content checksum.
+        pooch.retrieve(
+            url, known_hash=None, path=directory, fname="content", downloader=transfer
+        )
+        return self._record(url, directory, metadata)
 
     def entries(self) -> list[Download]:
         """List registered downloads, including files that are now missing."""
@@ -123,12 +128,9 @@ class DownloadCache:
         self,
         url: str,
         directory: Path,
-        staging: Path,
         metadata: dict[str, str | None],
     ) -> Download:
-        size = (staging / "content").stat().st_size
-        if size == 0:
-            raise ValueError("Cannot register an empty download.")
+        size = (directory / "content").stat().st_size
         timestamp = datetime.now(UTC).isoformat()
         data = {
             "url": url,
@@ -137,5 +139,5 @@ class DownloadCache:
             "downloaded_at": timestamp,
             "metadata": metadata,
         }
-        (staging / "download.json").write_text(json.dumps(data, indent=2) + "\n")
+        (directory / "download.json").write_text(json.dumps(data, indent=2) + "\n")
         return Download(url, directory / "content", size, timestamp, metadata)

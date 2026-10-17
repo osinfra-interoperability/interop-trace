@@ -49,5 +49,5 @@ strict = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["typer.*"]
+module = ["typer.*", "pooch.*"]
 ignore_missing_imports = true

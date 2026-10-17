@@ -7,10 +7,10 @@ from typing import Any
 
 import yaml
 
-from interop_trace.catalogue import REGISTRIES
 from interop_trace.databases import DatabaseProvider
 from interop_trace.datasets import DatasetProvider
 from interop_trace.evaluation import Benchmark
+from interop_trace.registries import REGISTRIES
 from interop_trace.workflows import Workflow
 
 _ROLES = {

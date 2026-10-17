@@ -59,30 +59,13 @@ def run(
 
 
 @app.command("components")
-def list_components(
-    update_docs: Annotated[
-        bool, typer.Option("--update-docs", help="Update marked catalogue tables.")
-    ] = False,
-    check_docs: Annotated[
-        bool, typer.Option("--check-docs", help="Fail if catalogue tables are stale.")
-    ] = False,
-    root: Annotated[
-        Path, typer.Option("--root", help="Repository root for documentation tables.")
-    ] = Path("."),
-) -> None:
+def list_components() -> None:
     """List available implementations without downloads or optional scoring imports."""
-    from interop_trace.catalogue import component_table, update_catalogue
+    from interop_trace.registries import REGISTRIES
 
-    if update_docs and check_docs:
-        raise typer.BadParameter("Choose --update-docs or --check-docs.")
-    if update_docs or check_docs:
-        try:
-            update_catalogue(root.resolve(), check=check_docs)
-        except (OSError, ValueError) as error:
-            raise typer.BadParameter(str(error)) from error
-        typer.echo("Component catalogue is current.")
-    else:
-        typer.echo(component_table(detailed=True))
+    for layer, registry in REGISTRIES.items():
+        for name, entry in sorted(registry.items()):
+            typer.echo(f"{layer} / {name}: {entry.summary}")
 
 
 @cache_app.command("list")

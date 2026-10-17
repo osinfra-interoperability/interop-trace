@@ -20,7 +20,7 @@ poetry install --all-extras
 | Lint | `poetry run ruff check .` |
 | Type check | `poetry run mypy src` |
 | Tests | `poetry run python -m pytest` |
-| Catalogue | `poetry run interop-trace components --check-docs` |
+| Catalogue | `poetry run python scripts/update_component_tables.py --check` |
 
 See `CONTRIBUTING.md` in the repository root for the complete contribution policy.
 
@@ -35,7 +35,7 @@ src/interop_trace/
     cli.py        # Shared command-line application
     downloads.py  # Managed download storage and registry
     components.py # Optional setup protocol and shared registry implementation
-    catalogue.py  # Layer registry collection and Markdown table generation
+    registries.py # Layer registry collection
     datasets/     # Dataset, DatasetProvider and PrideProvider
     databases/    # Database and DatabaseProvider
     workflows/    # Workflow and WorkflowResult
@@ -131,12 +131,13 @@ constructor arguments; they do not define a common scientific parameter schema.
 Regenerate the marked README and documentation tables after changing registrations:
 
 ```bash
-poetry run interop-trace components --update-docs
+poetry run python scripts/update_component_tables.py
 ```
 
-`--root` selects a checkout when running outside the repository. The generation
-command preserves all text outside its marker pairs. Tests check that committed
-tables match the registrations.
+The script defaults to its own checkout; `--root` selects another checkout.
+It preserves all text outside the marker pairs. Tests check that committed tables
+match the registrations. Table rendering and repository-file editing live in
+`scripts/`; the installed application's `components` command only lists entries.
 
 ## Experiment execution
 

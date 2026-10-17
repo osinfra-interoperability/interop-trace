@@ -1,20 +1,9 @@
-"""The four built-in layer registries, shared by configuration and documentation."""
+"""Regenerate marked component tables in the checkout's README and documentation."""
 
+import argparse
 from pathlib import Path
-from typing import Any
 
-from interop_trace.components import Registry
-from interop_trace.databases.registry import registry as databases
-from interop_trace.datasets.registry import registry as datasets
-from interop_trace.evaluation.registry import registry as benchmarks
-from interop_trace.workflows.registry import registry as workflows
-
-REGISTRIES: dict[str, Registry[Any]] = {
-    "datasets": datasets,
-    "databases": databases,
-    "workflows": workflows,
-    "benchmarks": benchmarks,
-}
+from interop_trace.registries import REGISTRIES
 
 _START = "<!-- components:start -->"
 _END = "<!-- components:end -->"
@@ -53,7 +42,28 @@ def update_catalogue(root: Path, *, check: bool = False) -> None:
             replacements.append((path, updated))
     if check and replacements:
         raise ValueError(
-            "Component tables are stale; run interop-trace components --update-docs."
+            "Component tables are stale; run "
+            "poetry run python scripts/update_component_tables.py."
         )
     for path, updated in replacements:
         path.write_text(updated, encoding="utf-8")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Check tables without writing."
+    )
+    args = parser.parse_args()
+    try:
+        update_catalogue(args.root, check=args.check)
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"{error}\n")
+    print("Component tables are current.")
+
+
+if __name__ == "__main__":
+    main()

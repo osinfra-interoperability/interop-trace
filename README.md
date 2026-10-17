@@ -108,7 +108,7 @@ poetry run ruff format --check .
 poetry run ruff check .
 poetry run mypy src
 poetry run python -m pytest
-poetry run interop-trace components --check-docs
+poetry run python scripts/update_component_tables.py --check
 ```
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution and code-review policy.
 

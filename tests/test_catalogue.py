@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from interop_trace.catalogue import component_table, update_catalogue
+from scripts.update_component_tables import component_table, update_catalogue
 
 
 def test_tables_show_registered_components_without_setup(http_transport: Mock) -> None:

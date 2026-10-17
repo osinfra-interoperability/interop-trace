@@ -21,7 +21,7 @@ Python >=3.12.
 
 ::: interop_trace.components
 
-::: interop_trace.catalogue
+::: interop_trace.registries
 
 ## Experiments
 

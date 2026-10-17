@@ -1,0 +1,5 @@
+vat1:
+  type: uniprot
+  parameters:
+    query: accession:Q99536
+    format: fasta

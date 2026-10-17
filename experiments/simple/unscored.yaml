@@ -1,0 +1,10 @@
+components:
+  datasets: components/datasets.yaml
+  databases: components/databases.yaml
+  workflows: components/workflows.yaml
+
+experiments:
+  - id: vat1_sage
+    dataset: vat1_spectrum
+    database: vat1
+    workflow: sage

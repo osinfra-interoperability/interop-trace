@@ -1,0 +1,6 @@
+vat1_spectrum:
+  type: http
+  parameters:
+    # Sage's published single-spectrum example, pinned to the v0.14.7 source.
+    url: https://raw.githubusercontent.com/lazear/sage/99407db6e3754b31a9b88b7316a0aee67293c93f/tests/LQSRPAAPPAPGPGQLTLR.mzML
+    filename: LQSRPAAPPAPGPGQLTLR.mzML

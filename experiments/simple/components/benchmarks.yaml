@@ -1,0 +1,6 @@
+vat1_peptide:
+  type: expected_peptides
+  parameters:
+    # Expected identity from Sage's published example, not inferred from FASTA.
+    peptides: [LQSRPAAPPAPGPGQLTLR]
+    max_q_value: 0.01

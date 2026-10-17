@@ -3,7 +3,7 @@
 import hashlib
 import json
 import shutil
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,7 +65,6 @@ class DownloadCache:
     def fetch(
         self,
         url: str,
-        downloader: Callable[[str, Path], dict[str, str | None]] | None = None,
         *,
         metadata: Mapping[str, str | None] | None = None,
         metadata_headers: Mapping[str, str] | None = None,
@@ -88,11 +87,7 @@ class DownloadCache:
 
         def transfer(url: str, destination: str, _pooch: pooch.Pooch | None) -> None:
             path = Path(destination)
-            source_metadata.update(
-                downloader(url, path)
-                if downloader is not None
-                else _download_http(url, path, metadata_headers or {})
-            )
+            source_metadata.update(_download_http(url, path, metadata_headers or {}))
             if path.stat().st_size == 0:
                 raise ValueError("Cannot register an empty download.")
 

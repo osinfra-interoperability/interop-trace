@@ -29,11 +29,7 @@ def download_sage(
     asset = name + (".zip" if windows else ".tar.gz")
     url = f"https://github.com/lazear/sage/releases/download/v{version}/{asset}"
 
-    def transfer(url: str, destination: Path) -> dict[str, str | None]:
-        pooch.HTTPDownloader(timeout=60)(url, str(destination), None)
-        return {"version": version}
-
-    archive = DownloadCache(cache_dir).fetch(url, transfer)
+    archive = DownloadCache(cache_dir).fetch(url, metadata={"version": version})
     binary = "sage.exe" if windows else "sage"
     extractor = pooch.Unzip if windows else pooch.Untar
     extractor(

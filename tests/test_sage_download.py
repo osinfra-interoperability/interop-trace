@@ -4,17 +4,20 @@ import json
 import os
 import tarfile
 import zipfile
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from requests import Response
 
 from interop_trace.downloads import DownloadCache
 from interop_trace.workflows import download_sage
 
 
-def write_archive(url: str, destination: str, *, include_binary: bool = True) -> None:
+def archive_bytes(url: str, *, include_binary: bool = True) -> bytes:
+    buffer = BytesIO()
     asset = url.rsplit("/", 1)[1]
     windows = asset.endswith(".zip")
     name = asset.removesuffix(".zip").removesuffix(".tar.gz")
@@ -22,31 +25,35 @@ def write_archive(url: str, destination: str, *, include_binary: bool = True) ->
     if include_binary:
         files["sage.exe" if windows else "sage"] = b"test executable"
     if windows:
-        with zipfile.ZipFile(destination, "w") as archive:
+        with zipfile.ZipFile(buffer, "w") as archive:
             for filename, content in files.items():
                 archive.writestr(f"{name}/{filename}", content)
     else:
-        with tarfile.open(destination, "w:gz") as archive:
+        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
             for filename, content in files.items():
                 member = tarfile.TarInfo(f"{name}/{filename}")
                 member.size = len(content)
                 member.mode = 0o755 if filename == "sage" else 0o644
                 archive.addfile(member, BytesIO(content))
+    return buffer.getvalue()
 
 
 @pytest.fixture
-def downloader(monkeypatch: pytest.MonkeyPatch) -> Mock:
+def downloader(
+    monkeypatch: pytest.MonkeyPatch,
+    http_transport: Mock,
+    http_response: Callable[..., Response],
+) -> Mock:
     monkeypatch.setattr(
         "interop_trace.workflows.sage.platform.system", lambda: "Darwin"
     )
     monkeypatch.setattr(
         "interop_trace.workflows.sage.platform.machine", lambda: "arm64"
     )
-    transfer = Mock(side_effect=lambda url, path, _: write_archive(url, path))
-    monkeypatch.setattr(
-        "interop_trace.workflows.sage.pooch.HTTPDownloader", Mock(return_value=transfer)
+    http_transport.side_effect = lambda request: http_response(
+        archive_bytes(request.url)
     )
-    return transfer
+    return http_transport
 
 
 @pytest.mark.parametrize(
@@ -80,7 +87,7 @@ def test_download_selects_build_and_records_provenance(
         "https://github.com/lazear/sage/releases/download/v0.14.7/"
         f"sage-v0.14.7-{target}{suffix}"
     )
-    assert downloader.call_args.args[0] == url
+    assert downloader.call_args.args[0].url == url
     assert executable.is_absolute()
     assert executable.read_bytes() == b"test executable"
     assert (executable.parent / "LICENSE").is_file()
@@ -143,9 +150,11 @@ def test_clear_removes_archive_and_executable(tmp_path: Path, downloader: Mock) 
     assert downloader.call_count == 2
 
 
-def test_missing_binary_is_an_error(tmp_path: Path, downloader: Mock) -> None:
-    downloader.side_effect = lambda url, path, _: write_archive(
-        url, path, include_binary=False
+def test_missing_binary_is_an_error(
+    tmp_path: Path, downloader: Mock, http_response: Callable[..., Response]
+) -> None:
+    downloader.side_effect = lambda request: http_response(
+        archive_bytes(request.url, include_binary=False)
     )
 
     with pytest.raises(FileNotFoundError, match="release does not contain"):

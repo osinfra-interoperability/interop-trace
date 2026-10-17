@@ -70,6 +70,7 @@ class DownloadCache:
         *,
         name: str | None = None,
         kind: str | None = None,
+        filename: str = "content",
         metadata: Mapping[str, str | None] | None = None,
         metadata_headers: Mapping[str, str] | None = None,
     ) -> Download:
@@ -80,7 +81,16 @@ class DownloadCache:
         response headers captured during that same transfer. Missing headers are
         recorded as ``None``. Cache hits preserve the original metadata. ``name``
         and ``kind`` label the component; older entries gain missing labels on reuse.
+        ``filename`` preserves native extensions when first storing a file.
         """
+        if (
+            not filename
+            or Path(filename).name != filename
+            or filename in {"..", "download.json"}
+        ):
+            raise ValueError(
+                "Download filename must be a basename other than download.json."
+            )
         self._managed(create=True)
         directory = self.root / "objects" / hashlib.sha256(url.encode()).hexdigest()
         cached = self._read(directory)
@@ -103,9 +113,9 @@ class DownloadCache:
 
         # Providers do not supply an expected content checksum.
         pooch.retrieve(
-            url, known_hash=None, path=directory, fname="content", downloader=transfer
+            url, known_hash=None, path=directory, fname=filename, downloader=transfer
         )
-        path = directory / "content"
+        path = directory / filename
         return self._write(
             Download(
                 url,
@@ -157,7 +167,7 @@ class DownloadCache:
     def _read(self, directory: Path) -> Download | None:
         try:
             data = json.loads((directory / "download.json").read_text())
-            data["path"] = directory / "content"
+            data["path"] = directory / Path(data["path"]).name
             return Download(**data)
         except (OSError, ValueError, KeyError, TypeError):
             return None

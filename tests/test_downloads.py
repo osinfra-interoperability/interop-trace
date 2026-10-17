@@ -43,6 +43,33 @@ def test_different_requests_get_separate_entries(tmp_path: Path) -> None:
     assert len(cache.entries()) == 2
 
 
+def test_native_filename_survives_cache_reuse(
+    tmp_path: Path, http_transport: Mock
+) -> None:
+    cache = DownloadCache(tmp_path / "cache")
+    first = cache.fetch("https://example.org/sample.mzML", filename="sample.mzML")
+
+    assert first.path.name == "sample.mzML"
+    assert cache.entries() == [first]
+    assert cache.fetch(first.url, filename="sample.mzML") == first
+    http_transport.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "filename", ["", ".", "..", "../outside.mzML", "download.json"]
+)
+def test_invalid_filename_fails_before_download(
+    tmp_path: Path, http_transport: Mock, filename: str
+) -> None:
+    cache = DownloadCache(tmp_path / "cache")
+
+    with pytest.raises(ValueError, match="basename"):
+        cache.fetch("https://example.org/file", filename=filename)
+
+    http_transport.assert_not_called()
+    assert not cache.root.exists()
+
+
 def test_component_labels_are_registered_and_preserved(
     tmp_path: Path, http_transport: Mock
 ) -> None:

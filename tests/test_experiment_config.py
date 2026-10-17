@@ -1,6 +1,7 @@
 """Load separate YAML definitions without downloading or executing components."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -83,7 +84,10 @@ def test_reused_definitions_construct_independent_instances(
     assert first.settings == second.settings
 
 
-@pytest.mark.parametrize("experiment_id", ["../outside", "/absolute", ".", "", False])
+@pytest.mark.parametrize(
+    "experiment_id",
+    ["../outside", "/absolute", ".", "", False, "run.json", "configuration.json"],
+)
 def test_ids_cannot_escape_run_directory(
     configuration: Path, experiment_id: object
 ) -> None:
@@ -149,3 +153,21 @@ def test_ambiguous_or_executable_yaml_is_rejected(
     configuration.write_text(text)
     with pytest.raises(ValueError):
         load_configuration(configuration)
+
+
+def test_snapshot_preserves_parsed_text_when_source_changes(
+    configuration: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_read = Path.read_text
+    original_text = configuration.read_text()
+
+    def read_and_edit(path: Path, *args: Any, **kwargs: Any) -> str:
+        text = original_read(path, *args, **kwargs)
+        if path == configuration:
+            path.write_text(text.replace("first", "edited"))
+        return text
+
+    monkeypatch.setattr(Path, "read_text", read_and_edit)
+    loaded = load_configuration(configuration)
+    assert loaded.experiments[0].id == "first"
+    assert loaded.snapshot["files"][str(configuration)] == original_text

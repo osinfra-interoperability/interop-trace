@@ -33,12 +33,15 @@ class Experiment:
     settings: dict[str, Any]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.id, str) or not re.fullmatch(
-            r"[a-zA-Z0-9][a-zA-Z0-9._-]*", self.id
+        if (
+            not isinstance(self.id, str)
+            or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", self.id)
+            or self.id in {"configuration.json", "run.json"}
         ):
             raise ValueError(
                 "Experiment id must be a simple directory name "
-                "starting with a letter or digit."
+                "starting with a letter or digit, "
+                "excluding configuration.json and run.json."
             )
 
 
@@ -63,18 +66,17 @@ def load_configuration(path: Path) -> RunConfiguration:
     The loader never downloads resources or starts workflow processes.
     """
     path = path.resolve()
-    document = _read_yaml(path)
+    contents: dict[str, str] = {}
+    document = _read_yaml(path, contents)
     _keys(document, {"components", "experiments"}, str(path))
     sources = _mapping(document["components"], "components")
     _keys(sources, set(REGISTRIES), "components")
     definitions = {}
-    contents = {str(path): path.read_text(encoding="utf-8")}
     for layer, relative in sources.items():
         if not isinstance(relative, str):
             raise ValueError(f"components.{layer} must reference a YAML file.")
         source = (path.parent / relative).resolve()
-        definitions[layer] = (source, _read_yaml(source))
-        contents[str(source)] = source.read_text(encoding="utf-8")
+        definitions[layer] = (source, _read_yaml(source, contents))
     choices = document["experiments"]
     if not isinstance(choices, list) or not choices:
         raise ValueError("experiments must be a nonempty list.")
@@ -141,12 +143,14 @@ class _UniqueSafeLoader(yaml.SafeLoader):
     """Safe YAML construction that also rejects silently overwritten settings."""
 
 
-def _read_yaml(path: Path) -> dict[str, Any]:
+def _read_yaml(path: Path, contents: dict[str, str]) -> dict[str, Any]:
     _UniqueSafeLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping
     )
+    text = path.read_text(encoding="utf-8")
+    contents[str(path)] = text
     try:
-        value = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueSafeLoader)
+        value = yaml.load(text, Loader=_UniqueSafeLoader)
     except yaml.YAMLError as error:
         raise ValueError(f"Invalid YAML in {path}: {error}") from error
     return _mapping(value, str(path))

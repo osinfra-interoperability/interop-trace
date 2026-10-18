@@ -29,13 +29,14 @@ class RunBrowser:
 
     def __init__(self, directory: Path) -> None:
         self.directory = directory.resolve()
-        self.output: Path | None = None
-        self.process: subprocess.Popen[bytes] | None = None
+        self._processes: dict[Path, subprocess.Popen[bytes]] = {}
         self._lock = Lock()
 
     @property
     def active(self) -> bool:
-        return self.process is not None and self.process.poll() is None
+        return any(
+            process.poll() is None for process in tuple(self._processes.values())
+        )
 
     def configurations(self) -> list[Path]:
         """Find checked-in run configurations without constructing components."""
@@ -72,7 +73,7 @@ class RunBrowser:
                     stdout=stream,
                     stderr=subprocess.STDOUT,
                 )
-            self.output, self.process = output, process
+            self._processes[output] = process
             return output
 
     def history(self) -> list[SavedRun]:
@@ -83,31 +84,42 @@ class RunBrowser:
             path.with_name(path.name.removesuffix(".console.log"))
             for path in results.glob("ui-*.console.log")
         )
-        if self.output is not None:
-            directories.add(self.output)
-        return [self._read(path) for path in sorted(directories, reverse=True)]
+        directories.update(self._processes)
+        return [
+            self._read(path)
+            for path in sorted(directories, key=_modified, reverse=True)
+        ]
 
     def _read(self, directory: Path) -> SavedRun:
         configuration = read_record(directory / "configuration.json")
         experiments = []
-        for choice in configuration.get("experiments", []):
+        choices = configuration.get("experiments", [])
+        for choice in choices if isinstance(choices, list) else []:
             if not isinstance(choice, dict):
                 continue
             name = choice.get("id")
-            if not isinstance(name, str) or not name or Path(name).name != name:
+            if (
+                not isinstance(name, str)
+                or not name
+                or name in {".", ".."}
+                or Path(name).name != name
+            ):
                 continue
             record = read_record(directory / name / "experiment.json")
-            experiments.append(record or {"id": name, "status": "not_started"})
-        code = (
-            self.process.poll() if self.process and directory == self.output else None
-        )
+            experiments.append(
+                {"id": name, **record}
+                if record
+                else {"id": name, "status": "not_started"}
+            )
+        process = self._processes.get(directory)
+        code = process.poll() if process is not None else None
         if (code is not None and code != 0) or any(
             record.get("status") == "failed" for record in experiments
         ):
             status = "failed"
         elif experiments and all(r.get("status") == "completed" for r in experiments):
             status = "completed"
-        elif directory == self.output and self.active:
+        elif process is not None and code is None:
             status = "running"
         else:
             status = "unknown"
@@ -135,3 +147,12 @@ def log_tail(path: Path, limit: int = 32_768) -> str:
             return stream.read(limit).decode("utf-8", errors="replace")
     except OSError:
         return "Log not available yet."
+
+
+def _modified(directory: Path) -> float:
+    for path in (directory, console_log(directory)):
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            continue
+    return 0.0

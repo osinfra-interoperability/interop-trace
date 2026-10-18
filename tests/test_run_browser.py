@@ -1,6 +1,7 @@
 """Check launch isolation, failure visibility and history without a web server."""
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -50,6 +51,24 @@ def test_configuration_must_belong_to_the_checkout(tmp_path: Path) -> None:
         RunBrowser(tmp_path).start(outside)
 
 
+def test_early_failures_remain_visible_after_later_launches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "experiments/runs/example.yaml"
+    source.parent.mkdir(parents=True)
+    source.write_text("validated below")
+    monkeypatch.setattr("interop_trace.run_browser.load_configuration", Mock())
+    process = Mock()
+    process.poll.return_value = 1
+    monkeypatch.setattr(
+        "interop_trace.run_browser.subprocess.Popen", Mock(return_value=process)
+    )
+    browser = RunBrowser(tmp_path)
+    browser.start(source)
+    browser.start(source)
+    assert [run.status for run in browser.history()] == ["failed", "failed"]
+
+
 @pytest.mark.parametrize(
     "statuses, expected",
     [
@@ -90,3 +109,15 @@ def test_partial_record_and_large_log_are_safe_to_poll(tmp_path: Path) -> None:
     log.write_bytes(b"x" * 100_000 + b"\nfinished")
     assert log_tail(log, 32).endswith("finished")
     assert len(log_tail(log, 32)) == 32
+
+
+def test_history_orders_by_time_rather_than_name(tmp_path: Path) -> None:
+    for name, timestamp in (("z-old", 1), ("a-new", 2)):
+        path = tmp_path / "results" / name
+        path.mkdir(parents=True)
+        (path / "configuration.json").write_text("{}")
+        os.utime(path, (timestamp, timestamp))
+    assert [r.directory.name for r in RunBrowser(tmp_path).history()] == [
+        "a-new",
+        "z-old",
+    ]

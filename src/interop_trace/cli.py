@@ -68,6 +68,30 @@ def list_components() -> None:
             typer.echo(f"{layer} / {name}: {entry.summary}")
 
 
+@app.command("ui")
+def launch_interface(
+    directory: Annotated[
+        Path,
+        typer.Option(
+            "--directory",
+            exists=True,
+            file_okay=False,
+            help="Checkout containing experiments/ and results/.",
+        ),
+    ] = Path("."),
+    port: Annotated[int, typer.Option(min=1, max=65535)] = 8080,
+) -> None:
+    """Open a local experiment dashboard (requires the ui extra)."""
+    try:
+        from interop_trace.interface import serve
+    except ModuleNotFoundError as error:
+        if error.name != "nicegui":
+            raise
+        typer.echo("Install the interface with: poetry install --extras ui", err=True)
+        raise typer.Exit(code=1) from error
+    serve(directory.resolve(), port)
+
+
 @cache_app.command("list")
 def list_downloads(
     directory: Annotated[

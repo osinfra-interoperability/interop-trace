@@ -125,19 +125,18 @@ class _Dashboard:
 
     async def start(self) -> None:
         self.start_button.disable()
+        output = None
         try:
             output = await run.io_bound(
                 self.browser.start, Path(self.configuration.value)
             )
-            if output is None:
-                return
-            await self.refresh()
-            self.selection.set_value(str(output))
-            ui.notify("Run started.", type="positive")
         except Exception as error:
             ui.notify(str(error), type="negative")
         finally:
             await self.refresh()
+        if output is not None:
+            self.selection.set_value(str(output))
+            ui.notify("Run started.", type="positive")
 
     async def refresh(self) -> None:
         history = await run.io_bound(self.browser.history)
@@ -147,11 +146,7 @@ class _Dashboard:
         options = {
             key: f"{r.directory.name} · {r.status}" for key, r in self.runs.items()
         }
-        if options != self.selection.options:
-            value = self.selection.value
-            self.selection.set_options(
-                options, value=value if value in options else next(iter(options), None)
-            )
+        _options(self.selection, options)
         self.start_button.set_enabled(
             bool(self.choices.rows) and not self.browser.active
         )
@@ -198,15 +193,13 @@ class _Dashboard:
             or []
         )
         artifacts = {str(p): str(p.relative_to(saved.directory)) for p in files}
-        if console_log(saved.directory).is_file():
-            artifacts[str(console_log(saved.directory))] = "Console log"
-        _options(self.artifact, artifacts)
-        logs = (
-            {str(console_log(saved.directory)): "Console"}
-            if console_log(saved.directory).exists()
-            else {}
-        )
+        console = console_log(saved.directory)
+        logs = {}
+        if console.is_file():
+            artifacts[str(console)] = "Console log"
+            logs[str(console)] = "Console"
         logs.update({str(p): artifacts[str(p)] for p in files if p.suffix == ".log"})
+        _options(self.artifact, artifacts)
         _options(self.log, logs)
         self.provenance.set_content(json.dumps(saved.configuration, indent=2))
         await self.show_file()

@@ -64,6 +64,9 @@ async def test_launch_monitor_and_download(
         return process
 
     monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", launch)
+    previous = checkout / "results/previous"
+    previous.mkdir(parents=True)
+    (previous / "configuration.json").write_text('{"experiments": []}')
     _page(checkout)
     await user.open("/")
     await user.should_see("Experiments: 1", retries=10)
@@ -72,6 +75,7 @@ async def test_launch_monitor_and_download(
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
+    await user.should_see("Status: unknown")
     user.find(marker="start-run").click()
     await user.should_see("Status: running")
     await user.should_see("native tool log")

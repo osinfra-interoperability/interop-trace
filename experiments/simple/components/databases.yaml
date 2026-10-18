@@ -1,5 +1,8 @@
-vat1:
+erwinia_and_spikes:
   type: uniprot
   parameters:
-    query: accession:Q99536
+    # SCRI 1043 background plus the four spikes documented in PXD000001.
+    query: >-
+      (organism_id:218491) OR (accession:P00924) OR (accession:P02769)
+      OR (accession:P00489) OR (accession:P62894)
     format: fasta

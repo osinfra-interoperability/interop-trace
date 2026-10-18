@@ -5,8 +5,8 @@ components:
   benchmarks: components/benchmarks.yaml
 
 experiments:
-  - id: vat1_sage
-    dataset: vat1_spectrum
-    database: vat1
+  - id: erwinia_sage
+    dataset: erwinia_tmt
+    database: erwinia_and_spikes
     workflow: sage
-    benchmark: vat1_peptide
+    benchmark: spike_peptides

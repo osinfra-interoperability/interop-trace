@@ -1,6 +1,12 @@
-vat1_peptide:
+spike_peptides:
   type: expected_peptides
   parameters:
-    # Expected identity from Sage's published example, not inferred from FASTA.
-    peptides: [LQSRPAAPPAPGPGQLTLR]
+    # Reference: https://ftp.pride.ebi.ac.uk/pride/data/archive/2012/03/PXD000001/F063721.dat-mztab.txt
+    # One deposited peptide per spike, selected before running Sage.
+    # Exact Sage strings include the fixed TMT6plex N-terminal/lysine labels.
+    peptides:
+      - "[+229.16293]-GNPTVEVELTTEK[+229.16293]" # P00924, yeast enolase
+      - "[+229.16293]-HLVDEPQNLIK[+229.16293]"   # P02769, bovine albumin
+      - "[+229.16293]-EIWGVEPSR"                # P00489, rabbit phosphorylase
+      - "[+229.16293]-TGPNLHGLFGR"              # P62894, bovine cytochrome c
     max_q_value: 0.01

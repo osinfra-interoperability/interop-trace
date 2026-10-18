@@ -16,11 +16,13 @@ poetry install
 poetry run interop-trace run experiments/simple/run.yaml --output results/simple-001
 ```
 
-This downloads a 12 KB real spectrum, one UniProt protein and a pinned Sage binary
-(about 6.6 MB on Apple silicon). Sage is installed automatically and downloads are
-cached. The expected peptide appears, but does **not** pass the 1% confidence
-threshold: this example checks component integration, not scientific accuracy.
-See [the first experiment](docs/first-experiment.md) for results.
+This uses a public PRIDE processed peak list (5.98 MB), an Erwinia-and-spikes
+UniProt database (2.14 MB in the verified run), and a pinned Sage binary
+(about 6.6 MB on Apple silicon). Downloads are cached and Sage is installed
+automatically. All four selected deposited reference peptides were recovered at
+the configured 1% spectrum q-value threshold. This checks interoperability and
+reference-result consistency, not overall search accuracy.
+See [the first experiment](docs/first-experiment.md) for verified sizes and outputs.
 
 ## Available components
 

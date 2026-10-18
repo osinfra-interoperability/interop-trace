@@ -11,21 +11,23 @@ components:
   benchmarks: components/benchmarks.yaml
 
 experiments:
-  - id: vat1_sage
-    dataset: vat1_spectrum
-    database: vat1
+  - id: erwinia_sage
+    dataset: erwinia_tmt
+    database: erwinia_and_spikes
     workflow: sage
-    benchmark: vat1_peptide
+    benchmark: spike_peptides
 ```
 
 Each component definition has a registered `type` and implementation-specific
 `parameters`. For example, the database file contains:
 
 ```yaml
-vat1:
+erwinia_and_spikes:
   type: uniprot
   parameters:
-    query: accession:Q99536
+    query: >-
+      (organism_id:218491) OR (accession:P00924) OR (accession:P02769)
+      OR (accession:P00489) OR (accession:P62894)
     format: fasta
 ```
 

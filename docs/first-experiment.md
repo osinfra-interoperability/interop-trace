@@ -1,9 +1,10 @@
 # First experiment
 
-This small interoperability experiment connects an HTTP dataset and UniProt
-database to Sage, then checks the output against an expected peptide.
-It uses Sage's published **single measured spectrum** and the human VAT1 protein
-(UniProt Q99536). No Sage installation or ProteoBench extra is needed.
+This laptop experiment connects **PRIDE + UniProt → Sage → peptide evaluation**.
+It searches one small processed peak list from
+[PXD000001](https://www.ebi.ac.uk/pride/archive/projects/PXD000001), an Erwinia
+sample with four protein spikes. Sage reads the compressed MGF directly;
+no RAW conversion or separate Sage installation is needed.
 
 From the repository root, with Python 3.12+ and Poetry installed:
 
@@ -12,41 +13,72 @@ poetry install
 poetry run interop-trace run experiments/simple/run.yaml --output results/simple-001
 ```
 
-The first run downloads a 12 KB mzML, a single-entry FASTA (about 0.5 KB), and
-the native Sage release (about 6.6 MB on Apple silicon; size varies by platform).
-Subsequent runs reuse those downloads. Use a **new output directory** each time.
-The optional `--check` flag validates configuration without downloading or running.
+Use a **new output directory** each time. If `results/simple-001` already exists,
+choose another name. Add `--check` to validate configuration without downloads or
+execution. Every experiment requires an evaluator.
 
-## What to inspect
+## Inputs and download sizes
 
-Under `results/simple-001/`:
+Sizes were checked on **18 October 2026**, before downloading the measurement.
+
+| Input | Download |
+| --- | --- |
+| `PRIDE_Exp_Complete_Ac_22134.pride.mgf.gz` | 5,984,662 bytes (5.71 MiB), verified by HTTP HEAD and actual file size |
+| UniProt FASTA | 2,138,744 bytes (2.04 MiB) in the verified run |
+| Sage 0.14.7 | About 6.6 MB on Apple silicon, only if not already cached |
+
+The PRIDE catalogue reports an outdated 16,448,103-byte measurement size; the
+[download server](https://ftp.pride.ebi.ac.uk/pride/data/archive/2012/03/PXD000001/generated/PRIDE_Exp_Complete_Ac_22134.pride.mgf.gz)
+reports the actual compressed size above. This is the only selected measurement.
+The RAW, mzXML and full project are not downloaded. These sizes document the
+verified files; the provider does not enforce a download-size limit.
+
+The database query includes the Erwinia strain SCRI 1043 (taxonomy 218491) and
+spikes P00924, P02769, P00489 and P62894. The verified UniProt response contains
+4,467 entries, including the background proteome rather than just expected positives.
+Downloads reuse the existing PRIDE provider and shared cache. UniProt is a live
+query: a later fresh download can differ; its release is recorded in each run.
+
+## Search and evaluation
+
+Native Sage settings follow the [deposited Mascot settings](https://ftp.pride.ebi.ac.uk/pride/data/archive/2012/03/PXD000001/F063721.dat):
+trypsin with two missed cleavages, ±25 ppm precursor and ±0.2 Da fragment tolerances,
+fixed TMT6plex labels on N-termini/lysine and methylthio on cysteine, plus variable
+methionine oxidation and TMT6plex on tyrosine. Retention-time prediction is disabled.
+
+The [deposited reference results](https://ftp.pride.ebi.ac.uk/pride/data/archive/2012/03/PXD000001/F063721.dat-mztab.txt)
+provide four selected reference peptides, one per spike:
+
+| Spike | Reference peptide |
+| --- | --- |
+| Yeast enolase, P00924 | `GNPTVEVELTTEK` |
+| Bovine albumin, P02769 | `HLVDEPQNLIK` |
+| Rabbit phosphorylase, P00489 | `EIWGVEPSR` |
+| Bovine cytochrome c, P62894 | `TGPNLHGLFGR` |
+
+These were chosen before running Sage. The benchmark configuration includes their
+fixed TMT labels in Sage's exact sequence notation. Evaluation counts their recovery
+among rank-one target matches before and after `spectrum_q <= 0.01`.
+The verified laptop run recovered **all four**, including at that threshold.
+
+This is consistency with selected deposited identifications, not independent
+proof of accuracy or FDR calibration. The processed peak list and selected
+reference peptides do not represent an unbiased full-RAW benchmark. This experiment
+does not score the project's TMT reporter ratios or ProteoBench LFQ quantification.
+
+## Where results go
+
+Under the selected output directory:
 
 | File | Evidence |
 | --- | --- |
-| `configuration.json` | Selected experiments and original YAML contents |
-| `vat1_sage/dataset/http.json` | Measurement source and cached file |
-| `vat1_sage/database/uniprot.json` | UniProt query, release and retrieval time |
-| `vat1_sage/workflow/sage.log` | Native search log and warnings |
-| `vat1_sage/workflow/results.sage.tsv` | Native peptide-spectrum matches |
-| `vat1_sage/evaluation/expected_peptides.json` | Expected-peptide recovery |
-| `vat1_sage/experiment.json` | Execution status, artifact paths and metrics |
+| `configuration.json` | Original YAML, component choices and package version |
+| `erwinia_sage/dataset/pride.json` | PRIDE catalogue, selected source and download record |
+| `erwinia_sage/database/uniprot.json` | Query, release and retrieval time |
+| `erwinia_sage/workflow/sage.log` | Native log and warnings |
+| `erwinia_sage/workflow/results.sage.tsv` | Native peptide-spectrum matches |
+| `erwinia_sage/evaluation/expected_peptides.json` | Reference recovery and threshold |
+| `erwinia_sage/experiment.json` | Execution status, artifact paths and metrics |
 
-The verified run returned `LQSRPAAPPAPGPGQLTLR` as a rank-one target match, with
-`spectrum_q=1`. Thus `matched_expected_peptides` is **1**, but
-`matched_expected_peptides_at_threshold` is **0** at the configured 0.01 threshold.
-Completion means the components ran together; it does not mean the match passed
-confidence filtering. One spectrum cannot establish search accuracy or FDR control.
-
-Every experiment requires an evaluator. UniProt is a live query: clearing the
-cache can retrieve a newer release, which is recorded rather than frozen.
-
-## Sources and scope
-
-The [measurement](https://github.com/lazear/sage/blob/99407db6e3754b31a9b88b7316a0aee67293c93f/tests/LQSRPAAPPAPGPGQLTLR.mzML)
-is pinned to Sage's v0.14.7 source commit. The expected peptide comes from the
-[author's worked example](https://lazear.github.io/sage/); it is not inferred from
-the downloaded database. Search settings follow the upstream example with retention
-time prediction disabled for this single spectrum.
-
-See [configuration](experiments.md) to change combinations, or
-[components](components.md) for supported parameters and benchmark scope.
+See [configuration](experiments.md) for other combinations and
+[components](components.md) for parameter scope.

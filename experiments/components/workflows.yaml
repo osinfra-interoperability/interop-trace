@@ -1,0 +1,6 @@
+sage_erwinia_tmt:
+  type: sage
+  parameters:
+    version: "0.14.7"
+    configuration: ../settings/sage/erwinia_tmt.json
+    threads: 2

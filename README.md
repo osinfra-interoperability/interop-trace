@@ -1,65 +1,67 @@
 # Interop Trace
 
-[![CI](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml/badge.svg)](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml) [![Documentation](https://img.shields.io/badge/docs-online-blue?labelColor=gray)](https://thatmariia.github.io/interop_trace/) ![Tool Type](https://img.shields.io/badge/tool%20type-Command--line%20tool%20%7C%20Library-blue?labelColor=gray)
+[![CI](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml/badge.svg)](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://thatmariia.github.io/interop_trace/)
 
-Tracing interoperability across bioinformatics databases and workflows.
+Test interoperability between bioinformatics datasets, databases, workflows and
+benchmarks. Explicit configurations select combinations; each run records sources,
+settings, native outputs and failures. Proteomics is the first application.
 
-Documentation: https://thatmariia.github.io/interop_trace/
+## Run the first experiment
 
-## Purpose
-
-A research software project for empirically testing interoperability across bioinformatics databases and workflows. It runs controlled database–workflow configurations against reference benchmarks, traces where interoperability succeeds or breaks, and produces evidence about the causes of incompatibility.
-
-
-## Purpose Categories
-
-- Integration & interfacing
-- Data analysis
-
-## Research Topics
-
-- [bioinformatics](http://edamontology.org/topic_0091) - [database management](http://edamontology.org/topic_3489) - [proteomics](http://edamontology.org/topic_0121)
-
-## Installation
-
-Install from a source checkout:
+With Python 3.12+ and Poetry installed, from a source checkout:
 
 ```bash
-python -m pip install .
+poetry install
+poetry run interop-trace run experiments/runs/simple.yaml --output results/simple-001
 ```
 
-## Usage
+This uses a public PRIDE processed peak list (5.98 MB), an Erwinia-and-spikes
+UniProt database (2.14 MB in the verified run), and a pinned Sage binary
+(about 6.6 MB on Apple silicon). Downloads are cached and Sage is installed
+automatically. All four selected deposited reference peptides were recovered at
+the configured 1% spectrum q-value threshold. This checks interoperability and
+reference-result consistency, not overall search accuracy.
+See [the first experiment](docs/users/first-experiment.md) for verified sizes and outputs.
 
-```bash
-python -m interop_trace
-```
+## Available components
+
+<!-- components:start -->
+
+| Layer | Component |
+| --- | --- |
+| datasets | [`pride`](docs/users/components.md#pride) |
+| databases | [`uniprot`](docs/users/components.md#uniprot) |
+| workflows | [`sage`](docs/users/components.md#sage) |
+| benchmarks | [`expected_peptides`](docs/users/components.md#expected-peptides) |
+| benchmarks | [`proteobench_dda`](docs/users/components.md#proteobench-dda) |
+
+<!-- components:end -->
+
+Generated from the registries. See [parameters and scope](docs/users/components.md).
 
 ## Documentation
 
-- User guide: installation, configuration, usage, and examples
-- Developer guide: development, tests, contribution, and reference
+- **[Users](docs/users/README.md):** [first experiment](docs/users/first-experiment.md),
+  [configuration](docs/users/experiments.md), [CLI and cache](docs/users/usage.md).
+- **[Developers](docs/developers/README.md):** [development guide](docs/developers/developer.md),
+  [API reference](docs/developers/reference.md), [documentation builds](docs/developers/documentation.md).
 
-## Development
+Every experiment selects an evaluator. Runs use new output directories and share
+downloaded resources. Components preserve native formats; interoperability failures remain
+visible rather than being silently converted.
 
-Set up the development environment with:
+## Contributing
 
 ```bash
 poetry install --all-extras
+poetry run pre-commit install
 ```
-Run the configured checks:
 
-```bash
-poetry run ruff format --check .
-poetry run ruff check .
-poetry run mypy src
-poetry run python -m pytest
-```
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution and code-review policy.
+See [the developer guide](docs/developers/developer.md) for checks and
+[CONTRIBUTING.md](CONTRIBUTING.md) for review policy.
 
-## Citation
+## Citation and license
 
-If you use this software, cite it using [`CITATION.cff`](CITATION.cff).
-
-## Legal and Licensing
-
-This project is licensed under `https://spdx.org/licenses/Apache-2.0`. See `LICENSE` for the full license text.
+Cite using [CITATION.cff](CITATION.cff). Licensed under
+[Apache-2.0](LICENSE).

@@ -1,13 +1,9 @@
 # Interop Trace
 
-Tracing interoperability across bioinformatics databases and workflows.
+Test whether bioinformatics datasets, databases, workflows and benchmarks work
+together, and retain evidence when they do not. Proteomics is the first application.
+Successful execution alone does not establish scientific validity.
 
-## Contents
-
-- [Project overview](overview.md)
-- [Releases](release.md)
-- [Usage](usage.md)
-- [Developer guide](developer.md)
-- [Technical reference](reference.md)
-- [Build and view the documentation](documentation.md)
-- [Legal and licensing](legal.md)
+- [Users](users/README.md): run experiments, configure combinations and inspect results.
+- [Developers](developers/README.md): extend components and run maintenance checks.
+- [Project information](project/README.md): scope, releases and licensing.

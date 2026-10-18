@@ -6,6 +6,28 @@ copyright = "Copyright Interop Trace contributors."
 site_url = "https://thatmariia.github.io/interop_trace/"
 repo_url = "https://github.com/thatmariia/interop_trace"
 repo_name = "interop_trace"
+nav = [
+  { "Home" = "index.md" },
+  { "Users" = [
+    { "Start here" = "users/README.md" },
+    { "First experiment" = "users/first-experiment.md" },
+    { "Configure experiments" = "users/experiments.md" },
+    { "Components and scope" = "users/components.md" },
+    { "CLI and downloads" = "users/usage.md" },
+  ] },
+  { "Developers" = [
+    { "Start here" = "developers/README.md" },
+    { "Development guide" = "developers/developer.md" },
+    { "Python API" = "developers/reference.md" },
+    { "Documentation builds" = "developers/documentation.md" },
+  ] },
+  { "Project" = [
+    { "Start here" = "project/README.md" },
+    { "Scope" = "project/overview.md" },
+    { "Releases" = "project/release.md" },
+    { "License" = "project/legal.md" },
+  ] },
+]
 
 [project.theme]
 features = [
@@ -32,4 +54,4 @@ toc.permalink = true
 [project.plugins.mkdocstrings.handlers.python]
 paths = ["src"]
 options.docstring_style = "numpy"
-options.show_source = true
+options.show_source = false

@@ -16,22 +16,29 @@ repos:
       - id: trailing-whitespace
   - repo: local
     hooks:
+      - id: component-tables
+        name: Generate component tables
+        entry: poetry run python scripts/update_component_tables.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
       - id: ruff-check
         name: Ruff lint
-        entry: ruff check
+        entry: poetry run ruff check
         language: system
         types_or:
           - python
           - pyi
       - id: ruff-format
         name: Ruff format
-        entry: ruff format --check
+        entry: poetry run ruff format --check
         language: system
         types_or:
           - python
           - pyi
       - id: mypy
         name: Mypy
-        entry: mypy src
+        entry: poetry run mypy src
         language: system
         pass_filenames: false

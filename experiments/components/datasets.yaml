@@ -1,0 +1,6 @@
+erwinia_tmt:
+  type: pride
+  parameters:
+    project: PXD000001
+    # Verified HEAD size: 5,984,662 bytes (catalogue size is stale).
+    files: [PRIDE_Exp_Complete_Ac_22134.pride.mgf.gz]

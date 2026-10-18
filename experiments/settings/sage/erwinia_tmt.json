@@ -1,0 +1,36 @@
+{
+  "database": {
+    "enzyme": {
+      "missed_cleavages": 2
+    },
+    "static_mods": {
+      "^": 229.16293,
+      "K": 229.16293,
+      "C": 45.98772
+    },
+    "variable_mods": {
+      "M": [
+        15.994915
+      ],
+      "Y": [
+        229.16293
+      ]
+    },
+    "generate_decoys": true
+  },
+  "precursor_tol": {
+    "ppm": [
+      -25,
+      25
+    ]
+  },
+  "fragment_tol": {
+    "da": [
+      -0.2,
+      0.2
+    ]
+  },
+  "report_psms": 1,
+  "chimera": false,
+  "predict_rt": false
+}

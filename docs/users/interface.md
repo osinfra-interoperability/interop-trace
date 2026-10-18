@@ -18,10 +18,13 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    selected initially; the header checkbox selects all. Click **Run** to execute
    the selection in table order, using the shared cache and a new `results/ui-…/`
    directory.
-3. Watch status, stages, elapsed time and logs. Updates arrive about once per second.
+3. Watch status, stages and elapsed time. **File group** selects **Run-level files**
+   (configuration and console log) or one experiment's files and logs. Updates
+   arrive about once per second.
 4. Select a saved run and expand **Files and provenance** to preview or download
-   its outputs. Benchmark reports are under each experiment's `evaluation/` folder;
-   `configuration.json` contains the run configuration snapshot.
+   the selected group's outputs. Within an experiment, benchmark reports are under
+   `evaluation/`; within run-level files, `configuration.json` contains the run
+   configuration snapshot. File names are relative to the selected group.
 
 The [first experiment](first-experiment.md) is a small, verified starting point.
 ProteoBench configurations also need its extra:

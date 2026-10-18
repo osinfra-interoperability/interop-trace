@@ -112,8 +112,8 @@ async def test_launch_monitor_and_download(
     monkeypatch.setattr(user.download, "file", download)
     user.find(marker="download-file").click()
     download.assert_called_once_with(output / "configuration.json")
-    user.find(marker="output-file").click()
-    user.find("erwinia_sage/evaluation/expected_peptides.json").click()
+    user.find(marker="file-group").click()
+    user.find("Experiment: erwinia_sage").click()
     await user.should_see('"matched_expected_peptides": 4')
     user.find(marker="download-file").click()
     download.assert_called_with(report)
@@ -155,6 +155,59 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     user.find("configuration.json").click()
     await user.should_see("original configuration")
     assert viewer.language == "JSON"
+
+
+async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
+    user, checkout: Path
+) -> None:
+    directory = checkout / "results/grouped"
+    directory.mkdir(parents=True)
+    (directory / "configuration.json").write_text(
+        json.dumps(
+            {
+                "experiments": [
+                    {"id": name} for name in ("first", "second", "pending")
+                ],
+                "note": "run-level configuration",
+            }
+        )
+    )
+    directory.with_name("grouped.console.log").write_text("run-level console")
+    for name in ("first", "second"):
+        folder = directory / name / "workflow"
+        folder.mkdir(parents=True)
+        (folder / "settings.json").write_text(json.dumps({"note": f"{name} settings"}))
+        (folder / "sage.log").write_text(f"{name} log")
+    _page(checkout)
+    await user.open("/")
+    user.find("Files and provenance").click()
+    await user.should_see("run-level configuration", retries=10)
+    await user.should_see("run-level console")
+    selector = user.find(marker="output-file").elements.pop()
+    assert set(selector.options.values()) == {"configuration.json", "Console log"}
+
+    for name in ("first", "second"):
+        user.find(marker="file-group").click()
+        user.find(f"Experiment: {name}").click()
+        await user.should_see(f"{name} log", retries=10)
+        assert set(selector.options.values()) == {
+            "workflow/settings.json",
+            "workflow/sage.log",
+        }
+        assert all(Path(p).is_relative_to(directory / name) for p in selector.options)
+        user.find(marker="output-file").click()
+        user.find("workflow/settings.json").click()
+        await user.should_see(f"{name} settings")
+        await user.should_not_see("run-level configuration")
+
+    user.find(marker="file-group").click()
+    user.find("Experiment: pending").click()
+    await user.should_see("No output file selected.")
+    assert not selector.options
+    user.find(marker="file-group").click()
+    user.find("Run-level files").click()
+    await user.should_see("run-level configuration")
+    await user.should_see("run-level console")
 
 
 async def test_failed_process_shows_console_error_and_allows_another_run(

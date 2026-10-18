@@ -120,6 +120,18 @@ def test_partial_record_and_large_log_are_safe_to_poll(tmp_path: Path) -> None:
     assert len(log_tail(log, 32)) == 32
 
 
+def test_history_keeps_the_snapshot_id_for_file_grouping(tmp_path: Path) -> None:
+    directory = tmp_path / "results/example"
+    (directory / "first").mkdir(parents=True)
+    (directory / "configuration.json").write_text('{"experiments": [{"id": "first"}]}')
+    (directory / "first/experiment.json").write_text(
+        '{"id": "../other", "status": "completed"}'
+    )
+    saved = RunBrowser(tmp_path).history()[0]
+    assert saved.experiments[0]["id"] == "first"
+    assert saved.status == "completed"
+
+
 def test_history_orders_by_time_rather_than_name(tmp_path: Path) -> None:
     for name, timestamp in (("z-old", 1), ("a-new", 2)):
         path = tmp_path / "results" / name

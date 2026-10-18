@@ -103,7 +103,7 @@ class RunBrowser:
                 continue
             record = read_record(directory / name / "experiment.json")
             experiments.append(
-                {"id": name, **record}
+                {**record, "id": name}
                 if record
                 else {"id": name, "status": "not_started"}
             )

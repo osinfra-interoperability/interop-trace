@@ -65,6 +65,11 @@ class _Dashboard:
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
             self.experiments = _table(("id", "status", "stage", "elapsed"))
+            self.file_group = (
+                ui.select({}, label="File group", on_change=self.show_details)
+                .classes("w-full")
+                .mark("file-group")
+            )
             self.log = ui.select({}, label="Log", on_change=self.show_log).classes(
                 "w-full"
             )
@@ -163,16 +168,34 @@ class _Dashboard:
         await self._show_files(saved)
 
     async def _show_files(self, saved: SavedRun) -> None:
+        _options(
+            self.file_group,
+            {
+                ".": "Run-level files",
+                **{r["id"]: f"Experiment: {r['id']}" for r in saved.experiments},
+            },
+        )
+        group = self.file_group.value
+        directory = saved.directory / group
         files = (
             await run.io_bound(
-                lambda: sorted(p for p in saved.directory.rglob("*") if p.is_file())
+                lambda: sorted(
+                    p
+                    for p in directory.glob("*" if group == "." else "**/*")
+                    if p.is_file()
+                )
             )
             or []
         )
-        artifacts = {str(p): str(p.relative_to(saved.directory)) for p in files}
+        if (
+            self.selection.value != str(saved.directory)
+            or self.file_group.value != group
+        ):
+            return
+        artifacts = {str(p): str(p.relative_to(directory)) for p in files}
         console = console_log(saved.directory)
         logs = {}
-        if console.is_file():
+        if group == "." and console.is_file():
             artifacts[str(console)] = "Console log"
             logs[str(console)] = "Console"
         logs.update({str(p): artifacts[str(p)] for p in files if p.suffix == ".log"})
@@ -184,6 +207,7 @@ class _Dashboard:
     async def show_file(self) -> None:
         source = self.artifact.value
         if source not in self.artifact.options:
+            self.artifact_content.props["language"] = None
             self.artifact_content.set_value("No output file selected.")
             return
         text = await run.io_bound(file_preview, Path(source))
@@ -198,12 +222,14 @@ class _Dashboard:
             self.artifact_content.set_value(text)
 
     async def show_log(self) -> None:
+        source = self.log.value
         text = (
-            await run.io_bound(log_tail, Path(self.log.value))
-            if self.log.value
-            else "No logs yet."
+            await run.io_bound(log_tail, Path(source))
+            if source
+            else "No logs in this group."
         )
-        self.log_content.set_content(text or "Log not available yet.")
+        if self.log.value == source:
+            self.log_content.set_content(text or "Log not available yet.")
 
     def download(self) -> None:
         if self.artifact.value in self.artifact.options:

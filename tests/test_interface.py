@@ -122,7 +122,7 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     snapshot = '{"experiments": [], "reference": "original configuration"}'
     (directory / "configuration.json").write_text(snapshot)
     (directory / "results.tsv").write_text("protein\tscore\nP00924\t42")
-    (directory / "binary.bin").write_bytes(b"\x00\x01binary")
+    (directory / "output.bin").write_bytes(b"\x00\x01binary")
     _page(checkout)
     await user.open("/")
     user.find("Files and provenance").click()
@@ -130,14 +130,14 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     user.find(marker="output-file").click()
     user.find("results.tsv").click()
     await user.should_see("P00924\t42")
-    await user.should_see("original configuration")
+    await user.should_not_see("original configuration")
     user.find(marker="output-file").click()
-    user.find("binary.bin").click()
+    user.find("output.bin").click()
     await user.should_see("Binary file: use Download file to inspect it.")
     await user.should_not_see("P00924\t42")
     user.find(marker="output-file").click()
-    user.find("results.tsv").click()
-    await user.should_see("P00924\t42")
+    user.find("configuration.json").click()
+    await user.should_see("original configuration")
 
 
 async def test_failed_process_shows_console_error_and_allows_another_run(

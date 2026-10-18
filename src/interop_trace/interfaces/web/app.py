@@ -1,6 +1,5 @@
 """A local NiceGUI view over configured runs and their saved evidence."""
 
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -100,8 +99,6 @@ class _Dashboard:
                 ui.button(
                     "Download file", on_click=self.download, icon="download"
                 ).mark("download-file")
-                ui.label("Run configuration snapshot")
-                self.provenance = ui.code("{}", language="json").classes("w-full")
 
     async def preview(self) -> None:
         self.problem.set_text("")
@@ -201,7 +198,6 @@ class _Dashboard:
         logs.update({str(p): artifacts[str(p)] for p in files if p.suffix == ".log"})
         _options(self.artifact, artifacts)
         _options(self.log, logs)
-        self.provenance.set_content(json.dumps(saved.configuration, indent=2))
         await self.show_file()
         await self.show_log()
 

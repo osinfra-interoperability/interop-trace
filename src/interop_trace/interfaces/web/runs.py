@@ -22,7 +22,6 @@ class SavedRun:
 
     directory: Path
     status: str
-    configuration: dict[str, Any]
     experiments: tuple[dict[str, Any], ...]
 
 
@@ -120,7 +119,7 @@ class RunBrowser:
             status = "running"
         else:
             status = "unknown"
-        return SavedRun(directory, status, configuration, tuple(experiments))
+        return SavedRun(directory, status, tuple(experiments))
 
 
 def read_record(path: Path) -> dict[str, Any]:

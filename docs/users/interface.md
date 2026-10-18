@@ -19,9 +19,9 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    the selection in table order, using the shared cache and a new `results/ui-…/`
    directory.
 3. Watch status, stages, elapsed time and logs. Updates arrive about once per second.
-4. Select a saved run to inspect benchmark metrics. Expand **Files and provenance**
-   and select an output file to preview its text or download it, including
-   `configuration.json` for the run configuration snapshot.
+4. Select a saved run and expand **Files and provenance** to preview or download
+   its outputs. Benchmark reports are under each experiment's `evaluation/` folder;
+   `configuration.json` contains the run configuration snapshot.
 
 The [first experiment](first-experiment.md) is a small, verified starting point.
 ProteoBench configurations also need its extra:

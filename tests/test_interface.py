@@ -96,10 +96,13 @@ async def test_launch_monitor_and_download(
             }
         )
     )
+    report = output / "erwinia_sage/evaluation/expected_peptides.json"
+    report.parent.mkdir()
+    report.write_text(json.dumps({"metrics": {"matched_expected_peptides": 4}}))
     process.poll.return_value = 0
     await user.should_see("Status: completed", retries=10)
     assert any(
-        row.get("metric") == "matched_expected_peptides" and row["value"] == 4
+        row.get("id") == "erwinia_sage" and row.get("status") == "completed"
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
@@ -109,6 +112,11 @@ async def test_launch_monitor_and_download(
     monkeypatch.setattr(user.download, "file", download)
     user.find(marker="download-file").click()
     download.assert_called_once_with(output / "configuration.json")
+    user.find(marker="output-file").click()
+    user.find("erwinia_sage/evaluation/expected_peptides.json").click()
+    await user.should_see('"matched_expected_peptides": 4')
+    user.find(marker="download-file").click()
+    download.assert_called_with(report)
     http_transport.assert_not_called()
 
 

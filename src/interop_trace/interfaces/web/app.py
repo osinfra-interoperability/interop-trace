@@ -65,9 +65,6 @@ class _Dashboard:
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
             self.experiments = _table(("id", "status", "stage", "elapsed"))
-            ui.label("Benchmark metrics").classes("text-lg font-medium")
-            self.metrics = _table(("experiment", "metric", "value"))
-            ui.label("Execution completed and benchmark quality are separate outcomes.")
             self.log = ui.select({}, label="Log", on_change=self.show_log).classes(
                 "w-full"
             )
@@ -154,10 +151,6 @@ class _Dashboard:
             return
         self.status.set_text(f"Status: {saved.status}")
         self.location.set_text(str(saved.directory))
-        self._show_metrics(saved)
-        await self._show_files(saved)
-
-    def _show_metrics(self, saved: SavedRun) -> None:
         self.experiments.rows = [
             {
                 "id": r["id"],
@@ -168,17 +161,7 @@ class _Dashboard:
             for r in saved.experiments
         ]
         self.experiments.update()
-        self.metrics.rows = [
-            {
-                "id": f"{r['id']}:{name}",
-                "experiment": r["id"],
-                "metric": name,
-                "value": value,
-            }
-            for r in saved.experiments
-            for name, value in r.get("evaluation", {}).get("metrics", {}).items()
-        ]
-        self.metrics.update()
+        await self._show_files(saved)
 
     async def _show_files(self, saved: SavedRun) -> None:
         files = (

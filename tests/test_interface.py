@@ -83,8 +83,14 @@ async def test_launch_monitor_and_download(
     table.trigger("selection", {"added": True, "rows": rows, "keys": ["erwinia_sage"]})
     user.find(marker="start-run").click()
     await user.should_see("Status: running")
-    await user.should_see("native tool log")
     assert output is not None
+    user.find("Files and provenance").click()
+    user.find(marker="output-file").click()
+    user.find("Console log").click()
+    await user.should_see("native tool log")
+    with output.with_name(output.name + ".console.log").open("a") as stream:
+        stream.write("progress update\n")
+    await user.should_see("progress update", retries=20)
     assert not user.find(marker="start-run").elements.pop().enabled
     (output / "erwinia_sage/experiment.json").write_text(
         json.dumps(
@@ -100,14 +106,16 @@ async def test_launch_monitor_and_download(
     report.parent.mkdir()
     report.write_text(json.dumps({"metrics": {"matched_expected_peptides": 4}}))
     process.poll.return_value = 0
-    await user.should_see("Status: completed", retries=10)
+    await user.should_see("Status: completed", retries=20)
     assert any(
         row.get("id") == "erwinia_sage" and row.get("status") == "completed"
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
     assert user.find(marker="start-run").elements.pop().enabled
-    user.find("Files and provenance").click()
+    user.find(marker="output-file").click()
+    user.find("configuration.json").click()
+    await user.should_see('"experiments"')
     download = Mock()
     monkeypatch.setattr(user.download, "file", download)
     user.find(marker="download-file").click()
@@ -182,6 +190,8 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     await user.open("/")
     user.find("Files and provenance").click()
     await user.should_see("run-level configuration", retries=10)
+    user.find(marker="output-file").click()
+    user.find("Console log").click()
     await user.should_see("run-level console")
     selector = user.find(marker="output-file").elements.pop()
     assert set(selector.options.values()) == {"configuration.json", "Console log"}
@@ -207,6 +217,8 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user.find(marker="file-group").click()
     user.find("Run-level files").click()
     await user.should_see("run-level configuration")
+    user.find(marker="output-file").click()
+    user.find("Console log").click()
     await user.should_see("run-level console")
 
 
@@ -230,6 +242,7 @@ async def test_failed_process_shows_console_error_and_allows_another_run(
     table.trigger("selection", {"added": True, "rows": rows, "keys": ["erwinia_sage"]})
     user.find(marker="start-run").click()
     await user.should_see("Status: failed")
+    user.find("Files and provenance").click()
     await user.should_see("Run failed: missing input")
     assert user.find(marker="start-run").elements.pop().enabled
 

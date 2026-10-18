@@ -18,11 +18,11 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    selected initially; the header checkbox selects all. Click **Run** to execute
    the selection in table order, using the shared cache and a new `results/ui-…/`
    directory.
-3. Watch status, stages and elapsed time. **File group** selects **Run-level files**
-   (configuration and console log) or one experiment's files and logs. Updates
-   arrive about once per second.
-4. Select a saved run and expand **Files and provenance** to preview or download
-   the selected group's outputs. Within an experiment, benchmark reports are under
+3. Watch status, stages and elapsed time. Updates arrive about once per second.
+4. Select a saved run and expand **Files and provenance**. **File group** selects
+   **Run-level files** (configuration and console log) or one experiment's files.
+   Use the single preview/download control for outputs and logs; a selected log
+   updates live. Within an experiment, benchmark reports are under
    `evaluation/`; within run-level files, `configuration.json` contains the run
    configuration snapshot. File names are relative to the selected group.
 
@@ -43,9 +43,9 @@ unfinished runs are shown as **unknown** because the interface cannot confirm th
 process state. Inspect their records and logs before starting more work.
 
 The interface shows stages rather than estimated percentages or completion times.
-Logs are limited to a 32 KiB preview; the complete console log is saved beside the
-run directory as `ui-….console.log`. Native workflow logs remain inside the run.
-File previews show the first 32 KiB of UTF-8 text; binary files remain downloadable.
+The shared preview shows the first 32 KiB of UTF-8 text, or the last 32 KiB for logs.
+The complete console log is saved beside the run directory as `ui-….console.log`.
+Native workflow logs remain inside the run. Binary files remain downloadable.
 JSON, YAML, XML and TOML previews use built-in syntax highlighting, line numbers
 and folding. Other formats, including CSV/TSV, are shown as plain text.
 Execution completion and scientific quality are separate: interpret each

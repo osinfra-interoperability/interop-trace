@@ -11,7 +11,6 @@ from interop_trace.interfaces.web.runs import (
     SavedRun,
     console_log,
     file_preview,
-    log_tail,
 )
 
 
@@ -65,27 +64,18 @@ class _Dashboard:
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
             self.experiments = _table(("id", "status", "stage", "elapsed"))
-            self.file_group = (
-                ui.select({}, label="File group", on_change=self.show_details)
-                .classes("w-full")
-                .mark("file-group")
-            )
-            self.log = ui.select({}, label="Log", on_change=self.show_log).classes(
-                "w-full"
-            )
-            self.log_content = ui.code("", language="text").classes(
-                "w-full max-h-80 overflow-auto"
-            )
-            ui.label("Log preview shows the last 32 KiB.").classes(
-                "text-sm text-gray-600"
-            )
             with ui.expansion("Files and provenance").classes("w-full"):
+                self.file_group = (
+                    ui.select({}, label="File group", on_change=self.show_details)
+                    .classes("w-full")
+                    .mark("file-group")
+                )
                 self.artifact = (
                     ui.select({}, label="Output file", on_change=self.show_file)
                     .classes("w-full")
                     .mark("output-file")
                 )
-                ui.label("Selected file preview (first 32 KiB)")
+                ui.label("Preview: first 32 KiB; logs show the last 32 KiB.")
                 self.artifact_content = ui.codemirror().classes("w-full h-80")
                 self.artifact_content.disable()
                 ui.button(
@@ -194,15 +184,10 @@ class _Dashboard:
             return
         artifacts = {str(p): str(p.relative_to(directory)) for p in files}
         console = console_log(saved.directory)
-        logs = {}
         if group == "." and console.is_file():
             artifacts[str(console)] = "Console log"
-            logs[str(console)] = "Console"
-        logs.update({str(p): artifacts[str(p)] for p in files if p.suffix == ".log"})
         _options(self.artifact, artifacts)
-        _options(self.log, logs)
         await self.show_file()
-        await self.show_log()
 
     async def show_file(self) -> None:
         source = self.artifact.value
@@ -220,16 +205,6 @@ class _Dashboard:
                 ".toml": "TOML",
             }.get(Path(source).suffix.lower())
             self.artifact_content.set_value(text)
-
-    async def show_log(self) -> None:
-        source = self.log.value
-        text = (
-            await run.io_bound(log_tail, Path(source))
-            if source
-            else "No logs in this group."
-        )
-        if self.log.value == source:
-            self.log_content.set_content(text or "Log not available yet.")
 
     def download(self) -> None:
         if self.artifact.value in self.artifact.options:

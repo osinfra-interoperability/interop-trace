@@ -137,6 +137,8 @@ def console_log(directory: Path) -> Path:
 
 def file_preview(path: Path, limit: int = 32_768) -> str:
     """Read a bounded text preview without rendering binary outputs."""
+    if path.suffix.lower() == ".log":
+        return log_tail(path, limit)
     try:
         with path.open("rb") as stream:
             data = stream.read(limit + 1)

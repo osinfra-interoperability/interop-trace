@@ -118,6 +118,7 @@ def test_partial_record_and_large_log_are_safe_to_poll(tmp_path: Path) -> None:
     log.write_bytes(b"x" * 100_000 + b"\nfinished")
     assert log_tail(log, 32).endswith("finished")
     assert len(log_tail(log, 32)) == 32
+    assert file_preview(log, 32) == log_tail(log, 32)
 
 
 def test_history_keeps_the_snapshot_id_for_file_grouping(tmp_path: Path) -> None:

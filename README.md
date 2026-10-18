@@ -20,7 +20,7 @@ This downloads a 12 KB real spectrum, one UniProt protein and a pinned Sage bina
 (about 6.6 MB on Apple silicon). Sage is installed automatically and downloads are
 cached. The expected peptide appears, but does **not** pass the 1% confidence
 threshold: this example checks component integration, not scientific accuracy.
-See [the first experiment](docs/first-experiment.md) for results and an unscored run.
+See [the first experiment](docs/first-experiment.md) for results.
 
 ## Available components
 
@@ -46,7 +46,7 @@ Generated from the registries. See [parameters and scope](docs/components.md).
 - **Developers:** [development guide](docs/developer.md),
   [API reference](docs/reference.md), [documentation builds](docs/documentation.md).
 
-Benchmarking is optional. Runs use new output directories and share downloaded
+Every experiment selects an evaluator. Runs use new output directories and share downloaded
 resources. Components preserve native formats; interoperability failures remain
 visible rather than being silently converted.
 

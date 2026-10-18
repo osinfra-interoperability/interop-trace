@@ -3,7 +3,7 @@
 Test whether bioinformatics datasets, databases, workflows and benchmarks work
 together, and retain evidence when they do not. Proteomics is the first application.
 
-An experiment selects a dataset and database, runs a workflow, and optionally
+An experiment selects a dataset and database, runs a workflow, and
 scores the output against explicit expectations. Native files, provenance and
 execution failures remain available for inspection. Successful execution alone
 does not establish scientific validity.

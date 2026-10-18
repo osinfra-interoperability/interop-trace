@@ -33,10 +33,9 @@ Use the [catalogue](components.md) for parameters. Workflow search settings stay
 in the workflow's native configuration, such as Sage JSON. File paths resolve
 relative to the YAML file declaring them, including paths in component parameters.
 
-Each experiment selects **one** dataset, database and workflow, plus an optional
-benchmark. A dataset can contain several measurements. To skip evaluation, omit
-`benchmark` (or set it to `null`); omit `components.benchmarks` if unused. The
-checked-in `experiments/simple/unscored.yaml` demonstrates this.
+Each experiment selects **one** dataset, database, workflow and benchmark.
+A dataset can contain several measurements. Evaluation is a required step;
+missing or null benchmark selections are rejected before downloads or execution.
 
 ## Run and inspect
 
@@ -57,8 +56,7 @@ no automatic format conversion or expansion into every possible combination.
 The new output directory contains `configuration.json` with the original YAML
 contents. Each experiment has an `experiment.json` recording stages, timestamps,
 status and artifact paths. Provider reports record original download provenance;
-workflow outputs preserve native settings and logs. Evaluated runs include metrics;
-unscored runs record `evaluation.status: not_requested`.
+workflow outputs preserve native settings and logs. Each evaluated run includes metrics and report paths.
 
 On failure, the CLI exits nonzero and records the failed stage. Partial outputs
 remain available and later experiments do not start. Use a new output directory

@@ -257,26 +257,15 @@ def test_cli_executes_run(
         assert record["status"] == "completed"
 
 
-def test_run_without_benchmark_preserves_workflow_results(
-    pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_cli_rejects_missing_benchmark_before_execution(
+    pipeline: Path, tmp_path: Path, http_transport: Mock
 ) -> None:
     document = yaml.safe_load(pipeline.read_text())
-    del document["components"]["benchmarks"]
-    for choice in document["experiments"]:
-        del choice["benchmark"]
+    del document["experiments"][0]["benchmark"]
     pipeline.write_text(yaml.safe_dump(document))
-    evaluator = Mock(side_effect=AssertionError("benchmark was not requested"))
-    monkeypatch.setattr(ProteoBenchDDA, "evaluate", evaluator)
-    output = tmp_path / "unscored"
-    assert run_experiments(
-        load_configuration(pipeline),
-        output_dir=output,
-        cache_dir=tmp_path / "cache",
-    ) == (None, None)
-    evaluator.assert_not_called()
-    for name in ("first", "second"):
-        record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == "completed"
-        assert record["evaluation"] == {"status": "not_requested"}
-        assert (output / name / "workflow/lfq.tsv").is_file()
-        assert not (output / name / "evaluation").exists()
+    output = tmp_path / "invalid"
+    result = CliRunner().invoke(app, ["run", str(pipeline), "--output", str(output)])
+    assert result.exit_code == 1
+    assert "benchmark" in result.output
+    assert not output.exists()
+    http_transport.assert_not_called()

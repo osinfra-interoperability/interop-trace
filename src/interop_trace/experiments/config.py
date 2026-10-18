@@ -28,7 +28,7 @@ class Experiment:
     dataset: DatasetProvider
     database: DatabaseProvider
     workflow: Workflow
-    benchmark: Benchmark | None = None
+    benchmark: Benchmark
 
     def __post_init__(self) -> None:
         if (
@@ -85,12 +85,7 @@ def _read_component_files(
     sources: object, directory: Path
 ) -> tuple[dict[str, tuple[Path, dict[str, Any]]], dict[str, str]]:
     sources = _mapping(sources, "components")
-    _keys(
-        sources,
-        {"datasets", "databases", "workflows"},
-        "components",
-        optional={"benchmarks"},
-    )
+    _keys(sources, {"datasets", "databases", "workflows", "benchmarks"}, "components")
     definitions, contents = {}, {}
     for layer, relative in sources.items():
         if not isinstance(relative, str):
@@ -106,21 +101,7 @@ def _build_experiment(
     choice: object, definitions: dict[str, tuple[Path, dict[str, Any]]]
 ) -> Experiment:
     choice = _mapping(choice, "experiment")
-    _keys(
-        choice,
-        {"id", "dataset", "database", "workflow"},
-        "experiment",
-        optional={"benchmark"},
-    )
-    benchmark = None
-    if choice.get("benchmark") is not None:
-        if "benchmarks" not in definitions:
-            raise ValueError(
-                "An experiment selects a benchmark but no benchmarks file is provided."
-            )
-        benchmark = _build_component(
-            benchmarks, choice["benchmark"], definitions["benchmarks"]
-        )
+    _keys(choice, {"id", "dataset", "database", "workflow", "benchmark"}, "experiment")
     return Experiment(
         id=choice["id"],
         dataset=_build_component(datasets, choice["dataset"], definitions["datasets"]),
@@ -130,7 +111,9 @@ def _build_experiment(
         workflow=_build_component(
             workflows, choice["workflow"], definitions["workflows"]
         ),
-        benchmark=benchmark,
+        benchmark=_build_component(
+            benchmarks, choice["benchmark"], definitions["benchmarks"]
+        ),
     )
 
 

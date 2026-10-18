@@ -50,7 +50,7 @@ Components supply their name, kind and source metadata when fetching.
 `experiments/config.py` loads safe YAML, rejects duplicate keys and resolves
 references through typed registries. Each experiment gets fresh component instances.
 `experiments/runner.py` performs setup, dataset/database preparation, workflow and
-optional evaluation sequentially. It records stages and re-raises failures,
+evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.
 `cli.py` exposes this orchestration and cache commands.
 

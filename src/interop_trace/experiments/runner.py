@@ -20,13 +20,12 @@ def run_experiments(
     *,
     output_dir: Path,
     cache_dir: Path = DEFAULT_CACHE_DIR,
-) -> tuple[EvaluationResult | None, ...]:
+) -> tuple[EvaluationResult, ...]:
     """Run each experiment in a new directory, stopping on the first failure.
 
     Preserve the loaded YAML contents and selected settings before setup. A failed
     experiment retains its reports, logs and failed-stage record; later experiments
     are not started. Downloads share a cache, but workflow results are not reused.
-    Return ``None`` for experiments that did not request benchmarking.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -47,7 +46,7 @@ def run_experiments(
 
 def _run_experiment(
     experiment: Experiment, directory: Path, cache: DownloadCache
-) -> EvaluationResult | None:
+) -> EvaluationResult:
     directory.mkdir()
     path = directory / "experiment.json"
     record: dict[str, Any] = {
@@ -61,8 +60,6 @@ def _run_experiment(
             ("workflow", experiment.workflow),
             ("benchmark", experiment.benchmark),
         ):
-            if component is None:
-                continue
             _stage(path, record, f"setup:{role}")
             if isinstance(component, RequiresSetup):
                 component.setup(cache=cache)
@@ -77,14 +74,11 @@ def _run_experiment(
             dataset, database, output_dir=directory / "workflow"
         )
         record["workflow"] = asdict(result)
-        evaluation = None
-        record["evaluation"] = {"status": "not_requested"}
-        if experiment.benchmark is not None:
-            _stage(path, record, "evaluation")
-            evaluation = experiment.benchmark.evaluate(
-                result, dataset, database, output_dir=directory / "evaluation"
-            )
-            record["evaluation"] = asdict(evaluation)
+        _stage(path, record, "evaluation")
+        evaluation = experiment.benchmark.evaluate(
+            result, dataset, database, output_dir=directory / "evaluation"
+        )
+        record["evaluation"] = asdict(evaluation)
     return evaluation
 
 

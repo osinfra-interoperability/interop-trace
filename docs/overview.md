@@ -6,7 +6,7 @@ formats, software and parameters explicit, then retain native outputs and failur
 records so outcomes can be explained and compared.
 
 The current implementation covers proteomics: HTTP/PRIDE measurements, UniProt
-exports, Sage searches and optional evaluation. The small example establishes a
+exports, Sage searches and evaluation. The small example establishes a
 working combination; it does not certify other datasets, formats or tools.
 Scientific benchmarking requires reference expectations appropriate to the data.
 

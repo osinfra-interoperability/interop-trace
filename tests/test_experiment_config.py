@@ -176,24 +176,18 @@ def test_snapshot_preserves_parsed_text_when_source_changes(
     assert loaded.snapshot["files"][str(configuration)] == original_text
 
 
-@pytest.mark.parametrize("explicit_null", [False, True])
-def test_benchmark_and_its_component_file_are_optional(
-    configuration: Path, explicit_null: bool
+@pytest.mark.parametrize("change", ["omit_benchmark", "null_benchmark", "omit_file"])
+def test_benchmark_is_required_before_setup(
+    configuration: Path, change: str, http_transport: Mock
 ) -> None:
     document = yaml.safe_load(configuration.read_text())
-    del document["components"]["benchmarks"]
-    choice = document["experiments"][0]
-    if explicit_null:
-        choice["benchmark"] = None
+    if change == "omit_benchmark":
+        del document["experiments"][0]["benchmark"]
+    elif change == "null_benchmark":
+        document["experiments"][0]["benchmark"] = None
     else:
-        del choice["benchmark"]
+        del document["components"]["benchmarks"]
     configuration.write_text(yaml.safe_dump(document))
-    assert load_configuration(configuration).experiments[0].benchmark is None
-
-
-def test_selected_benchmark_requires_definitions(configuration: Path) -> None:
-    document = yaml.safe_load(configuration.read_text())
-    del document["components"]["benchmarks"]
-    configuration.write_text(yaml.safe_dump(document))
-    with pytest.raises(ValueError, match="no benchmarks file"):
+    with pytest.raises(ValueError):
         load_configuration(configuration)
+    http_transport.assert_not_called()

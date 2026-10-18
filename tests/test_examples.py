@@ -9,14 +9,12 @@ from typer.testing import CliRunner
 from interop_trace.cli import app
 
 
-@pytest.mark.parametrize("filename", ["run.yaml", "unscored.yaml"])
 def test_simple_configuration_from_another_directory(
-    filename: str,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     http_transport: Mock,
 ) -> None:
-    path = Path(__file__).resolve().parents[1] / "experiments/simple" / filename
+    path = Path(__file__).resolve().parents[1] / "experiments/simple" / "run.yaml"
     monkeypatch.chdir(tmp_path)
     result = CliRunner().invoke(app, ["run", str(path), "--check"])
     assert result.exit_code == 0, result.output

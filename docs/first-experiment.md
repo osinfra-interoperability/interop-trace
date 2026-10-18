@@ -37,15 +37,8 @@ The verified run returned `LQSRPAAPPAPGPGQLTLR` as a rank-one target match, with
 Completion means the components ran together; it does not mean the match passed
 confidence filtering. One spectrum cannot establish search accuracy or FDR control.
 
-To run without any benchmarking:
-
-```bash
-poetry run interop-trace run experiments/simple/unscored.yaml --output results/simple-unscored-001
-```
-
-Its record says `evaluation.status: not_requested`. Both configurations share the
-same component definitions and cached downloads. UniProt is a live query: clearing
-the cache can retrieve a newer release, which is recorded rather than frozen.
+Every experiment requires an evaluator. UniProt is a live query: clearing the
+cache can retrieve a newer release, which is recorded rather than frozen.
 
 ## Sources and scope
 

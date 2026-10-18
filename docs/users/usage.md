@@ -45,5 +45,5 @@ poetry run interop-trace cache clear --directory /path/to/cache
 The cache uses Pooch for transfers and extraction. An ownership marker protects
 unrelated nonempty directories from being used or cleared as caches.
 
-For direct Python use, see the [API reference](reference.md). The experiment
+For direct Python use, see the [API reference](../reference.md). The experiment
 runner coordinates component setup automatically.

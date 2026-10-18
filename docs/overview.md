@@ -13,4 +13,4 @@ Scientific benchmarking requires reference expectations appropriate to the data.
 Experiments execute locally and sequentially. There is no automatic format
 conversion, compatibility matrix, workflow-result reuse or benchmark leaderboard
 submission. Python 3.12+ is required; native workflows have their own platform
-requirements. See [components](components.md) for supported scope.
+requirements. See [components](users/components.md) for supported scope.

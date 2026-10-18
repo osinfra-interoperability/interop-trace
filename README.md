@@ -22,7 +22,7 @@ UniProt database (2.14 MB in the verified run), and a pinned Sage binary
 automatically. All four selected deposited reference peptides were recovered at
 the configured 1% spectrum q-value threshold. This checks interoperability and
 reference-result consistency, not overall search accuracy.
-See [the first experiment](docs/first-experiment.md) for verified sizes and outputs.
+See [the first experiment](docs/users/first-experiment.md) for verified sizes and outputs.
 
 ## Available components
 
@@ -30,20 +30,20 @@ See [the first experiment](docs/first-experiment.md) for verified sizes and outp
 
 | Layer | Component |
 | --- | --- |
-| datasets | [`pride`](docs/components.md#pride) |
-| databases | [`uniprot`](docs/components.md#uniprot) |
-| workflows | [`sage`](docs/components.md#sage) |
-| benchmarks | [`expected_peptides`](docs/components.md#expected-peptides) |
-| benchmarks | [`proteobench_dda`](docs/components.md#proteobench-dda) |
+| datasets | [`pride`](docs/users/components.md#pride) |
+| databases | [`uniprot`](docs/users/components.md#uniprot) |
+| workflows | [`sage`](docs/users/components.md#sage) |
+| benchmarks | [`expected_peptides`](docs/users/components.md#expected-peptides) |
+| benchmarks | [`proteobench_dda`](docs/users/components.md#proteobench-dda) |
 
 <!-- components:end -->
 
-Generated from the registries. See [parameters and scope](docs/components.md).
+Generated from the registries. See [parameters and scope](docs/users/components.md).
 
 ## Documentation
 
-- **Users:** [first experiment](docs/first-experiment.md),
-  [configuration](docs/experiments.md), [CLI and cache](docs/usage.md).
+- **Users:** [first experiment](docs/users/first-experiment.md),
+  [configuration](docs/users/experiments.md), [CLI and cache](docs/users/usage.md).
 - **Developers:** [development guide](docs/developer.md),
   [API reference](docs/reference.md), [documentation builds](docs/documentation.md).
 

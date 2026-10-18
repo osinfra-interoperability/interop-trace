@@ -20,7 +20,7 @@ poetry run zensical build --strict
 Tests run offline with controlled HTTP responses and local subprocess fixtures.
 ProteoBench tests exercise the installed scoring library on synthetic tables; they
 skip without the extra. These tests validate adapters, not scientific performance
-on the published reference measurements. The [first experiment](first-experiment.md)
+on the published reference measurements. The [first experiment](users/first-experiment.md)
 is the separate real-data integration example.
 
 See [CONTRIBUTING.md](https://github.com/thatmariia/interop_trace/blob/main/CONTRIBUTING.md)
@@ -71,7 +71,7 @@ references. Do not infer scientific validity from protocol conformance or exit c
    the component YAML file.
 4. Import/export the implementation in its package's `__init__.py`. Keep optional
    scientific imports inside execution; listing components must remain lightweight.
-5. Document parameters and scope in [components](components.md), and test meaningful
+5. Document parameters and scope in [components](users/components.md), and test meaningful
    success/failure boundaries without network downloads.
 
 The runner uses the protocols, so a new implementation normally needs no runner

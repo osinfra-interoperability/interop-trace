@@ -26,8 +26,8 @@ def update_catalogue(root: Path, *, check: bool = False) -> None:
     """Update only marked README and documentation tables, or check for drift."""
     replacements = []
     for path, detailed, prefix in (
-        (root / "README.md", False, "docs/"),
-        (root / "docs/components.md", True, ""),
+        (root / "README.md", False, "docs/users/"),
+        (root / "docs/users/components.md", True, ""),
     ):
         content = path.read_text(encoding="utf-8")
         if content.count(_START) != 1 or content.count(_END) != 1:

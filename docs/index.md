@@ -10,10 +10,12 @@ does not establish scientific validity.
 
 ## For users
 
-- [Run the first small experiment](first-experiment.md).
-- [Configure combinations and multiple experiments](experiments.md).
-- [Choose components and understand their scope](components.md).
-- [Use the CLI and manage downloads](usage.md).
+Start with the [user guide](users/README.md).
+
+- [Run the first small experiment](users/first-experiment.md).
+- [Configure combinations and multiple experiments](users/experiments.md).
+- [Choose components and understand their scope](users/components.md).
+- [Use the CLI and manage downloads](users/usage.md).
 
 ## For developers
 

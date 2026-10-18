@@ -224,7 +224,16 @@ def test_cli_check_does_not_set_up_components(
 ) -> None:
     output = tmp_path / "not-created"
     result = CliRunner().invoke(
-        app, ["run", str(pipeline), "--check", "--output", str(output)]
+        app,
+        [
+            "run",
+            "--all",
+            "--directory",
+            str(pipeline.parent),
+            "--check",
+            "--output",
+            str(output),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert "2 experiment(s)" in result.output
@@ -235,6 +244,13 @@ def test_cli_check_does_not_set_up_components(
 def test_cli_executes_run(
     pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    document = yaml.safe_load(pipeline.read_text())
+    other = pipeline.with_name("other.yml")
+    other.write_text(
+        yaml.safe_dump({**document, "experiments": document["experiments"][1:]})
+    )
+    document["experiments"] = document["experiments"][:1]
+    pipeline.write_text(yaml.safe_dump(document))
     monkeypatch.setattr(
         ProteoBenchDDA, "evaluate", lambda *a, **k: EvaluationResult({"test_metric": 1})
     )
@@ -243,7 +259,10 @@ def test_cli_executes_run(
         app,
         [
             "run",
-            str(pipeline),
+            "second",
+            "first",
+            "--directory",
+            str(pipeline.parent),
             "--output",
             str(output),
             "--cache-directory",
@@ -252,6 +271,9 @@ def test_cli_executes_run(
     )
     assert result.exit_code == 0, result.output
     assert "Completed 2 experiment(s)" in result.output
+    snapshot = json.loads((output / "configuration.json").read_text())
+    assert [choice["id"] for choice in snapshot["experiments"]] == ["second", "first"]
+    assert snapshot["sources"] == [str(other), str(pipeline)]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
         assert record["status"] == "completed"
@@ -264,8 +286,43 @@ def test_cli_rejects_missing_benchmark_before_execution(
     del document["experiments"][0]["benchmark"]
     pipeline.write_text(yaml.safe_dump(document))
     output = tmp_path / "invalid"
-    result = CliRunner().invoke(app, ["run", str(pipeline), "--output", str(output)])
+    result = CliRunner().invoke(
+        app,
+        ["run", "first", "--directory", str(pipeline.parent), "--output", str(output)],
+    )
     assert result.exit_code == 1
     assert "benchmark" in result.output
     assert not output.exists()
+    http_transport.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "arguments, message",
+    [
+        ([], "Provide experiment IDs or --all"),
+        (["first", "--all"], "Provide experiment IDs or --all"),
+        (["missing"], "Unknown experiment IDs"),
+        (["first", "first"], "unique experiment IDs"),
+    ],
+)
+def test_cli_rejects_invalid_selections_without_execution(
+    pipeline: Path, arguments: list[str], message: str, http_transport: Mock
+) -> None:
+    result = CliRunner().invoke(
+        app, ["run", *arguments, "--directory", str(pipeline.parent), "--check"]
+    )
+    assert result.exit_code != 0
+    assert message in result.output
+    http_transport.assert_not_called()
+
+
+def test_cli_lists_available_ids_without_setup(
+    pipeline: Path, http_transport: Mock
+) -> None:
+    result = CliRunner().invoke(
+        app, ["experiments", "--directory", str(pipeline.parent)]
+    )
+    assert result.exit_code == 0, result.output
+    assert "first | run.yaml" in result.output
+    assert "second | run.yaml" in result.output
     http_transport.assert_not_called()

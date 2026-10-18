@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -19,30 +20,31 @@ from interop_trace.interfaces.web.runs import (
 def test_launch_validates_and_allows_only_one_process(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    source = tmp_path / "experiments/runs/example.yaml"
+    source = tmp_path / "experiments/example.yaml"
     source.parent.mkdir(parents=True)
     source.write_text("an invalid configuration")
     browser = RunBrowser(tmp_path)
     popen = Mock()
     monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", popen)
     with pytest.raises(ValueError):
-        browser.start(source)
+        browser.start(["first"])
     popen.assert_not_called()
     assert not (tmp_path / "results").exists()
 
-    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_configuration", Mock())
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_experiments", Mock())
     process = popen.return_value
     process.poll.return_value = None
-    output = browser.start(source)
+    output = browser.start(["first"])
     arguments, options = popen.call_args
     assert arguments[0][1:4] == ["-m", "interop_trace", "run"]
-    assert str(source) in arguments[0] and str(output) in arguments[0]
+    assert arguments[0][4] == "first"
+    assert str(source.parent) in arguments[0] and str(output) in arguments[0]
     assert options["cwd"] == tmp_path
     assert options["env"]["PYTHONUNBUFFERED"] == "1"
     assert console_log(output).is_file()
     assert not output.exists()  # The existing runner creates its own directory.
     with pytest.raises(RuntimeError, match="already active"):
-        browser.start(source)
+        browser.start(["first"])
     assert popen.call_count == 1
     assert browser.history()[0].status == "running"
     process.poll.return_value = 1
@@ -50,28 +52,29 @@ def test_launch_validates_and_allows_only_one_process(
     assert not browser.active
 
 
-def test_configuration_must_belong_to_the_checkout(tmp_path: Path) -> None:
-    outside = tmp_path / "other.yaml"
-    outside.write_text("anything")
-    with pytest.raises(ValueError, match="experiments/runs"):
-        RunBrowser(tmp_path).start(outside)
+def test_unknown_ids_fail_before_creating_outputs(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[1] / "experiments"
+    shutil.copytree(source, tmp_path / "experiments")
+    with pytest.raises(ValueError, match="Unknown experiment IDs"):
+        RunBrowser(tmp_path).start(["missing"])
+    assert not (tmp_path / "results").exists()
 
 
 def test_early_failures_remain_visible_after_later_launches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    source = tmp_path / "experiments/runs/example.yaml"
+    source = tmp_path / "experiments/example.yaml"
     source.parent.mkdir(parents=True)
     source.write_text("validated below")
-    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_configuration", Mock())
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_experiments", Mock())
     process = Mock()
     process.poll.return_value = 1
     monkeypatch.setattr(
         "interop_trace.interfaces.web.runs.subprocess.Popen", Mock(return_value=process)
     )
     browser = RunBrowser(tmp_path)
-    browser.start(source)
-    browser.start(source)
+    browser.start(["first"])
+    browser.start(["first"])
     assert [run.status for run in browser.history()] == ["failed", "failed"]
 
 

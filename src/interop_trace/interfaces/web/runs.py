@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,7 +13,7 @@ from threading import Lock
 from typing import Any
 from uuid import uuid4
 
-from interop_trace.experiments import load_configuration
+from interop_trace.experiments import load_experiments
 
 
 @dataclass(frozen=True)
@@ -39,20 +40,13 @@ class RunBrowser:
             process.poll() is None for process in tuple(self._processes.values())
         )
 
-    def configurations(self) -> list[Path]:
-        """Find checked-in run configurations without constructing components."""
-        source = self.directory / "experiments/runs"
-        return sorted({*source.rglob("*.yaml"), *source.rglob("*.yml")})
-
-    def start(self, configuration: Path) -> Path:
+    def start(self, ids: Sequence[str]) -> Path:
         """Validate, then launch a single CLI process with a durable console log."""
         with self._lock:
             if self.active:
                 raise RuntimeError("A run is already active in this interface.")
-            configuration = configuration.resolve()
-            if configuration not in self.configurations():
-                raise ValueError("Choose a configuration from experiments/runs/.")
-            load_configuration(configuration)
+            source = self.directory / "experiments"
+            load_experiments(source, ids)
             name = (
                 datetime.now(UTC).strftime("ui-%Y%m%dT%H%M%S") + f"-{uuid4().hex[:8]}"
             )
@@ -65,7 +59,9 @@ class RunBrowser:
                         "-m",
                         "interop_trace",
                         "run",
-                        str(configuration),
+                        *ids,
+                        "--directory",
+                        str(source),
                         "--output",
                         str(output),
                     ],

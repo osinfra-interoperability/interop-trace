@@ -5,7 +5,7 @@ from pathlib import Path
 
 from nicegui import run, ui
 
-from interop_trace.experiments import load_configuration
+from interop_trace.experiments import load_experiments
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
     SavedRun,
@@ -41,23 +41,14 @@ class _Dashboard:
     def _launcher(self) -> None:
         with ui.card().classes("w-full"):
             ui.label("Start a run").classes("text-xl font-medium")
-            options = {
-                str(path): str(
-                    path.relative_to(self.browser.directory / "experiments/runs")
-                )
-                for path in self.browser.configurations()
-            }
-            self.configuration = ui.select(
-                options,
-                label="Run configuration",
-                value=next(iter(options), None),
-                on_change=self.preview,
-            ).classes("w-full")
+            ui.label("Choose experiments; use the header checkbox to select all.")
             self.problem = ui.label().classes("text-red-700")
             self.summary = ui.label()
             self.choices = _table(
-                ("id", "dataset", "database", "workflow", "benchmark")
+                ("id", "source", "dataset", "database", "workflow", "benchmark")
             )
+            self.choices.set_selection("multiple").on_select(self._selection_changed)
+            self.choices.mark("experiment-choices")
             self.start_button = ui.button(
                 "Run", on_click=self.start, icon="play_arrow"
             ).mark("start-run")
@@ -102,22 +93,30 @@ class _Dashboard:
 
     async def preview(self) -> None:
         self.problem.set_text("")
-        self.summary.set_text("")
         self.choices.rows = []
-        source = self.configuration.value
+        self.choices.selected = []
         try:
-            if not source:
-                raise ValueError("No configurations found in experiments/runs/.")
-            configuration = await run.io_bound(load_configuration, Path(source))
-            if configuration is None or self.configuration.value != source:
+            configuration = await run.io_bound(
+                load_experiments, self.browser.directory / "experiments"
+            )
+            if configuration is None:
                 return
-            self.choices.rows = configuration.snapshot["experiments"]
-            self.summary.set_text(f"Experiments: {len(self.choices.rows)}")
+            self.choices.rows = [
+                {**choice, "source": Path(choice["source"]).name}
+                for choice in configuration.snapshot["experiments"]
+            ]
         except Exception as error:
             self.problem.set_text(str(error))
         self.choices.update()
+        self._selection_changed()
+
+    def _selection_changed(self) -> None:
+        self.summary.set_text(
+            f"Selected: {len(self.choices.selected)} "
+            f"of {len(self.choices.rows)} experiments"
+        )
         self.start_button.set_enabled(
-            bool(self.choices.rows) and not self.browser.active
+            bool(self.choices.selected) and not self.browser.active
         )
 
     async def start(self) -> None:
@@ -125,7 +124,8 @@ class _Dashboard:
         output = None
         try:
             output = await run.io_bound(
-                self.browser.start, Path(self.configuration.value)
+                self.browser.start,
+                [r["id"] for r in self.choices.rows if r in self.choices.selected],
             )
         except Exception as error:
             ui.notify(str(error), type="negative")
@@ -144,9 +144,7 @@ class _Dashboard:
             key: f"{r.directory.name} · {r.status}" for key, r in self.runs.items()
         }
         _options(self.selection, options)
-        self.start_button.set_enabled(
-            bool(self.choices.rows) and not self.browser.active
-        )
+        self._selection_changed()
         await self.show_details()
 
     async def show_details(self) -> None:

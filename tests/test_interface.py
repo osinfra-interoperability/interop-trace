@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from interop_trace.interfaces.cli import app
@@ -69,13 +70,17 @@ async def test_launch_monitor_and_download(
     (previous / "configuration.json").write_text('{"experiments": []}')
     _page(checkout)
     await user.open("/")
-    await user.should_see("Experiments: 1", retries=10)
+    await user.should_see("Selected: 0 of 1 experiments", retries=10)
     assert any(
         row.get("database") == "erwinia_and_spikes"
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
     await user.should_see("Status: unknown")
+    assert not user.find(marker="start-run").elements.pop().enabled
+    table = user.find(marker="experiment-choices")
+    rows = table.elements.copy().pop().rows
+    table.trigger("selection", {"added": True, "rows": rows, "keys": ["erwinia_sage"]})
     user.find(marker="start-run").click()
     await user.should_see("Status: running")
     await user.should_see("native tool log")
@@ -112,7 +117,7 @@ async def test_empty_checkout_keeps_run_disabled(
 ) -> None:
     _page(tmp_path)
     await user.open("/")
-    await user.should_see("No configurations found")
+    await user.should_see("No experiments found")
     assert not user.find(marker="start-run").elements.pop().enabled
 
 
@@ -154,11 +159,43 @@ async def test_failed_process_shows_console_error_and_allows_another_run(
     monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", fail)
     _page(checkout)
     await user.open("/")
-    await user.should_see("Experiments: 1", retries=10)
+    await user.should_see("Selected: 0 of 1 experiments", retries=10)
+    table = user.find(marker="experiment-choices")
+    rows = table.elements.copy().pop().rows
+    table.trigger("selection", {"added": True, "rows": rows, "keys": ["erwinia_sage"]})
     user.find(marker="start-run").click()
     await user.should_see("Status: failed")
     await user.should_see("Run failed: missing input")
     assert user.find(marker="start-run").elements.pop().enabled
+
+
+async def test_checkboxes_select_ids_across_files(
+    user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
+) -> None:
+    source = checkout / "experiments/simple.yaml"
+    document = yaml.safe_load(source.read_text())
+    document["experiments"] = [
+        {**document["experiments"][0], "id": name} for name in ("another", "third")
+    ]
+    (source.parent / "other.yml").write_text(yaml.safe_dump(document))
+    process = Mock()
+    process.poll.return_value = 1
+    launch = Mock(return_value=process)
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", launch)
+    _page(checkout)
+    await user.open("/")
+    await user.should_see("Selected: 0 of 3 experiments", retries=10)
+    table = user.find(marker="experiment-choices")
+    rows = [r for r in table.elements.copy().pop().rows if r["id"] != "third"]
+    table.trigger(
+        "selection", {"added": True, "rows": rows, "keys": [r["id"] for r in rows]}
+    )
+    await user.should_see("Selected: 2 of 3 experiments")
+    user.find(marker="start-run").click()
+    await user.should_see("Status: failed", retries=10)
+    command = launch.call_args.args[0]
+    assert command[4 : command.index("--directory")] == ["another", "erwinia_sage"]
+    http_transport.assert_not_called()
 
 
 def test_cli_passes_directory_and_port(

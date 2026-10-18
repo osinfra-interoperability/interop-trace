@@ -27,7 +27,7 @@ proteobench = ["proteobench (==0.18.6)"]
 ui = ["nicegui (>=3.18,<4) ; python_version < \"4\""]
 
 [project.scripts]
-"interop-trace" = "interop_trace.cli:main"
+"interop-trace" = "interop_trace.interfaces.cli:main"
 
 [project.urls]
 "Source Code" = "https://github.com/osinfra-interoperability/interop-trace"

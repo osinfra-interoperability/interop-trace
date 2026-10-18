@@ -6,8 +6,8 @@ from unittest.mock import Mock
 import pytest
 from typer.testing import CliRunner
 
-from interop_trace.cli import app
 from interop_trace.experiments import load_configuration
+from interop_trace.interfaces.cli import app
 from interop_trace.workflows import SageWorkflow
 
 

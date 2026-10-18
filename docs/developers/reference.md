@@ -15,7 +15,7 @@ Python >=3.12.
 
 ::: interop_trace
 
-::: interop_trace.cli
+::: interop_trace.interfaces.cli
 
 ## Setup and registration
 

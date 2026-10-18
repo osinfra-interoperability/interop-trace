@@ -52,7 +52,7 @@ references through typed registries. Each experiment gets fresh component instan
 `experiments/runner.py` performs setup, dataset/database preparation, workflow and
 evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.
-`cli.py` exposes this orchestration and cache commands.
+`interfaces/cli.py` exposes this orchestration and cache commands.
 
 `interface.py` adds an optional NiceGUI page. `run_browser.py` launches the same CLI
 in a subprocess and reads existing output records; it has no NiceGUI dependency.

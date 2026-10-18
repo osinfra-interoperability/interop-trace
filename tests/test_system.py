@@ -6,7 +6,7 @@ import sys
 
 from typer.testing import CliRunner
 
-from interop_trace.cli import app
+from interop_trace.interfaces.cli import app
 
 
 def test_module_entry_point_shows_help():

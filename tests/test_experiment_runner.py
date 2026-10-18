@@ -14,9 +14,9 @@ import yaml
 from requests import Response
 from typer.testing import CliRunner
 
-from interop_trace.cli import app
 from interop_trace.evaluation import EvaluationResult, ProteoBenchDDA
 from interop_trace.experiments import load_configuration, run_experiments
+from interop_trace.interfaces.cli import app
 from interop_trace.workflows import SageWorkflow
 
 

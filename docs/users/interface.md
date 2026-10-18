@@ -18,7 +18,8 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    using the shared cache and a new `results/ui-…/` directory.
 3. Watch status, stages, elapsed time and logs. Updates arrive about once per second.
 4. Select a saved run to inspect benchmark metrics. Expand **Files and provenance**
-   to inspect the configuration snapshot or download an output file.
+   and select an output file to preview its text or download it. The run
+   configuration snapshot is displayed separately below.
 
 The [first experiment](first-experiment.md) is a small, verified starting point.
 ProteoBench configurations also need its extra:
@@ -39,6 +40,7 @@ process state. Inspect their records and logs before starting more work.
 The interface shows stages rather than estimated percentages or completion times.
 Logs are limited to a 32 KiB preview; the complete console log is saved beside the
 run directory as `ui-….console.log`. Native workflow logs remain inside the run.
+File previews show the first 32 KiB of UTF-8 text; binary files remain downloadable.
 Execution completion and scientific quality are separate: interpret each
 benchmark's [scope and metrics](components.md).
 

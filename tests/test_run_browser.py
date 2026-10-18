@@ -10,6 +10,7 @@ import pytest
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
     console_log,
+    file_preview,
     log_tail,
     read_record,
 )
@@ -126,3 +127,28 @@ def test_history_orders_by_time_rather_than_name(tmp_path: Path) -> None:
         "a-new",
         "z-old",
     ]
+
+
+def test_file_preview_bounds_large_text_and_handles_split_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "results.tsv"
+    path.write_text("protein\tscore\n" + "a" * 100_000, encoding="utf-8")
+    preview = file_preview(path, 32)
+    assert preview.startswith("protein\tscore\n" + "a" * 18)
+    assert "Preview truncated" in preview
+    assert len(preview) < 100
+    path.write_text("café", encoding="utf-8")
+    assert file_preview(path, 4).startswith("caf\n\n[Preview truncated")
+
+
+@pytest.mark.parametrize("content", [b"\x00\x01binary", b"\xff\xfebinary"])
+def test_file_preview_explains_binary_files(tmp_path: Path, content: bytes) -> None:
+    path = tmp_path / "output.bin"
+    path.write_bytes(content)
+    assert "use Download file" in file_preview(path)
+
+
+def test_file_preview_handles_empty_and_missing_files(tmp_path: Path) -> None:
+    path = tmp_path / "output.txt"
+    assert file_preview(path) == "File not available."
+    path.touch()
+    assert file_preview(path) == "Empty file."

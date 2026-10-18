@@ -1,5 +1,6 @@
 """Launch the existing CLI and inspect its files without a UI dependency."""
 
+import codecs
 import json
 import os
 import subprocess
@@ -137,6 +138,27 @@ def read_record(path: Path) -> dict[str, Any]:
 
 def console_log(directory: Path) -> Path:
     return directory.with_name(directory.name + ".console.log")
+
+
+def file_preview(path: Path, limit: int = 32_768) -> str:
+    """Read a bounded text preview without rendering binary outputs."""
+    try:
+        with path.open("rb") as stream:
+            data = stream.read(limit + 1)
+    except OSError:
+        return "File not available."
+    if b"\x00" in data:
+        return "Binary file: use Download file to inspect it."
+    truncated = len(data) > limit
+    try:
+        text = codecs.getincrementaldecoder("utf-8")().decode(
+            data[:limit], final=not truncated
+        )
+    except UnicodeDecodeError:
+        return "Binary or non-UTF-8 file: use Download file to inspect it."
+    if truncated:
+        text += "\n\n[Preview truncated; download the complete file.]"
+    return text or "Empty file."
 
 
 def log_tail(path: Path, limit: int = 32_768) -> str:

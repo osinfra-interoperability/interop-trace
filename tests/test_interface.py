@@ -112,6 +112,30 @@ async def test_empty_checkout_keeps_run_disabled(
     assert not user.find(marker="start-run").elements.pop().enabled
 
 
+async def test_selecting_an_output_displays_its_content(user, checkout: Path) -> None:
+    directory = checkout / "results/example"
+    directory.mkdir(parents=True)
+    snapshot = '{"experiments": [], "reference": "original configuration"}'
+    (directory / "configuration.json").write_text(snapshot)
+    (directory / "results.tsv").write_text("protein\tscore\nP00924\t42")
+    (directory / "binary.bin").write_bytes(b"\x00\x01binary")
+    _page(checkout)
+    await user.open("/")
+    user.find("Files and provenance").click()
+    await user.should_see("original configuration", retries=10)
+    user.find(marker="output-file").click()
+    user.find("results.tsv").click()
+    await user.should_see("P00924\t42")
+    await user.should_see("original configuration")
+    user.find(marker="output-file").click()
+    user.find("binary.bin").click()
+    await user.should_see("Binary file: use Download file to inspect it.")
+    await user.should_not_see("P00924\t42")
+    user.find(marker="output-file").click()
+    user.find("results.tsv").click()
+    await user.should_see("P00924\t42")
+
+
 async def test_failed_process_shows_console_error_and_allows_another_run(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

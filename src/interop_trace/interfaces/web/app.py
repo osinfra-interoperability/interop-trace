@@ -11,6 +11,7 @@ from interop_trace.interfaces.web.runs import (
     RunBrowser,
     SavedRun,
     console_log,
+    file_preview,
     log_tail,
 )
 
@@ -87,10 +88,19 @@ class _Dashboard:
                 "text-sm text-gray-600"
             )
             with ui.expansion("Files and provenance").classes("w-full"):
-                self.artifact = ui.select({}, label="Output file").classes("w-full")
+                self.artifact = (
+                    ui.select({}, label="Output file", on_change=self.show_file)
+                    .classes("w-full")
+                    .mark("output-file")
+                )
+                ui.label("Selected file preview (first 32 KiB)")
+                self.artifact_content = ui.code("", language="text").classes(
+                    "w-full max-h-80 overflow-auto"
+                )
                 ui.button(
                     "Download file", on_click=self.download, icon="download"
                 ).mark("download-file")
+                ui.label("Run configuration snapshot")
                 self.provenance = ui.code("{}", language="json").classes("w-full")
 
     async def preview(self) -> None:
@@ -199,7 +209,17 @@ class _Dashboard:
         logs.update({str(p): artifacts[str(p)] for p in files if p.suffix == ".log"})
         _options(self.log, logs)
         self.provenance.set_content(json.dumps(saved.configuration, indent=2))
+        await self.show_file()
         await self.show_log()
+
+    async def show_file(self) -> None:
+        source = self.artifact.value
+        if source not in self.artifact.options:
+            self.artifact_content.set_content("No output file selected.")
+            return
+        text = await run.io_bound(file_preview, Path(source))
+        if text is not None and self.artifact.value == source:
+            self.artifact_content.set_content(text)
 
     async def show_log(self) -> None:
         text = (

@@ -43,6 +43,8 @@ The interface shows stages rather than estimated percentages or completion times
 Logs are limited to a 32 KiB preview; the complete console log is saved beside the
 run directory as `ui-….console.log`. Native workflow logs remain inside the run.
 File previews show the first 32 KiB of UTF-8 text; binary files remain downloadable.
+JSON, YAML, XML and TOML previews use built-in syntax highlighting, line numbers
+and folding. Other formats, including CSV/TSV, are shown as plain text.
 Execution completion and scientific quality are separate: interpret each
 benchmark's [scope and metrics](components.md).
 

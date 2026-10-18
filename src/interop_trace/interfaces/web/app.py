@@ -81,9 +81,8 @@ class _Dashboard:
                     .mark("output-file")
                 )
                 ui.label("Selected file preview (first 32 KiB)")
-                self.artifact_content = ui.code("", language="text").classes(
-                    "w-full max-h-80 overflow-auto"
-                )
+                self.artifact_content = ui.codemirror().classes("w-full h-80")
+                self.artifact_content.disable()
                 ui.button(
                     "Download file", on_click=self.download, icon="download"
                 ).mark("download-file")
@@ -185,11 +184,18 @@ class _Dashboard:
     async def show_file(self) -> None:
         source = self.artifact.value
         if source not in self.artifact.options:
-            self.artifact_content.set_content("No output file selected.")
+            self.artifact_content.set_value("No output file selected.")
             return
         text = await run.io_bound(file_preview, Path(source))
         if text is not None and self.artifact.value == source:
-            self.artifact_content.set_content(text)
+            self.artifact_content.props["language"] = {
+                ".json": "JSON",
+                ".yaml": "YAML",
+                ".yml": "YAML",
+                ".xml": "XML",
+                ".toml": "TOML",
+            }.get(Path(source).suffix.lower())
+            self.artifact_content.set_value(text)
 
     async def show_log(self) -> None:
         text = (

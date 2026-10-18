@@ -140,9 +140,12 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     await user.open("/")
     user.find("Files and provenance").click()
     await user.should_see("original configuration", retries=10)
+    viewer = user.find(nicegui.ui.codemirror).elements.pop()
+    assert viewer.language == "JSON" and not viewer.enabled
     user.find(marker="output-file").click()
     user.find("results.tsv").click()
     await user.should_see("P00924\t42")
+    assert viewer.language is None
     await user.should_not_see("original configuration")
     user.find(marker="output-file").click()
     user.find("output.bin").click()
@@ -151,6 +154,7 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     user.find(marker="output-file").click()
     user.find("configuration.json").click()
     await user.should_see("original configuration")
+    assert viewer.language == "JSON"
 
 
 async def test_failed_process_shows_console_error_and_allows_another_run(

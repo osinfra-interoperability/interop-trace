@@ -42,10 +42,10 @@ Generated from the registries. See [parameters and scope](docs/users/components.
 
 ## Documentation
 
-- **Users:** [first experiment](docs/users/first-experiment.md),
+- **[Users](docs/users/README.md):** [first experiment](docs/users/first-experiment.md),
   [configuration](docs/users/experiments.md), [CLI and cache](docs/users/usage.md).
-- **Developers:** [development guide](docs/developer.md),
-  [API reference](docs/reference.md), [documentation builds](docs/documentation.md).
+- **[Developers](docs/developers/README.md):** [development guide](docs/developers/developer.md),
+  [API reference](docs/developers/reference.md), [documentation builds](docs/developers/documentation.md).
 
 Every experiment selects an evaluator. Runs use new output directories and share
 downloaded resources. Components preserve native formats; interoperability failures remain
@@ -58,7 +58,7 @@ poetry install --all-extras
 poetry run pre-commit install
 ```
 
-See [the developer guide](docs/developer.md) for checks and
+See [the developer guide](docs/developers/developer.md) for checks and
 [CONTRIBUTING.md](CONTRIBUTING.md) for review policy.
 
 ## Citation and license

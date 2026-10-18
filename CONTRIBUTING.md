@@ -16,7 +16,7 @@ issue before implementation.
 
 ## Setup and validation
 
-See the [developer guide](docs/developer.md) for Poetry setup, offline tests,
+See the [developer guide](docs/developers/developer.md) for Poetry setup, offline tests,
 pre-commit hooks, generated component tables and documentation checks.
 All required CI checks must pass on the latest commit before merging.
 

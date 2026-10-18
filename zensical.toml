@@ -16,14 +16,16 @@ nav = [
     { "CLI and downloads" = "users/usage.md" },
   ] },
   { "Developers" = [
-    { "Development guide" = "developer.md" },
-    { "Python API" = "reference.md" },
-    { "Documentation builds" = "documentation.md" },
+    { "Start here" = "developers/README.md" },
+    { "Development guide" = "developers/developer.md" },
+    { "Python API" = "developers/reference.md" },
+    { "Documentation builds" = "developers/documentation.md" },
   ] },
   { "Project" = [
-    { "Scope" = "overview.md" },
-    { "Releases" = "release.md" },
-    { "License" = "legal.md" },
+    { "Start here" = "project/README.md" },
+    { "Scope" = "project/overview.md" },
+    { "Releases" = "project/release.md" },
+    { "License" = "project/legal.md" },
   ] },
 ]
 

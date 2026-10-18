@@ -79,6 +79,12 @@ def test_run_passes_inputs_and_collects_native_files(
     assert args[-2:] == [str(path) for path in dataset.files]
     assert record["cwd"] == str(configuration.parent)
     assert record["threads"] == "3"
+    saved_command = json.loads(result.files["sage.command.json"].read_text())
+    assert saved_command["command"] == [str(workflow.executable), *args]
+    assert saved_command["cwd"] == record["cwd"]
+    assert saved_command["environment"] == {"RAYON_NUM_THREADS": record["threads"]}
+    version_command = json.loads(result.files["version.command.json"].read_text())
+    assert version_command["command"] == [str(workflow.executable), "--version"]
     assert "--disable-telemetry-i-dont-want-to-improve-sage" in args
     assert result.format == "sage"
     assert result.files["results.json"].is_absolute()
@@ -126,6 +132,9 @@ def test_failure_preserves_log(
     assert error.value.returncode == 7
     assert "sage stderr" in (output / "sage.log").read_text()
     assert (output / "sage-settings.json").read_bytes() == configuration.read_bytes()
+    assert json.loads((output / "sage.command.json").read_text())["command"][1] == str(
+        output / "sage-settings.json"
+    )
 
 
 def test_existing_results_are_preserved(

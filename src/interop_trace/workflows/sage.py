@@ -1,5 +1,6 @@
 """Run the Sage command-line tool with its native JSON configuration."""
 
+import json
 import os
 import platform
 import shutil
@@ -155,11 +156,20 @@ class SageWorkflow:
         ]
 
     def _execute(self, command: list[str], log_path: Path, cwd: Path) -> None:
+        environment = {"RAYON_NUM_THREADS": str(self.threads)}
+        log_path.with_suffix(".command.json").write_text(
+            json.dumps(
+                {"command": command, "cwd": str(cwd), "environment": environment},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         with log_path.open("w") as log:
             subprocess.run(
                 command,
                 cwd=cwd,
-                env={**os.environ, "RAYON_NUM_THREADS": str(self.threads)},
+                env={**os.environ, **environment},
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 check=True,

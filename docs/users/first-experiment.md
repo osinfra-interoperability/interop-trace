@@ -75,10 +75,20 @@ Under the selected output directory:
 | `configuration.json` | Original YAML, component choices and package version |
 | `erwinia_sage/dataset/pride.json` | PRIDE catalogue, selected source and download record |
 | `erwinia_sage/database/uniprot.json` | Query, release and retrieval time |
+| `erwinia_sage/workflow/sage-settings.json` | Exact input settings copy executed by Sage |
+| `erwinia_sage/workflow/sage.command.json` | Command arguments, working directory and thread override |
+| `erwinia_sage/workflow/results.json` | Sage's effective settings, including defaults and input overrides |
+| `erwinia_sage/workflow/version.txt` | Version reported by the actual executable |
 | `erwinia_sage/workflow/sage.log` | Native log and warnings |
 | `erwinia_sage/workflow/results.sage.tsv` | Native peptide-spectrum matches |
 | `erwinia_sage/evaluation/expected_peptides.json` | Reference recovery and threshold |
 | `erwinia_sage/experiment.json` | Execution status, artifact paths and metrics |
+
+New runs save the input snapshot and command records; older runs retain only
+the files recorded at the time. Inputs remain in the shared cache rather than
+being duplicated under results. The run is therefore not a self-contained archive:
+clearing the cache removes its inputs. Locally computed content hashes, the code
+revision and a complete dependency/environment snapshot are not currently recorded.
 
 See [configuration](experiments.md) for other combinations and
 [components](components.md) for parameter scope.

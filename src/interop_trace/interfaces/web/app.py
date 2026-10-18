@@ -16,6 +16,10 @@ from interop_trace.interfaces.web.runs import (
 
 def serve(directory: Path, port: int = 8080) -> None:
     """Serve one shared launcher on localhost; page selections remain per-tab."""
+    ui.select.default_props("dense options-dense")
+    ui.table.default_props("dense")
+    ui.expansion.default_props("dense")
+    ui.card.default_classes("p-3 gap-2")
     browser = RunBrowser(directory)
 
     @ui.page("/")

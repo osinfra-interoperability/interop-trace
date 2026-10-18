@@ -1,10 +1,12 @@
 # Configure experiments
 
-Reusable component YAML files hold implementation settings. A run YAML file
-selects named definitions. Reuse profiles across run files in this layout:
+Experiment YAML files live directly in `experiments/`. Each file can contain
+one or several experiments; files organize related work, while IDs select what
+to execute. Component YAML files hold reusable settings:
 
 ```text
 experiments/
+  simple.yaml
   components/
     datasets.yaml
     databases.yaml
@@ -13,18 +15,16 @@ experiments/
   settings/
     sage/
       erwinia_tmt.json
-  runs/
-    simple.yaml
 ```
 
-`runs/simple.yaml` selects profiles from the shared component files:
+`simple.yaml` selects profiles from the shared component files:
 
 ```yaml
 components:
-  datasets: ../components/datasets.yaml
-  databases: ../components/databases.yaml
-  workflows: ../components/workflows.yaml
-  benchmarks: ../components/benchmarks.yaml
+  datasets: components/datasets.yaml
+  databases: components/databases.yaml
+  workflows: components/workflows.yaml
+  benchmarks: components/benchmarks.yaml
 
 experiments:
   - id: erwinia_sage
@@ -36,8 +36,8 @@ experiments:
 
 Profile names identify a particular set of settings; `type` selects the registered
 implementation. For example, `sage_erwinia_tmt` uses `type: sage`. Add another named
-profile for different search settings, then reference it from another experiment
-or run file. Shared profiles are edited once and reused without copying files.
+profile for different search settings, then reference it from experiments in any
+file. Shared profiles are edited once and reused without copying files.
 
 Each component definition has a registered `type` and implementation-specific
 `parameters`. For example, the database file contains:
@@ -63,21 +63,35 @@ missing or null benchmark selections are rejected before downloads or execution.
 ## Run and inspect
 
 ```bash
-poetry run interop-trace run experiments/runs/simple.yaml --check
-poetry run interop-trace run experiments/runs/simple.yaml --output results/run-001
+poetry run interop-trace experiments
+poetry run interop-trace run erwinia_sage --check
+poetry run interop-trace run erwinia_sage --output results/run-001
+poetry run interop-trace run --all --check
 ```
 
-`--check` validates YAML, names and constructor parameters. It does not download,
-check remote availability, validate native tool settings or load optional scorers.
+Pass several IDs after `run` to combine experiments from different files. IDs
+must be unique across all files; unknown or repeated selections are rejected.
+Use `--all` to run every discovered experiment, including any large reference
+experiments you have added. Provide IDs or `--all`, never both.
 
-Append explicit entries with unique `id` values to run multiple combinations.
-The runner constructs all selected components before setup, then executes
-experiments sequentially. Downloads are shared; workflow results are separate.
+Discovery reads only immediate `*.yaml` and `*.yml` files, in filename order.
+It does not descend into `components/` or `settings/`. For another collection,
+pass `--directory /path/to/experiments` to `run` or `experiments`.
+
+The complete catalogue is validated before selection. `--check` validates YAML,
+names and constructor parameters without downloads, remote availability checks,
+native-tool validation or importing optional scorers.
+
+The runner executes the selected experiments sequentially, in CLI argument order.
+For `--all`, it uses filename order and each file's experiment order. Downloads
+are shared; workflow results are separate.
 Choose combinations whose data and result formats suit their consumers; there is
 no automatic format conversion or expansion into every possible combination.
 
-The new output directory contains `configuration.json` with the original YAML
-contents. Each experiment has an `experiment.json` recording stages, timestamps,
+The new output directory contains `configuration.json` with selected IDs,
+source paths and the original experiment/component YAML contents. Only files
+referenced by the selection are included; source YAML can also contain unselected
+experiments. Each experiment has an `experiment.json` recording stages, timestamps,
 status and artifact paths. Provider reports record original download provenance;
 workflow outputs preserve native settings and logs. Each evaluated run includes
 metrics and report paths.

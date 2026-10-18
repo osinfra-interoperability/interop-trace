@@ -27,6 +27,8 @@ Python >=3.12.
 
 ::: interop_trace.experiments.config
 
+::: interop_trace.experiments.catalogue
+
 ::: interop_trace.experiments.runner
 
 ## Local run browser

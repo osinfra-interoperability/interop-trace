@@ -12,10 +12,12 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
 
 ## Run and inspect
 
-1. Select a YAML configuration from `experiments/runs/`. The table previews its
-   experiment and component choices without downloading anything.
-2. Click **Run**. The existing CLI executes all experiments in that configuration,
-   using the shared cache and a new `results/ui-…/` directory.
+1. The table lists experiments from root-level YAML files in `experiments/`,
+   with their IDs, source files and component choices. Loading it downloads nothing.
+2. Check the experiments to include, across any number of files. Nothing is
+   selected initially; the header checkbox selects all. Click **Run** to execute
+   the selection in table order, using the shared cache and a new `results/ui-…/`
+   directory.
 3. Watch status, stages, elapsed time and logs. Updates arrive about once per second.
 4. Select a saved run to inspect benchmark metrics. Expand **Files and provenance**
    and select an output file to preview its text or download it, including
@@ -44,5 +46,6 @@ File previews show the first 32 KiB of UTF-8 text; binary files remain downloada
 Execution completion and scientific quality are separate: interpret each
 benchmark's [scope and metrics](components.md).
 
-Configurations remain YAML files. Edit their settings using the
-[configuration guide](experiments.md); the interface provides selection and monitoring.
+Experiment definitions remain YAML files. Edit them using the
+[configuration guide](experiments.md), then reload the page to refresh the list.
+The interface provides selection and monitoring.

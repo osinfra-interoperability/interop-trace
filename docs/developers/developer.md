@@ -49,6 +49,10 @@ Components supply their name, kind and source metadata when fetching.
 
 `experiments/config.py` loads safe YAML, rejects duplicate keys and resolves
 references through typed registries. Each experiment gets fresh component instances.
+`experiments/catalogue.py` reads root-level YAML files, enforces globally unique
+IDs and selects experiments in requested order. Both interfaces use it; it
+performs no setup. Selected source/component contents are merged into the run
+snapshot, with each experiment's source file recorded.
 `experiments/runner.py` performs setup, dataset/database preparation, workflow and
 evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.

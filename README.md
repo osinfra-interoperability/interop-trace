@@ -13,7 +13,7 @@ With Python 3.12+ and Poetry installed, from a source checkout:
 
 ```bash
 poetry install
-poetry run interop-trace run experiments/runs/simple.yaml --output results/simple-001
+poetry run interop-trace run erwinia_sage --output results/simple-001
 ```
 
 This uses a public PRIDE processed peak list (5.98 MB), an Erwinia-and-spikes
@@ -31,7 +31,7 @@ poetry install --extras ui
 poetry run interop-trace ui
 ```
 
-Open <http://127.0.0.1:8080/> to select configurations, monitor runs and inspect
+Open <http://127.0.0.1:8080/> to select experiments, monitor runs and inspect
 results. See [the interface guide](docs/users/interface.md).
 
 ## Available components

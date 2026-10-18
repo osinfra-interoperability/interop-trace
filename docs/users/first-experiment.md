@@ -10,7 +10,7 @@ From the repository root, with Python 3.12+ and Poetry installed:
 
 ```bash
 poetry install
-poetry run interop-trace run experiments/runs/simple.yaml --output results/simple-001
+poetry run interop-trace run erwinia_sage --output results/simple-001
 ```
 
 Use a **new output directory** each time. If `results/simple-001` already exists,

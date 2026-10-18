@@ -27,7 +27,8 @@ def executable(tmp_path: Path) -> Path:
         "args = sys.argv[1:]\n"
         "output = Path(args[args.index('--output_directory') + 1])\n"
         "record = {'args': args, 'cwd': os.getcwd(),\n"
-        "          'threads': os.environ.get('RAYON_NUM_THREADS')}\n"
+        "          'threads': os.environ.get('RAYON_NUM_THREADS'),\n"
+        "          'settings': Path(args[0]).read_text()}\n"
         "(output / 'invocation.json').write_text(json.dumps(record))\n"
         "print('sage stdout', flush=True)\n"
         "print('sage stderr', file=sys.stderr, flush=True)\n"
@@ -72,7 +73,8 @@ def test_run_passes_inputs_and_collects_native_files(
 
     record = json.loads(result.files["invocation.json"].read_text())
     args = record["args"]
-    assert args[0] == str(configuration)
+    assert args[0] == str(output / "sage-settings.json")
+    assert result.files["sage-settings.json"].read_bytes() == configuration.read_bytes()
     assert args[args.index("--fasta") + 1] == str(database.path)
     assert args[-2:] == [str(path) for path in dataset.files]
     assert record["cwd"] == str(configuration.parent)
@@ -85,6 +87,27 @@ def test_run_passes_inputs_and_collects_native_files(
     assert "sage test-version" in result.files["version.txt"].read_text()
     assert "sage stdout" in result.files["sage.log"].read_text()
     assert "sage stderr" in result.files["sage.log"].read_text()
+
+
+def test_search_uses_snapshot_if_original_settings_change(
+    workflow: SageWorkflow,
+    inputs: tuple[Dataset, Database, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset, database, configuration = inputs
+    original = configuration.read_text()
+    execute = workflow._execute
+
+    def edit_original(command: list[str], log_path: Path, cwd: Path) -> None:
+        configuration.write_text("{}")
+        execute(command, log_path, cwd)
+
+    monkeypatch.setattr(workflow, "_execute", edit_original)
+    result = workflow.run(dataset, database, output_dir=tmp_path / "snapshot")
+    record = json.loads(result.files["invocation.json"].read_text())
+    assert record["settings"] == original
+    assert configuration.read_text() != original
 
 
 def test_failure_preserves_log(
@@ -102,6 +125,7 @@ def test_failure_preserves_log(
 
     assert error.value.returncode == 7
     assert "sage stderr" in (output / "sage.log").read_text()
+    assert (output / "sage-settings.json").read_bytes() == configuration.read_bytes()
 
 
 def test_existing_results_are_preserved(

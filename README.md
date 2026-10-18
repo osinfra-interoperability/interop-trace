@@ -30,7 +30,6 @@ See [the first experiment](docs/first-experiment.md) for verified sizes and outp
 
 | Layer | Component |
 | --- | --- |
-| datasets | [`http`](docs/components.md#http) |
 | datasets | [`pride`](docs/components.md#pride) |
 | databases | [`uniprot`](docs/components.md#uniprot) |
 | workflows | [`sage`](docs/components.md#sage) |
@@ -48,8 +47,8 @@ Generated from the registries. See [parameters and scope](docs/components.md).
 - **Developers:** [development guide](docs/developer.md),
   [API reference](docs/reference.md), [documentation builds](docs/documentation.md).
 
-Every experiment selects an evaluator. Runs use new output directories and share downloaded
-resources. Components preserve native formats; interoperability failures remain
+Every experiment selects an evaluator. Runs use new output directories and share
+downloaded resources. Components preserve native formats; interoperability failures remain
 visible rather than being silently converted.
 
 ## Contributing

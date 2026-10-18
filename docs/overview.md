@@ -5,7 +5,7 @@ components can exchange usable data. Experiments make the selected sources,
 formats, software and parameters explicit, then retain native outputs and failure
 records so outcomes can be explained and compared.
 
-The current implementation covers proteomics: HTTP/PRIDE measurements, UniProt
+The current implementation covers proteomics: PRIDE measurements, UniProt
 exports, Sage searches and evaluation. The small example establishes a
 working combination; it does not certify other datasets, formats or tools.
 Scientific benchmarking requires reference expectations appropriate to the data.

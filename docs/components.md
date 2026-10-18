@@ -8,7 +8,6 @@ setup before execution where needed. These tables are generated from the registr
 
 | Layer | Component | Description |
 | --- | --- | --- |
-| datasets | [`http`](components.md#http) | A named measurement file from an HTTP URL |
 | datasets | [`pride`](components.md#pride) | Selected public PRIDE measurements |
 | databases | [`uniprot`](components.md#uniprot) | Query-based UniProtKB exports |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
@@ -16,13 +15,6 @@ setup before execution where needed. These tables are generated from the registr
 | benchmarks | [`proteobench_dda`](components.md#proteobench-dda) | Q Exactive DDA precursor-ion quantification |
 
 <!-- components:end -->
-
-## http
-
-Retrieves one measurement using `url` (HTTP or HTTPS) and `filename` (a basename).
-Contents and compression are preserved. Preparation returns the cached path and
-writes `http.json` with the source and original download record. Prefer immutable
-source URLs, as in [the first experiment](first-experiment.md).
 
 ## pride
 

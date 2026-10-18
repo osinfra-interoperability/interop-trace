@@ -7,7 +7,12 @@ from pathlib import Path
 from nicegui import run, ui
 
 from interop_trace.experiments import load_configuration
-from interop_trace.run_browser import RunBrowser, SavedRun, console_log, log_tail
+from interop_trace.interfaces.web.runs import (
+    RunBrowser,
+    SavedRun,
+    console_log,
+    log_tail,
+)
 
 
 def serve(directory: Path, port: int = 8080) -> None:

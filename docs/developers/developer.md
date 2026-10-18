@@ -53,9 +53,9 @@ references through typed registries. Each experiment gets fresh component instan
 evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.
 `interfaces/cli.py` exposes this orchestration and cache commands.
-
-`interface.py` adds an optional NiceGUI page. `run_browser.py` launches the same CLI
-in a subprocess and reads existing output records; it has no NiceGUI dependency.
+`interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
+launches the same CLI in a subprocess and reads existing output records without
+depending on NiceGUI. The core packages never import the user interfaces.
 One launcher is shared by browser tabs, while each tab owns its selections.
 There is no separate execution or scoring implementation in the UI. Interaction
 tests use NiceGUI's browserless user simulation and controlled subprocess responses;

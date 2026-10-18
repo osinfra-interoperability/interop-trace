@@ -31,7 +31,7 @@ Python >=3.12.
 
 ## Local run browser
 
-::: interop_trace.run_browser
+::: interop_trace.interfaces.web.runs
 
 ## Datasets
 

@@ -23,8 +23,8 @@ async def user(caplog):
 
 
 def _page(directory: Path) -> None:
-    from interop_trace.interface import _Dashboard
-    from interop_trace.run_browser import RunBrowser
+    from interop_trace.interfaces.web.app import _Dashboard
+    from interop_trace.interfaces.web.runs import RunBrowser
 
     browser = RunBrowser(directory)
 
@@ -63,7 +63,7 @@ async def test_launch_monitor_and_download(
         kwargs["stdout"].flush()
         return process
 
-    monkeypatch.setattr("interop_trace.run_browser.subprocess.Popen", launch)
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", launch)
     _page(checkout)
     await user.open("/")
     await user.should_see("Experiments: 1", retries=10)
@@ -123,7 +123,7 @@ async def test_failed_process_shows_console_error_and_allows_another_run(
         kwargs["stdout"].flush()
         return process
 
-    monkeypatch.setattr("interop_trace.run_browser.subprocess.Popen", fail)
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", fail)
     _page(checkout)
     await user.open("/")
     await user.should_see("Experiments: 1", retries=10)
@@ -137,7 +137,7 @@ def test_cli_passes_directory_and_port(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     serve = Mock()
-    monkeypatch.setattr("interop_trace.interface.serve", serve)
+    monkeypatch.setattr("interop_trace.interfaces.web.app.serve", serve)
     result = CliRunner().invoke(
         app, ["ui", "--directory", str(tmp_path), "--port", "8093"]
     )

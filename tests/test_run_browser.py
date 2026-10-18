@@ -7,7 +7,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from interop_trace.run_browser import RunBrowser, console_log, log_tail, read_record
+from interop_trace.interfaces.web.runs import (
+    RunBrowser,
+    console_log,
+    log_tail,
+    read_record,
+)
 
 
 def test_launch_validates_and_allows_only_one_process(
@@ -18,13 +23,13 @@ def test_launch_validates_and_allows_only_one_process(
     source.write_text("an invalid configuration")
     browser = RunBrowser(tmp_path)
     popen = Mock()
-    monkeypatch.setattr("interop_trace.run_browser.subprocess.Popen", popen)
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", popen)
     with pytest.raises(ValueError):
         browser.start(source)
     popen.assert_not_called()
     assert not (tmp_path / "results").exists()
 
-    monkeypatch.setattr("interop_trace.run_browser.load_configuration", Mock())
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_configuration", Mock())
     process = popen.return_value
     process.poll.return_value = None
     output = browser.start(source)
@@ -57,11 +62,11 @@ def test_early_failures_remain_visible_after_later_launches(
     source = tmp_path / "experiments/runs/example.yaml"
     source.parent.mkdir(parents=True)
     source.write_text("validated below")
-    monkeypatch.setattr("interop_trace.run_browser.load_configuration", Mock())
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_configuration", Mock())
     process = Mock()
     process.poll.return_value = 1
     monkeypatch.setattr(
-        "interop_trace.run_browser.subprocess.Popen", Mock(return_value=process)
+        "interop_trace.interfaces.web.runs.subprocess.Popen", Mock(return_value=process)
     )
     browser = RunBrowser(tmp_path)
     browser.start(source)

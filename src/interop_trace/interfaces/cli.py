@@ -83,7 +83,7 @@ def launch_interface(
 ) -> None:
     """Open a local experiment dashboard (requires the ui extra)."""
     try:
-        from interop_trace.interface import serve
+        from interop_trace.interfaces.web.app import serve
     except ModuleNotFoundError as error:
         if error.name != "nicegui":
             raise

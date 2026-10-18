@@ -26,7 +26,7 @@ def test_interface_explains_missing_optional_dependency(monkeypatch):
     original_import = builtins.__import__
 
     def without_ui(name, *args, **kwargs):
-        if name == "interop_trace.interface":
+        if name == "interop_trace.interfaces.web.app":
             raise ModuleNotFoundError("No module named 'nicegui'", name="nicegui")
         return original_import(name, *args, **kwargs)
 

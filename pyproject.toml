@@ -29,8 +29,8 @@ proteobench = ["proteobench (==0.18.6)"]
 "interop-trace" = "interop_trace.cli:main"
 
 [project.urls]
-"Source Code" = "https://github.com/thatmariia/interop_trace"
-Documentation = "https://thatmariia.github.io/interop_trace/"
+"Source Code" = "https://github.com/osinfra-interoperability/interop-trace"
+Documentation = "https://osinfra-interoperability.github.io/interop-trace/"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

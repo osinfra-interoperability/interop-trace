@@ -1,7 +1,7 @@
 # Interop Trace
 
-[![CI](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml/badge.svg)](https://github.com/thatmariia/interop_trace/actions/workflows/tests.yml)
-[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://thatmariia.github.io/interop_trace/)
+[![CI](https://github.com/osinfra-interoperability/interop-trace/actions/workflows/tests.yml/badge.svg)](https://github.com/osinfra-interoperability/interop-trace/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://osinfra-interoperability.github.io/interop-trace/)
 
 Test interoperability between bioinformatics datasets, databases, workflows and
 benchmarks. Explicit configurations select combinations; each run records sources,

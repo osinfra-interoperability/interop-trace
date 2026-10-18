@@ -23,7 +23,7 @@ skip without the extra. These tests validate adapters, not scientific performanc
 on the published reference measurements. The [first experiment](../users/first-experiment.md)
 is the separate real-data integration example.
 
-See [CONTRIBUTING.md](https://github.com/thatmariia/interop_trace/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/osinfra-interoperability/interop-trace/blob/main/CONTRIBUTING.md)
 for branch, commit and review policy.
 
 ## Boundaries

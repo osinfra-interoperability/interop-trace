@@ -16,11 +16,6 @@ cache_app = typer.Typer(help="Inspect and clear downloaded files.")
 app.add_typer(cache_app, name="cache")
 
 
-@app.callback()
-def callback() -> None:
-    """Provide the command group."""
-
-
 @app.command("run")
 def run(
     configuration: Annotated[

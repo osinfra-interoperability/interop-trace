@@ -8,20 +8,67 @@
   "description": "A research software project for empirically testing interoperability across bioinformatics databases and workflows. It runs controlled database\u2013workflow configurations against reference benchmarks, traces where interoperability succeeds or breaks, and produces evidence about the causes of incompatibility.",
   "version": "0.1.0",
   "developmentStatus": "concept",
-  "applicationCategory": ["Command-line tool", "Library"],
-  "applicationSubCategory": ["http://edamontology.org/topic_0091", "http://edamontology.org/topic_3489", "http://edamontology.org/topic_0121"],
+  "applicationCategory": ["Command-line tool"],
+  "applicationSubCategory": [
+    "http://edamontology.org/topic_0091",
+    "http://edamontology.org/topic_3489",
+    "http://edamontology.org/topic_0121"
+  ],
   "schema:featureList": ["Tracing interoperability across bioinformatics databases and workflows."],
-  "programmingLanguage": [{"@type": "ComputerLanguage", "name": "Python", "version": "\u003e=3.12"}],
-  "author": [{"@id": "https://orcid.org/0000-0002-0852-4752", "@type": "Person", "affiliation": {"@id": "https://ror.org/05xvt9f17", "@type": "Organization", "name": "Leiden University Medical Center"}, "email": "m.a.steeghs-turchina@lumc.nl", "familyName": "Steeghs-Turchina", "givenName": "Mariia", "name": "Mariia Steeghs-Turchina"}],
-  "identifier": [{"@type": "PropertyValue", "propertyID": "placeholder", "value": "REPLACE_WITH_PERSISTENT_IDENTIFIER"}],
-  "contributor": [{"@id": "https://orcid.org/0000-0002-5865-8994", "@type": "Person", "affiliation": {"@id": "https://ror.org/05xvt9f17", "@type": "Organization", "name": "Leiden University Medical Center"}, "email": "n.m.palmblad@lumc.nl", "familyName": "Palmblad", "givenName": "Magnus", "name": "Magnus Palmblad"}],
+  "programmingLanguage": [
+    {
+      "@type": "ComputerLanguage",
+      "name": "Python",
+      "version": ">=3.12"
+    }
+  ],
+  "author": [
+    {
+      "@id": "https://orcid.org/0000-0002-0852-4752",
+      "@type": "Person",
+      "affiliation": {
+        "@id": "https://ror.org/05xvt9f17",
+        "@type": "Organization",
+        "name": "Leiden University Medical Center"
+      },
+      "email": "m.a.steeghs-turchina@lumc.nl",
+      "familyName": "Steeghs-Turchina",
+      "givenName": "Mariia",
+      "name": "Mariia Steeghs-Turchina"
+    }
+  ],
+  "contributor": [
+    {
+      "@id": "https://orcid.org/0000-0002-5865-8994",
+     "@type": "Person",
+     "affiliation": {
+        "@id": "https://ror.org/05xvt9f17",
+       "@type": "Organization",
+       "name": "Leiden University Medical Center"
+      },
+     "email": "n.m.palmblad@lumc.nl",
+     "familyName": "Palmblad",
+     "givenName": "Magnus",
+     "name": "Magnus Palmblad"
+    }
+  ],
+  "identifier": [
+    {
+      "@type": "PropertyValue",
+     "propertyID": "placeholder",
+     "value": "REPLACE_WITH_PERSISTENT_IDENTIFIER"
+    }
+  ],
   "keywords": ["interoperability", "workflow", "benchmarking"],
   "codeRepository": "https://github.com/thatmariia/interop_trace",
   "continuousIntegration": "https://github.com/thatmariia/interop_trace/actions",
   "license": "https://spdx.org/licenses/Apache-2.0",
   "isAccessibleForFree": true,
   "url": "https://thatmariia.github.io/interop_trace/",
-  "softwareHelp": {"@type": "CreativeWork", "url": "https://thatmariia.github.io/interop_trace/"},
-  "runtimePlatform": ["Python \u003e=3.12"],
+  "softwareHelp": {
+    "@type": "CreativeWork",
+   "url": "https://thatmariia.github.io/interop_trace/"
+  },
+  "runtimePlatform": ["Python >=3.12"],
   "operatingSystem": ["Platform independent"]
 }

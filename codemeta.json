@@ -60,14 +60,14 @@
     }
   ],
   "keywords": ["interoperability", "workflow", "benchmarking"],
-  "codeRepository": "https://github.com/thatmariia/interop_trace",
-  "continuousIntegration": "https://github.com/thatmariia/interop_trace/actions",
+  "codeRepository": "https://github.com/osinfra-interoperability/interop-trace",
+  "continuousIntegration": "https://github.com/osinfra-interoperability/interop-trace/actions",
   "license": "https://spdx.org/licenses/Apache-2.0",
   "isAccessibleForFree": true,
-  "url": "https://thatmariia.github.io/interop_trace/",
+  "url": "https://osinfra-interoperability.github.io/interop-trace/",
   "softwareHelp": {
     "@type": "CreativeWork",
-   "url": "https://thatmariia.github.io/interop_trace/"
+   "url": "https://osinfra-interoperability.github.io/interop-trace/"
   },
   "runtimePlatform": ["Python >=3.12"],
   "operatingSystem": ["Platform independent"]

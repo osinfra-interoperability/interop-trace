@@ -7,4 +7,4 @@ external data releases and executable versions where available.
 When changing the package version, update `pyproject.toml` and run the
 [development checks](../developers/developer.md#setup-and-checks). The metadata workflow checks
 public software metadata. Source changes are available in the
-[repository history](https://github.com/thatmariia/interop_trace/commits/).
+[repository history](https://github.com/osinfra-interoperability/interop-trace/commits/).

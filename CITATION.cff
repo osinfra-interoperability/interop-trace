@@ -4,8 +4,8 @@ title: "Interop Trace"
 type: software
 version: "0.1.0"
 abstract: "A research software project for empirically testing interoperability across bioinformatics databases and workflows. It runs controlled database\u2013workflow configurations against reference benchmarks, traces where interoperability succeeds or breaks, and produces evidence about the causes of incompatibility."
-repository-code: "https://github.com/thatmariia/interop_trace"
-url: "https://thatmariia.github.io/interop_trace/"
+repository-code: "https://github.com/osinfra-interoperability/interop-trace"
+url: "https://osinfra-interoperability.github.io/interop-trace/"
 authors:
   - family-names: "Steeghs-Turchina"
     given-names: "Mariia"

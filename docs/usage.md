@@ -37,7 +37,7 @@ when exact long-term reproduction matters.
 For a different dedicated cache, use the same directory for execution and inspection:
 
 ```bash
-poetry run interop-trace run experiments/simple/run.yaml --output results/run-002 --cache-directory /path/to/cache
+poetry run interop-trace run experiments/runs/simple.yaml --output results/run-002 --cache-directory /path/to/cache
 poetry run interop-trace cache list --directory /path/to/cache
 poetry run interop-trace cache clear --directory /path/to/cache
 ```

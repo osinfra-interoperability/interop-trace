@@ -1,4 +1,4 @@
-spike_peptides:
+erwinia_spike_peptides:
   type: expected_peptides
   parameters:
     # Reference: https://ftp.pride.ebi.ac.uk/pride/data/archive/2012/03/PXD000001/F063721.dat-mztab.txt

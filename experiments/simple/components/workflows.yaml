@@ -1,6 +1,0 @@
-sage:
-  type: sage
-  parameters:
-    version: "0.14.7"
-    configuration: ../settings/sage.json
-    threads: 2

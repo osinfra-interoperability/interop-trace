@@ -54,6 +54,13 @@ evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.
 `cli.py` exposes this orchestration and cache commands.
 
+`interface.py` adds an optional NiceGUI page. `run_browser.py` launches the same CLI
+in a subprocess and reads existing output records; it has no NiceGUI dependency.
+One launcher is shared by browser tabs, while each tab owns its selections.
+There is no separate execution or scoring implementation in the UI. Interaction
+tests use NiceGUI's browserless user simulation and controlled subprocess responses;
+they skip without the `ui` extra.
+
 Records carry native formats and paths; they do not convert or inspect files.
 Consumers interpret them. Sage delegates input compatibility to its executable;
 benchmarks enforce the result schema and reference design they require.

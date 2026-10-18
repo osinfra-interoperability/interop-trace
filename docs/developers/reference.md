@@ -29,6 +29,10 @@ Python >=3.12.
 
 ::: interop_trace.experiments.runner
 
+## Local run browser
+
+::: interop_trace.run_browser
+
 ## Datasets
 
 ::: interop_trace.datasets.base

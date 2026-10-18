@@ -24,6 +24,16 @@ the configured 1% spectrum q-value threshold. This checks interoperability and
 reference-result consistency, not overall search accuracy.
 See [the first experiment](docs/users/first-experiment.md) for verified sizes and outputs.
 
+For a local browser interface:
+
+```bash
+poetry install --extras ui
+poetry run interop-trace ui
+```
+
+Open <http://127.0.0.1:8080/> to select configurations, monitor runs and inspect
+results. See [the interface guide](docs/users/interface.md).
+
 ## Available components
 
 <!-- components:start -->

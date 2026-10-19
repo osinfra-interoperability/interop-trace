@@ -1,0 +1,17 @@
+components:
+  datasets: components/datasets.yaml
+  databases: components/databases.yaml
+  workflows: components/workflows.yaml
+  benchmarks: components/benchmarks.yaml
+
+experiments:
+  - id: erwinia_comet
+    dataset: erwinia_tmt
+    database: erwinia_and_spikes
+    workflow: comet_erwinia_tmt
+    benchmark: erwinia_spike_sequences
+  - id: erwinia_msamanda
+    dataset: erwinia_tmt
+    database: erwinia_and_spikes
+    workflow: msamanda_erwinia_tmt
+    benchmark: erwinia_spike_sequences

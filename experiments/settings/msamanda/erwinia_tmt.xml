@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PXD000001 deposited search design; other settings use pinned Amanda defaults. -->
+<Settings>
+  <SearchSettings>
+    <Enzyme Name="Trypsin" Specificity="FULL" />
+    <MissedCleavages>2</MissedCleavages>
+    <Modifications>
+      <Modification Fix="true" Nterm="true">TMT6plex</Modification>
+      <Modification Fix="true">TMT6plex(K)</Modification>
+      <Modification Fix="true">Methylthio(C)</Modification>
+      <Modification>Oxidation(M)</Modification>
+      <Modification DeltaMass="229.16293">TMT6plex_on_tyrosine(Y)</Modification>
+    </Modifications>
+    <Instrument>b, y</Instrument>
+    <MS1Tol Unit="ppm">25</MS1Tol>
+    <MS2Tol Unit="Da">0.2</MS2Tol>
+    <MaxRank>1</MaxRank>
+    <GenerateDecoy>true</GenerateDecoy>
+    <DecoyFlag>REV_</DecoyFlag>
+    <ReportBothBestHitsForTD>false</ReportBothBestHitsForTD>
+    <MaxNoDynModifs>3</MaxNoDynModifs>
+  </SearchSettings>
+  <BasicSettings>
+    <Monoisotopic>true</Monoisotopic>
+    <ConsideredCharges>2+,3+</ConsideredCharges>
+    <LoadedProteinsAtOnce>10000</LoadedProteinsAtOnce>
+    <LoadedSpectraAtOnce>1000</LoadedSpectraAtOnce>
+  </BasicSettings>
+  <PercolatorSettings>
+    <GeneratePInFile>false</GeneratePInFile>
+    <RunPercolator>false</RunPercolator>
+  </PercolatorSettings>
+</Settings>

@@ -4,3 +4,16 @@ sage_erwinia_tmt:
     version: "0.14.7"
     configuration: ../settings/sage/erwinia_tmt.json
     threads: 2
+
+comet_erwinia_tmt:
+  type: comet
+  parameters:
+    version: "2026.03.0"
+    configuration: ../settings/comet/erwinia_tmt.params
+
+msamanda_erwinia_tmt:
+  type: msamanda
+  parameters:
+    version: "3.0.22.864"
+    configuration: ../settings/msamanda/erwinia_tmt.xml
+    threads: 2

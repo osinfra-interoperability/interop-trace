@@ -6,8 +6,10 @@ Python >=3.12.
 
 ## Interfaces
 
-- CLI help, experiment runs, component listing and cache commands through
+- CLI help, experiment selection, component listing and cache commands through
   `interop-trace` or `python -m interop_trace`.
+- Optional local NiceGUI interface through `interop-trace ui`, using the same
+  experiment catalogue and CLI runner.
 - Package version through `interop_trace.__version__`.
 - Component protocols and records, exported by the four domain subpackages.
 
@@ -15,7 +17,7 @@ Python >=3.12.
 
 ::: interop_trace
 
-::: interop_trace.cli
+::: interop_trace.interfaces.cli
 
 ## Setup and registration
 
@@ -27,7 +29,13 @@ Python >=3.12.
 
 ::: interop_trace.experiments.config
 
+::: interop_trace.experiments.catalogue
+
 ::: interop_trace.experiments.runner
+
+## Local run browser
+
+::: interop_trace.interfaces.web.runs
 
 ## Datasets
 

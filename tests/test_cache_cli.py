@@ -4,8 +4,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from interop_trace.cli import app
 from interop_trace.downloads import DownloadCache
+from interop_trace.interfaces.cli import app
 
 
 def test_list_shows_source_release_path_and_missing_status(tmp_path: Path) -> None:

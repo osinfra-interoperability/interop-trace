@@ -16,16 +16,20 @@ cache_app = typer.Typer(help="Inspect and clear downloaded files.")
 app.add_typer(cache_app, name="cache")
 
 
-@app.callback()
-def callback() -> None:
-    """Provide the command group."""
-
-
 @app.command("run")
 def run(
-    configuration: Annotated[
-        Path, typer.Argument(help="Experiment YAML file.", exists=True, dir_okay=False)
-    ],
+    experiment_ids: Annotated[
+        list[str] | None, typer.Argument(help="Experiment IDs to run, in order.")
+    ] = None,
+    all_experiments: Annotated[
+        bool, typer.Option("--all", help="Run every discovered experiment.")
+    ] = False,
+    directory: Annotated[
+        Path,
+        typer.Option(
+            exists=True, file_okay=False, help="Folder of experiment YAML files."
+        ),
+    ] = Path("experiments"),
     output: Annotated[
         Path, typer.Option("--output", help="New directory for this run.")
     ] = Path("results/run-001"),
@@ -39,11 +43,13 @@ def run(
         ),
     ] = False,
 ) -> None:
-    """Load reusable component settings and execute the selected experiments."""
-    from interop_trace.experiments import load_configuration, run_experiments
+    """Select experiment IDs across YAML files and execute them sequentially."""
+    from interop_trace.experiments import load_experiments, run_experiments
 
+    if bool(experiment_ids) == all_experiments:
+        raise typer.BadParameter("Provide experiment IDs or --all, but not both.")
     try:
-        configured = load_configuration(configuration)
+        configured = load_experiments(directory, experiment_ids)
         if check:
             typer.echo(
                 f"Valid configuration: {len(configured.experiments)} experiment(s)."
@@ -58,6 +64,27 @@ def run(
     typer.echo(f"Completed {len(results)} experiment(s): {output.resolve()}")
 
 
+@app.command("experiments")
+def list_experiments(
+    directory: Annotated[
+        Path,
+        typer.Option(
+            exists=True, file_okay=False, help="Folder of experiment YAML files."
+        ),
+    ] = Path("experiments"),
+) -> None:
+    """List experiment IDs and their source files without setup or downloads."""
+    from interop_trace.experiments import load_experiments
+
+    try:
+        configuration = load_experiments(directory)
+    except Exception as error:
+        typer.echo(f"Cannot list experiments: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    for choice in configuration.snapshot["experiments"]:
+        typer.echo(f"{choice['id']} | {Path(choice['source']).name}")
+
+
 @app.command("components")
 def list_components() -> None:
     """List available implementations without downloads or optional scoring imports."""
@@ -66,6 +93,30 @@ def list_components() -> None:
     for layer, registry in REGISTRIES.items():
         for name, entry in sorted(registry.items()):
             typer.echo(f"{layer} / {name}: {entry.summary}")
+
+
+@app.command("ui")
+def launch_interface(
+    directory: Annotated[
+        Path,
+        typer.Option(
+            "--directory",
+            exists=True,
+            file_okay=False,
+            help="Checkout containing experiments/ and results/.",
+        ),
+    ] = Path("."),
+    port: Annotated[int, typer.Option(min=1, max=65535)] = 8080,
+) -> None:
+    """Open a local experiment dashboard (requires the ui extra)."""
+    try:
+        from interop_trace.interfaces.web.app import serve
+    except ModuleNotFoundError as error:
+        if error.name != "nicegui":
+            raise
+        typer.echo("Install the interface with: poetry install --extras ui", err=True)
+        raise typer.Exit(code=1) from error
+    serve(directory.resolve(), port)
 
 
 @cache_app.command("list")

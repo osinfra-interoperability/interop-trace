@@ -1,7 +1,9 @@
 """Run the Sage command-line tool with its native JSON configuration."""
 
+import json
 import os
 import platform
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -106,7 +108,8 @@ class SageWorkflow:
 
         The explicit inputs override paths in the configuration. An empty dataset
         is rejected to prevent Sage from using configuration inputs instead.
-        Relative configuration references resolve beside the configuration file.
+        Execute a saved copy of the settings, keeping the original configuration
+        directory as the working directory for relative references.
         Sage errors propagate as ``subprocess.CalledProcessError``; files already
         written remain available for inspection. Existing output directories are
         never reused. Database format labels and file extensions are not checked.
@@ -118,6 +121,7 @@ class SageWorkflow:
         output_dir = output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=False)
         configuration = self.configuration.resolve()
+        shutil.copyfile(configuration, output_dir / "sage-settings.json")
         self._execute(
             [str(self._executable), "--version"],
             output_dir / "version.txt",
@@ -142,7 +146,7 @@ class SageWorkflow:
     ) -> list[str]:
         return [
             str(self._executable),
-            str(self.configuration.resolve()),
+            str(output_dir / "sage-settings.json"),
             "--disable-telemetry-i-dont-want-to-improve-sage",
             "--fasta",
             str(database.path.resolve()),
@@ -152,11 +156,20 @@ class SageWorkflow:
         ]
 
     def _execute(self, command: list[str], log_path: Path, cwd: Path) -> None:
+        environment = {"RAYON_NUM_THREADS": str(self.threads)}
+        log_path.with_suffix(".command.json").write_text(
+            json.dumps(
+                {"command": command, "cwd": str(cwd), "environment": environment},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         with log_path.open("w") as log:
             subprocess.run(
                 command,
                 cwd=cwd,
-                env={**os.environ, "RAYON_NUM_THREADS": str(self.threads)},
+                env={**os.environ, **environment},
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 check=True,

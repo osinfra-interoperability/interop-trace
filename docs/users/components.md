@@ -57,9 +57,15 @@ A supplied executable skips downloading. Selected dataset and database paths
 override inputs in the native JSON. Sage interprets formats and search settings;
 the wrapper does not validate declared compatibility or convert files.
 
-Each run preserves native outputs, `sage.log` and `version.txt`. The official
-0.14.7 Apple silicon binary reports `sage 0.14.6`; we preserve both the requested
-release and executable response. A nonzero exit records a workflow failure.
+Each run saves `sage-settings.json`, the exact input JSON copy Sage executes.
+`sage.command.json` records its argument list, working directory and the
+`RAYON_NUM_THREADS` override. `version.command.json` records the version probe.
+These records are written before execution and remain available on failure.
+On success, Sage's native `results.json` records its effective settings, including
+defaults and input overrides. Native outputs, `sage.log` and `version.txt` are
+preserved. The official 0.14.7 Apple silicon binary reports `sage 0.14.6`;
+we preserve both the requested release and executable response.
+A nonzero exit records a workflow failure.
 Native warnings and confidence estimates still require interpretation after a
 successful exit.
 

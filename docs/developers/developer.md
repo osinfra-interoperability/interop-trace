@@ -49,10 +49,21 @@ Components supply their name, kind and source metadata when fetching.
 
 `experiments/config.py` loads safe YAML, rejects duplicate keys and resolves
 references through typed registries. Each experiment gets fresh component instances.
+`experiments/catalogue.py` reads root-level YAML files, enforces globally unique
+IDs and selects experiments in requested order. Both interfaces use it; it
+performs no setup. Selected source/component contents are merged into the run
+snapshot, with each experiment's source file recorded.
 `experiments/runner.py` performs setup, dataset/database preparation, workflow and
 evaluation sequentially. It records stages and re-raises failures,
 including interruptions. Later experiments do not start after a failure.
-`cli.py` exposes this orchestration and cache commands.
+`interfaces/cli.py` exposes this orchestration and cache commands.
+`interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
+launches the same CLI in a subprocess and reads existing output records without
+depending on NiceGUI. The core packages never import the user interfaces.
+One launcher is shared by browser tabs, while each tab owns its selections.
+There is no separate execution or scoring implementation in the UI. Interaction
+tests use NiceGUI's browserless user simulation and controlled subprocess responses;
+they skip without the `ui` extra.
 
 Records carry native formats and paths; they do not convert or inspect files.
 Consumers interpret them. Sage delegates input compatibility to its executable;

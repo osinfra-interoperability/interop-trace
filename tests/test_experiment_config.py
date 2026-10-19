@@ -8,48 +8,8 @@ import pytest
 import yaml
 
 from interop_trace.databases import UniProtProvider
-from interop_trace.experiments import load_configuration
+from interop_trace.experiments import load_configuration, load_experiments
 from interop_trace.workflows import SageWorkflow
-
-
-@pytest.fixture
-def configuration(tmp_path: Path) -> Path:
-    directory = tmp_path / "components"
-    directory.mkdir()
-    definitions = {
-        "datasets": {
-            "type": "pride",
-            "parameters": {"project": "PXD1", "files": ["a.mzML"]},
-        },
-        "databases": {"type": "uniprot", "parameters": {"query": "accession:P69905"}},
-        "workflows": {
-            "type": "sage",
-            "parameters": {"configuration": "../settings.json", "threads": 3},
-        },
-        "benchmarks": {
-            "type": "proteobench_dda",
-            "parameters": {"min_observations": 3},
-        },
-    }
-    for layer, definition in definitions.items():
-        (directory / f"{layer}.yaml").write_text(
-            yaml.safe_dump({"selected": definition})
-        )
-    document = {
-        "components": {layer: f"components/{layer}.yaml" for layer in definitions},
-        "experiments": [
-            {
-                "id": "first",
-                "dataset": "selected",
-                "database": "selected",
-                "workflow": "selected",
-                "benchmark": "selected",
-            }
-        ],
-    }
-    path = tmp_path / "run.yaml"
-    path.write_text(yaml.safe_dump(document))
-    return path
 
 
 def test_load_resolves_paths_and_keeps_definition_contents(
@@ -191,3 +151,68 @@ def test_benchmark_is_required_before_setup(
     with pytest.raises(ValueError):
         load_configuration(configuration)
     http_transport.assert_not_called()
+
+
+def test_select_ids_across_files_in_requested_order(
+    configuration: Path, http_transport: Mock
+) -> None:
+    document = yaml.safe_load(configuration.read_text())
+    document["experiments"].append({**document["experiments"][0], "id": "second"})
+    configuration.write_text(yaml.safe_dump(document))
+    other = configuration.with_name("another.yml")
+    document["experiments"] = [{**document["experiments"][0], "id": "third"}]
+    other.write_text(yaml.safe_dump(document))
+
+    selected = load_experiments(configuration.parent, ["third", "first"])
+    assert [e.id for e in selected.experiments] == ["third", "first"]
+    assert [c["id"] for c in selected.snapshot["experiments"]] == ["third", "first"]
+    assert selected.snapshot["sources"] == [str(other), str(configuration)]
+    assert len(selected.snapshot["files"]) == 6
+    assert selected.experiments[0].workflow is not selected.experiments[1].workflow
+    assert [e.id for e in load_experiments(configuration.parent).experiments] == [
+        "third",
+        "first",
+        "second",
+    ]
+    only_first = load_experiments(configuration.parent, ["first"])
+    assert str(other) not in only_first.snapshot["files"]
+    http_transport.assert_not_called()
+
+
+def test_discovery_ignores_nested_yaml(configuration: Path) -> None:
+    nested = configuration.parent / "settings"
+    nested.mkdir()
+    (nested / "not-an-experiment.yaml").write_text("invalid: experiment")
+    assert [e.id for e in load_experiments(configuration.parent).experiments] == [
+        "first"
+    ]
+
+
+def test_duplicate_ids_across_files_name_both_sources(configuration: Path) -> None:
+    other = configuration.with_name("duplicate.yaml")
+    other.write_text(configuration.read_text())
+    with pytest.raises(ValueError, match="Duplicate experiment id 'first'") as error:
+        load_experiments(configuration.parent, ["first"])
+    assert str(other) in str(error.value)
+    assert str(configuration) in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "ids, message",
+    [
+        ([], "unique experiment IDs"),
+        (["first", "first"], "unique experiment IDs"),
+        (["missing"], "Unknown experiment IDs: missing"),
+    ],
+)
+def test_invalid_selection_fails_without_setup(
+    configuration: Path, ids: list[str], message: str, http_transport: Mock
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        load_experiments(configuration.parent, ids)
+    http_transport.assert_not_called()
+
+
+def test_empty_catalogue_has_a_clear_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="No experiments found"):
+        load_experiments(tmp_path)

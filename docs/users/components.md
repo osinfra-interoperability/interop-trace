@@ -13,7 +13,7 @@ setup before execution where needed. These tables are generated from the registr
 | workflows | [`comet`](components.md#comet) | Local Comet peptide identification |
 | workflows | [`msamanda`](components.md#msamanda) | Local MS Amanda peptide identification |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
-| benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from Sage target matches |
+| benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from target matches |
 | benchmarks | [`proteobench_dda`](components.md#proteobench-dda) | Q Exactive DDA precursor-ion quantification |
 
 <!-- components:end -->
@@ -115,17 +115,25 @@ Gzip preparation is shared with Comet. No rescoring tool is installed or run.
 
 | Parameter | Meaning |
 | --- | --- |
-| `peptides` | Nonempty list of distinct exact peptide strings |
-| `max_q_value` | Spectrum q-value threshold in [0, 1]; defaults to `0.01` |
+| `peptides` | Nonempty list of distinct reference peptide strings |
+| `max_q_value` | Sage spectrum q-value threshold in [0, 1], default `0.01`; `null` disables filtering |
+| `sequence_only` | Ignore modifications and match uppercase amino-acid sequences; default `false` |
 
-`expected_peptides` reads Sage's `results.sage.tsv`, selecting rank-one target
-matches (`rank=1`, `label=1`). It reports how many expected peptides appear before
-and after filtering on `spectrum_q`, counting each peptide once. Modified sequences
-must use Sage's exact output notation. An empty, correctly headed table gives zero
-recovery; missing columns or invalid target q-values raise an error.
+`expected_peptides` reads Sage's `results.sage.tsv`, Comet's numbered `.comet.txt`
+files or MS Amanda's numbered `.msamanda.csv` files. It selects rank-one target
+matches and counts each peptide once across measurements. Comet's default
+`DECOY_` and Amanda's `REV_` protein prefixes identify decoys. Keep these prefixes
+when configuring native decoy generation.
 
-`expected_peptides.json` records the reference, threshold, matching and missing
-peptides, source table and metrics. Expectations must come from an independent
+Sage reports recovery before and after filtering on `spectrum_q`; exact Sage
+modification notation is required unless `sequence_only: true` is selected.
+Comet and Amanda require **`sequence_only: true` and `max_q_value: null`**:
+their native scores are not q-values. Reports explicitly label this recovery as
+unfiltered and omit confidence-threshold metrics. An empty, correctly headed table
+gives zero recovery; missing columns or invalid target rows raise an error.
+
+`expected_peptides.json` records the reference, matching mode, confidence filter,
+matching/missing peptides, source tables and metrics. Expectations must come from an independent
 reference. This diagnostic does not estimate precision, FDR or quantification
 accuracy, and unlisted peptides are not assumed incorrect. No extras are needed.
 

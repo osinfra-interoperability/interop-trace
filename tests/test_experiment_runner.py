@@ -11,6 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from click import unstyle
 from requests import Response
 from typer.testing import CliRunner
 
@@ -312,7 +313,7 @@ def test_cli_rejects_invalid_selections_without_execution(
         app, ["run", *arguments, "--directory", str(pipeline.parent), "--check"]
     )
     assert result.exit_code != 0
-    assert message in result.output
+    assert message in unstyle(result.output)
     http_transport.assert_not_called()
 
 

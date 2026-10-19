@@ -26,6 +26,11 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    `evaluation/`; within run-level files, `configuration.json` contains the run
    configuration snapshot. File names are relative to the selected group.
 
+If an experiment fails, later experiments still run. The batch stays **running**
+until execution finishes, then shows **failed** if any experiment failed.
+Run-level `summary.json` lists completed IDs and failures; each experiment retains
+its stage, error and partial outputs.
+
 The [first experiment](first-experiment.md) is a small, verified starting point.
 ProteoBench configurations also need its extra:
 `poetry install --extras "ui proteobench"`.

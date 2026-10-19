@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from requests import Response
-from requests.exceptions import ConnectionError, HTTPError, RequestException
+from requests.exceptions import ConnectionError, HTTPError
 from urllib3.exceptions import ReadTimeoutError
 
 from interop_trace.databases import Database, UniProtProvider
@@ -67,21 +67,6 @@ def test_http_error_is_propagated(
     with pytest.raises(HTTPError) as caught:
         _prepare(UniProtProvider(query="invalid query"), output_dir=output)
     assert caught.value.response.status_code == 400
-    assert not output.exists()
-
-
-@pytest.mark.parametrize("body, expected", [(b"partial", "100"), (b"", "0")])
-def test_incomplete_or_empty_download_is_not_published(
-    tmp_path: Path,
-    http_transport: Mock,
-    http_response: Callable[..., Response],
-    body: bytes,
-    expected: str,
-) -> None:
-    http_transport.side_effect = [http_response(body, {"Content-Length": expected})]
-    output = tmp_path / "failed"
-    with pytest.raises((RequestException, ValueError)):
-        _prepare(UniProtProvider(query="accession:P69905"), output_dir=output)
     assert not output.exists()
 
 

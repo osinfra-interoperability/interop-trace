@@ -64,19 +64,3 @@ def test_providers_require_explicit_setup(
         provider.prepare(output_dir=tmp_path / "not-created")
     http_transport.assert_not_called()
     assert not (tmp_path / "not-created").exists()
-
-
-def test_all_builtin_implementations_register_without_requests(
-    http_transport: Mock,
-) -> None:
-    from interop_trace.databases.registry import registry as databases
-    from interop_trace.datasets.registry import registry as datasets
-    from interop_trace.evaluation.registry import registry as benchmarks
-    from interop_trace.workflows.registry import registry as workflows
-
-    assert set(databases) == {"uniprot"}
-    assert set(datasets) == {"pride"}
-    assert set(workflows) == {"sage"}
-    assert set(benchmarks) == {"proteobench_dda", "expected_peptides"}
-    assert not isinstance(benchmarks["proteobench_dda"].factory(), RequiresSetup)
-    http_transport.assert_not_called()

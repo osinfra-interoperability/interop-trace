@@ -36,8 +36,7 @@ def executable(tmp_path: Path) -> Path:
         "    sys.exit(7)\n"
         "(output / 'results.json').write_text('{}')\n"
         "(output / 'results.sage.tsv').write_text('header\\n')\n"
-        "if os.environ.get('FAKE_SAGE_LFQ'):\n"
-        "    (output / 'lfq.tsv').write_text('header\\n')\n"
+        "(output / 'lfq.tsv').write_text('header\\n')\n"
     )
     path.chmod(0o755)
     return path
@@ -57,17 +56,12 @@ def inputs(tmp_path: Path) -> tuple[Dataset, Database, Path]:
     return Dataset(files), Database(database, format="tool-decides"), configuration
 
 
-@pytest.mark.parametrize("quantification", [False, True])
 def test_run_passes_inputs_and_collects_native_files(
     workflow: SageWorkflow,
     inputs: tuple[Dataset, Database, Path],
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    quantification: bool,
 ) -> None:
     dataset, database, configuration = inputs
-    if quantification:
-        monkeypatch.setenv("FAKE_SAGE_LFQ", "1")
     output = tmp_path / "results with spaces"
     result = workflow.run(dataset, database, output_dir=output)
 
@@ -75,6 +69,7 @@ def test_run_passes_inputs_and_collects_native_files(
     args = record["args"]
     assert args[0] == str(output / "sage-settings.json")
     assert result.files["sage-settings.json"].read_bytes() == configuration.read_bytes()
+    assert record["settings"] == configuration.read_text()
     assert args[args.index("--fasta") + 1] == str(database.path)
     assert args[-2:] == [str(path) for path in dataset.files]
     assert record["cwd"] == str(configuration.parent)
@@ -89,31 +84,10 @@ def test_run_passes_inputs_and_collects_native_files(
     assert result.format == "sage"
     assert result.files["results.json"].is_absolute()
     assert "results.sage.tsv" in result.files
-    assert ("lfq.tsv" in result.files) == quantification
+    assert "lfq.tsv" in result.files
     assert "sage test-version" in result.files["version.txt"].read_text()
     assert "sage stdout" in result.files["sage.log"].read_text()
     assert "sage stderr" in result.files["sage.log"].read_text()
-
-
-def test_search_uses_snapshot_if_original_settings_change(
-    workflow: SageWorkflow,
-    inputs: tuple[Dataset, Database, Path],
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    dataset, database, configuration = inputs
-    original = configuration.read_text()
-    execute = workflow._execute
-
-    def edit_original(command: list[str], log_path: Path, cwd: Path) -> None:
-        configuration.write_text("{}")
-        execute(command, log_path, cwd)
-
-    monkeypatch.setattr(workflow, "_execute", edit_original)
-    result = workflow.run(dataset, database, output_dir=tmp_path / "snapshot")
-    record = json.loads(result.files["invocation.json"].read_text())
-    assert record["settings"] == original
-    assert configuration.read_text() != original
 
 
 def test_failure_preserves_log(

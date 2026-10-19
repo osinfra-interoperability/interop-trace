@@ -10,3 +10,12 @@ erwinia_spike_peptides:
       - "[+229.16293]-EIWGVEPSR"                # P00489, rabbit phosphorylase
       - "[+229.16293]-TGPNLHGLFGR"              # P62894, bovine cytochrome c
     max_q_value: 0.01
+
+erwinia_spike_sequences:
+  type: expected_peptides
+  parameters:
+    # Same deposited reference as above, matching sequences regardless of PTMs.
+    peptides: [GNPTVEVELTTEK, HLVDEPQNLIK, EIWGVEPSR, TGPNLHGLFGR]
+    sequence_only: true
+    # Native Comet/Amanda scores are not q-values; report unfiltered recovery.
+    max_q_value: null

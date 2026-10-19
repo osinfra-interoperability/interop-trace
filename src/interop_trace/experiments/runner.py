@@ -3,7 +3,7 @@
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,17 +15,26 @@ from interop_trace.evaluation import EvaluationResult
 from interop_trace.experiments.config import Experiment, RunConfiguration
 
 
+@dataclass(frozen=True)
+class RunResult:
+    """Successful evaluations and errors, keyed by experiment ID."""
+
+    completed: dict[str, EvaluationResult]
+    failed: dict[str, str]
+
+
 def run_experiments(
     configuration: RunConfiguration,
     *,
     output_dir: Path,
     cache_dir: Path = DEFAULT_CACHE_DIR,
-) -> tuple[EvaluationResult, ...]:
-    """Run each experiment in a new directory, stopping on the first failure.
+) -> RunResult:
+    """Run each experiment in a new directory, continuing after ordinary errors.
 
     Preserve the loaded YAML contents and selected settings before setup. A failed
-    experiment retains its reports, logs and failed-stage record; later experiments
-    are not started. Downloads share a cache, but workflow results are not reused.
+    experiment retains its reports, logs and failed-stage record. Its remaining
+    stages are skipped; the next experiment starts. Interruptions still propagate.
+    Downloads share a cache, but workflow results are not reused.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -38,10 +47,20 @@ def run_experiments(
             "cache": str(cache.root),
         },
     )
-    return tuple(
-        _run_experiment(experiment, output_dir / experiment.id, cache)
-        for experiment in configuration.experiments
+    completed: dict[str, EvaluationResult] = {}
+    failed: dict[str, str] = {}
+    for experiment in configuration.experiments:
+        try:
+            completed[experiment.id] = _run_experiment(
+                experiment, output_dir / experiment.id, cache
+            )
+        except Exception as error:
+            failed[experiment.id] = f"{type(error).__name__}: {error}"
+    _write(
+        output_dir / "summary.json",
+        {"completed": list(completed), "failed": failed},
     )
+    return RunResult(completed, failed)
 
 
 def _run_experiment(

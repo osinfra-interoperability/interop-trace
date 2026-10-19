@@ -11,6 +11,7 @@ nav = [
   { "Users" = [
     { "Start here" = "users/README.md" },
     { "First experiment" = "users/first-experiment.md" },
+    { "Compare search engines" = "users/search-engines.md" },
     { "Local interface" = "users/interface.md" },
     { "Configure experiments" = "users/experiments.md" },
     { "Components and scope" = "users/components.md" },

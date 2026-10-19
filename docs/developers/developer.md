@@ -54,8 +54,11 @@ IDs and selects experiments in requested order. Both interfaces use it; it
 performs no setup. Selected source/component contents are merged into the run
 snapshot, with each experiment's source file recorded.
 `experiments/runner.py` performs setup, dataset/database preparation, workflow and
-evaluation sequentially. It records stages and re-raises failures,
-including interruptions. Later experiments do not start after a failure.
+evaluation sequentially. It records each failure, skips that experiment's remaining
+stages and continues with the next. It returns `RunResult` with `completed`
+evaluations and `failed` errors keyed by ID, and writes `summary.json` after the
+batch. Interruptions propagate and stop the batch; configuration validation happens
+before execution. The CLI reports the outcome and exits nonzero if any failed.
 `interfaces/cli.py` exposes this orchestration and cache commands.
 `interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
 launches the same CLI in a subprocess and reads existing output records without

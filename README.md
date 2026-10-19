@@ -24,6 +24,10 @@ the configured 1% spectrum q-value threshold. This checks interoperability and
 reference-result consistency, not overall search accuracy.
 See [the first experiment](docs/users/first-experiment.md) for verified sizes and outputs.
 
+The same inputs can also run through **Comet** and **MS Amanda**, with unfiltered
+reference-peptide recovery. See [compare search engines](docs/users/search-engines.md)
+for commands, prerequisites and evaluation scope.
+
 For a local browser interface:
 
 ```bash
@@ -42,6 +46,8 @@ results. See [the interface guide](docs/users/interface.md).
 | --- | --- |
 | datasets | [`pride`](docs/users/components.md#pride) |
 | databases | [`uniprot`](docs/users/components.md#uniprot) |
+| workflows | [`comet`](docs/users/components.md#comet) |
+| workflows | [`msamanda`](docs/users/components.md#msamanda) |
 | workflows | [`sage`](docs/users/components.md#sage) |
 | benchmarks | [`expected_peptides`](docs/users/components.md#expected-peptides) |
 | benchmarks | [`proteobench_dda`](docs/users/components.md#proteobench-dda) |

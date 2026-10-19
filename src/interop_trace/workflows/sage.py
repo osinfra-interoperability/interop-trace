@@ -1,10 +1,7 @@
 """Run the Sage command-line tool with its native JSON configuration."""
 
-import json
-import os
 import platform
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -13,6 +10,7 @@ import pooch
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
+from interop_trace.workflows._execution import run_command, workflow_result
 from interop_trace.workflows.base import WorkflowResult
 from interop_trace.workflows.registry import registry
 
@@ -132,14 +130,7 @@ class SageWorkflow:
             output_dir / "sage.log",
             configuration.parent,
         )
-        return WorkflowResult(
-            format="sage",
-            files={
-                str(path.relative_to(output_dir)): path
-                for path in sorted(output_dir.rglob("*"))
-                if path.is_file()
-            },
-        )
+        return workflow_result("sage", output_dir)
 
     def _command(
         self, dataset: Dataset, database: Database, output_dir: Path
@@ -156,21 +147,4 @@ class SageWorkflow:
         ]
 
     def _execute(self, command: list[str], log_path: Path, cwd: Path) -> None:
-        environment = {"RAYON_NUM_THREADS": str(self.threads)}
-        log_path.with_suffix(".command.json").write_text(
-            json.dumps(
-                {"command": command, "cwd": str(cwd), "environment": environment},
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        with log_path.open("w") as log:
-            subprocess.run(
-                command,
-                cwd=cwd,
-                env={**os.environ, **environment},
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
+        run_command(command, log_path, cwd, {"RAYON_NUM_THREADS": str(self.threads)})

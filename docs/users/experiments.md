@@ -96,7 +96,15 @@ status and artifact paths. Provider reports record original download provenance;
 workflow outputs preserve native settings and logs. Each evaluated run includes
 metrics and report paths.
 
-On failure, the CLI exits nonzero and records the failed stage. Partial outputs
-remain available and later experiments do not start. Use a new output directory
-to rerun; cached downloads remain reusable. Execution status and benchmark quality
-are separate: completed evaluation can report poor recovery.
+If an experiment fails, its remaining stages are skipped and the next experiment
+starts. Its `experiment.json` keeps the failed stage and error; logs and partial
+outputs remain available. After the batch, the CLI lists successes and failures,
+saves their IDs and errors in run-level `summary.json`, and exits with code `1`
+if any experiment failed (`0` otherwise).
+
+Invalid run configuration stops execution before experiments start. `Ctrl+C`
+stops the batch and preserves the interrupted experiment's failure record; later
+experiments do not start and no final batch summary is written.
+Use a new output directory to rerun; cached downloads remain reusable.
+Execution status and benchmark quality are separate: completed evaluation can
+report poor recovery.

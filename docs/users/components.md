@@ -10,8 +10,10 @@ setup before execution where needed. These tables are generated from the registr
 | --- | --- | --- |
 | datasets | [`pride`](components.md#pride) | Selected public PRIDE measurements |
 | databases | [`uniprot`](components.md#uniprot) | Query-based UniProtKB exports |
+| workflows | [`comet`](components.md#comet) | Local Comet peptide identification |
+| workflows | [`msamanda`](components.md#msamanda) | Local MS Amanda peptide identification |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
-| benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from Sage target matches |
+| benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from target matches |
 | benchmarks | [`proteobench_dda`](components.md#proteobench-dda) | Q Exactive DDA precursor-ion quantification |
 
 <!-- components:end -->
@@ -69,21 +71,69 @@ A nonzero exit records a workflow failure.
 Native warnings and confidence estimates still require interpretation after a
 successful exit.
 
+## comet
+
+| Parameter | Meaning |
+| --- | --- |
+| `configuration` | Path to native Comet parameters, including thread count |
+| `version` | Release tag without `v`; defaults to `"2026.03.0"` |
+| `executable` | Optional existing executable instead of a download |
+
+Setup caches the [official Comet binary](https://github.com/UWPR/Comet/releases/tag/v2026.03.0)
+for macOS/Linux (Intel or ARM64) or Windows (x86-64). Input paths and output locations
+override the native configuration through Comet's command-line options. Each
+measurement produces numbered native files, a log and its command record.
+`comet.params` preserves the exact settings used. The log includes Comet's version.
+Gzipped measurements are decompressed once beside their cached source; clearing
+the shared cache removes both copies. Inputs are never converted to another format.
+
+## msamanda
+
+| Parameter | Meaning |
+| --- | --- |
+| `configuration` | Path to native MS Amanda XML settings |
+| `version` | Bundled standalone version; defaults to `"3.0.22.864"` |
+| `executable` | Optional existing executable, with its supporting XML definitions |
+| `threads` | Positive integer; limits .NET processor count, default `2` |
+
+Setup caches the [official standalone bundle](https://github.com/hgb-bin-proteomics/MSAmanda),
+pinned to both a repository revision and release directory. It includes its .NET
+runtime. Published builds are Intel x86-64 for macOS, Linux and Windows.
+**Apple Silicon Macs require Rosetta**, installed separately by the user;
+Linux ARM requires a supplied executable. The macOS download is about 46.3 MB.
+MS Amanda is distributed under its own [freeware license](https://github.com/hgb-bin-proteomics/MSAmanda/blob/master/LICENSE).
+
+Each run saves the original `msamanda-input.xml`, the resolved
+`msamanda-settings.xml`, and copies of the enzyme/modification definitions.
+Definitions explicitly named in the input XML resolve relative to that file;
+otherwise the bundled definitions are used. Runtime data stays under the run's
+`runtime/` directory. Numbered native CSV files, logs and command records preserve
+each measurement's output; the native banner records the executable version.
+Gzip preparation is shared with Comet. No rescoring tool is installed or run.
+
 ## Expected peptides
 
 | Parameter | Meaning |
 | --- | --- |
-| `peptides` | Nonempty list of distinct exact peptide strings |
-| `max_q_value` | Spectrum q-value threshold in [0, 1]; defaults to `0.01` |
+| `peptides` | Nonempty list of distinct reference peptide strings |
+| `max_q_value` | Sage spectrum q-value threshold in [0, 1], default `0.01`; `null` disables filtering |
+| `sequence_only` | Ignore modifications and match uppercase amino-acid sequences; default `false` |
 
-`expected_peptides` reads Sage's `results.sage.tsv`, selecting rank-one target
-matches (`rank=1`, `label=1`). It reports how many expected peptides appear before
-and after filtering on `spectrum_q`, counting each peptide once. Modified sequences
-must use Sage's exact output notation. An empty, correctly headed table gives zero
-recovery; missing columns or invalid target q-values raise an error.
+`expected_peptides` reads Sage's `results.sage.tsv`, Comet's numbered `.comet.txt`
+files or MS Amanda's numbered `.msamanda.csv` files. It selects rank-one target
+matches and counts each peptide once across measurements. Comet's default
+`DECOY_` and Amanda's `REV_` protein prefixes identify decoys. Keep these prefixes
+when configuring native decoy generation.
 
-`expected_peptides.json` records the reference, threshold, matching and missing
-peptides, source table and metrics. Expectations must come from an independent
+Sage reports recovery before and after filtering on `spectrum_q`; exact Sage
+modification notation is required unless `sequence_only: true` is selected.
+Comet and Amanda require **`sequence_only: true` and `max_q_value: null`**:
+their native scores are not q-values. Reports explicitly label this recovery as
+unfiltered and omit confidence-threshold metrics. An empty, correctly headed table
+gives zero recovery; missing columns or invalid target rows raise an error.
+
+`expected_peptides.json` records the reference, matching mode, confidence filter,
+matching/missing peptides, source tables and metrics. Expectations must come from an independent
 reference. This diagnostic does not estimate precision, FDR or quantification
 accuracy, and unlisted peptides are not assumed incorrect. No extras are needed.
 

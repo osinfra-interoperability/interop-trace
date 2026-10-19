@@ -144,9 +144,11 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     output = tmp_path / "results"
     configuration = load_configuration(pipeline)
     http_transport.assert_not_called()
-    evaluations = run_experiments(
+    results = run_experiments(
         configuration, output_dir=output, cache_dir=tmp_path / "cache"
     )
+    assert not results.failed
+    evaluations = results.completed.values()
     assert [result.metrics["nr_feature"] for result in evaluations] == [3, 3]
     assert all(result.metrics["mean_abs_epsilon_global"] == 0 for result in evaluations)
     assert http_transport.call_count == 9  # catalogue, six measurements, FASTA, Sage
@@ -168,7 +170,7 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
 
 @pytest.mark.parametrize("stage", ["setup:database", "workflow", "evaluation"])
 @pytest.mark.parametrize("error_type", [RuntimeError, KeyboardInterrupt])
-def test_failure_records_stage_and_does_not_start_later_experiment(
+def test_errors_continue_but_interruptions_stop_the_batch(
     pipeline: Path,
     tmp_path: Path,
     stage: str,
@@ -176,24 +178,54 @@ def test_failure_records_stage_and_does_not_start_later_experiment(
     monkeypatch: pytest.MonkeyPatch,
     http_transport: Mock,
 ) -> None:
-    def fail(*args: Any, **kwargs: Any) -> Any:
-        raise error_type("deliberate failure")
-
+    monkeypatch.setattr(
+        ProteoBenchDDA, "evaluate", lambda *a, **k: EvaluationResult({"test_metric": 1})
+    )
     if stage == "setup:database":
         from interop_trace.databases import UniProtProvider
 
-        monkeypatch.setattr(UniProtProvider, "setup", fail)
+        component, method = UniProtProvider, "setup"
     elif stage == "workflow":
-        monkeypatch.setattr(SageWorkflow, "run", fail)
+        component, method = SageWorkflow, "run"
     else:
-        monkeypatch.setattr(ProteoBenchDDA, "evaluate", fail)
+        component, method = ProteoBenchDDA, "evaluate"
+    original = getattr(component, method)
+    calls = 0
+
+    def fail_first(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            if "output_dir" in kwargs:
+                folder = kwargs["output_dir"]
+                folder.mkdir()
+                (folder / "partial.log").write_text("partial evidence")
+            raise error_type("deliberate failure")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(component, method, fail_first)
     output = tmp_path / "failed"
-    with pytest.raises(error_type, match="deliberate failure"):
-        run_experiments(
+    if error_type is KeyboardInterrupt:
+        with pytest.raises(KeyboardInterrupt, match="deliberate failure"):
+            run_experiments(
+                load_configuration(pipeline),
+                output_dir=output,
+                cache_dir=tmp_path / "cache",
+            )
+        assert not (output / "second").exists()
+        assert not (output / "summary.json").exists()
+    else:
+        results = run_experiments(
             load_configuration(pipeline),
             output_dir=output,
             cache_dir=tmp_path / "cache",
         )
+        assert list(results.completed) == ["second"]
+        assert results.failed == {"first": "RuntimeError: deliberate failure"}
+        summary = json.loads((output / "summary.json").read_text())
+        assert summary == {"completed": ["second"], "failed": results.failed}
+        second = json.loads((output / "second/experiment.json").read_text())
+        assert second["status"] == "completed"
     record = json.loads((output / "first/experiment.json").read_text())
     assert record["status"] == "failed"
     assert record["stage"] == stage
@@ -201,7 +233,15 @@ def test_failure_records_stage_and_does_not_start_later_experiment(
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     assert record["finished_at"]
-    assert not (output / "second").exists()
+    if stage == "setup:database":
+        assert not (output / "first/dataset").exists()
+    else:
+        folder = "workflow" if stage == "workflow" else "evaluation"
+        assert (
+            output / "first" / folder / "partial.log"
+        ).read_text() == "partial evidence"
+    if stage != "evaluation":
+        assert not (output / "first/evaluation").exists()
     if stage == "evaluation":
         assert (output / "first/workflow/lfq.tsv").is_file()
         assert record["workflow"]["files"]["lfq.tsv"]
@@ -272,12 +312,55 @@ def test_cli_executes_run(
     )
     assert result.exit_code == 0, result.output
     assert "Completed 2 experiment(s)" in result.output
+    assert "failed 0" in result.output
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["second", "first"]
     assert snapshot["sources"] == [str(other), str(pipeline)]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
         assert record["status"] == "completed"
+
+
+@pytest.mark.parametrize("failed_ids", [("first",), ("second",), ("first", "second")])
+def test_cli_summarizes_all_experiments_before_exiting_nonzero(
+    pipeline: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failed_ids: tuple[str, ...],
+) -> None:
+    def evaluate(self, result, dataset, database, *, output_dir):
+        if output_dir.parent.name in failed_ids:
+            raise ValueError("cannot evaluate")
+        return EvaluationResult({"test_metric": 1})
+
+    monkeypatch.setattr(ProteoBenchDDA, "evaluate", evaluate)
+    output = tmp_path / "batch"
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "--all",
+            "--directory",
+            str(pipeline.parent),
+            "--output",
+            str(output),
+            "--cache-directory",
+            str(tmp_path / "cache"),
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert (
+        f"Completed {2 - len(failed_ids)} experiment(s), failed {len(failed_ids)}"
+        in result.output
+    )
+    for name in ("first", "second"):
+        record = json.loads((output / name / "experiment.json").read_text())
+        assert record["status"] == ("failed" if name in failed_ids else "completed")
+        assert (
+            f"Failed {name}: ValueError: cannot evaluate"
+            if name in failed_ids
+            else f"Succeeded: {name}"
+        ) in result.output
 
 
 def test_cli_rejects_missing_benchmark_before_execution(

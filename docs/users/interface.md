@@ -53,4 +53,3 @@ benchmark's [scope and metrics](components.md).
 
 Experiment definitions remain YAML files. Edit them using the
 [configuration guide](experiments.md), then reload the page to refresh the list.
-The interface provides selection and monitoring.

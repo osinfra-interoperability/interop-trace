@@ -63,9 +63,9 @@ Each run saves `sage-settings.json`, the exact input JSON copy Sage executes.
 These records are written before execution and remain available on failure.
 On success, Sage's native `results.json` records its effective settings, including
 defaults and input overrides. Native outputs, `sage.log` and `version.txt` are
-preserved. The official
-0.14.7 Apple silicon binary reports `sage 0.14.6`; we preserve both the requested
-release and executable response. A nonzero exit records a workflow failure.
+preserved. The official 0.14.7 Apple silicon binary reports `sage 0.14.6`;
+we preserve both the requested release and executable response.
+A nonzero exit records a workflow failure.
 Native warnings and confidence estimates still require interpretation after a
 successful exit.
 

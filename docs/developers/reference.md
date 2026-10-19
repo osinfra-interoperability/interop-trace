@@ -55,6 +55,10 @@ Python >=3.12.
 
 ::: interop_trace.workflows.sage
 
+::: interop_trace.workflows.comet
+
+::: interop_trace.workflows.msamanda
+
 ## Evaluation
 
 ::: interop_trace.evaluation.base

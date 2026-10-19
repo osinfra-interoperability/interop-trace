@@ -109,14 +109,14 @@ class RunBrowser:
             )
         process = self._processes.get(directory)
         code = process.poll() if process is not None else None
-        if (code is not None and code != 0) or any(
+        if process is not None and code is None:
+            status = "running"
+        elif (code is not None and code != 0) or any(
             record.get("status") == "failed" for record in experiments
         ):
             status = "failed"
         elif experiments and all(r.get("status") == "completed" for r in experiments):
             status = "completed"
-        elif process is not None and code is None:
-            status = "running"
         else:
             status = "unknown"
         return SavedRun(directory, status, tuple(experiments))

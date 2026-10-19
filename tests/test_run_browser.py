@@ -58,6 +58,26 @@ def test_unknown_ids_fail_before_creating_outputs(configuration: Path) -> None:
     assert not (checkout / "results").exists()
 
 
+def test_active_batch_stays_running_after_an_experiment_fails(
+    configuration: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    process = Mock()
+    process.poll.return_value = None
+    monkeypatch.setattr(
+        "interop_trace.interfaces.web.runs.subprocess.Popen", Mock(return_value=process)
+    )
+    browser = RunBrowser(configuration.parent.parent)
+    output = browser.start(["first"])
+    (output / "first").mkdir(parents=True)
+    (output / "configuration.json").write_text('{"experiments": [{"id": "first"}]}')
+    (output / "first/experiment.json").write_text('{"status": "failed"}')
+    saved = browser.history()[0]
+    assert saved.status == "running"
+    assert saved.experiments[0]["status"] == "failed"
+    process.poll.return_value = 1
+    assert browser.history()[0].status == "failed"
+
+
 def test_early_failures_remain_visible_after_later_launches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

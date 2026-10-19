@@ -146,6 +146,12 @@ class _Dashboard:
         saved = self.runs.get(self.selection.value)
         if saved is None:
             self.status.set_text("No saved runs yet.")
+            self.location.set_text("")
+            self.experiments.rows = []
+            self.experiments.update()
+            _options(self.file_group, {})
+            _options(self.artifact, {})
+            await self.show_file()
             return
         self.status.set_text(f"Status: {saved.status}")
         self.location.set_text(str(saved.directory))

@@ -222,6 +222,38 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     await user.should_see("run-level console")
 
 
+async def test_removing_last_run_clears_its_details(
+    user, checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    directory = checkout / "results/removed"
+    directory.mkdir(parents=True)
+    (directory / "configuration.json").write_text(
+        json.dumps({"experiments": [{"id": "removed_experiment"}]})
+    )
+    _page(checkout)
+    await user.open("/")
+    user.find("Files and provenance").click()
+    await user.should_see('"removed_experiment"', retries=10)
+
+    shutil.rmtree(directory)
+    await user.should_see("No saved runs yet.", retries=20)
+    await user.should_see("No output file selected.")
+    await user.should_not_see("removed_experiment")
+    await user.should_not_see(str(directory))
+    assert all(
+        row["id"] != "removed_experiment"
+        for table in user.find(nicegui.ui.table).elements
+        for row in table.rows
+    )
+    for marker in ("file-group", "output-file"):
+        selector = user.find(marker=marker).elements.pop()
+        assert not selector.options and selector.value is None
+    download = Mock()
+    monkeypatch.setattr(user.download, "file", download)
+    user.find(marker="download-file").click()
+    download.assert_not_called()
+
+
 async def test_failed_process_shows_console_error_and_allows_another_run(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

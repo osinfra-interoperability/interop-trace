@@ -61,7 +61,16 @@ def run(
     except Exception as error:
         typer.echo(f"Run failed: {error}", err=True)
         raise typer.Exit(code=1) from error
-    typer.echo(f"Completed {len(results)} experiment(s): {output.resolve()}")
+    typer.echo(
+        f"Completed {len(results.completed)} experiment(s), "
+        f"failed {len(results.failed)}: {output.resolve()}"
+    )
+    if results.completed:
+        typer.echo("Succeeded: " + ", ".join(results.completed))
+    for name, failure in results.failed.items():
+        typer.echo(f"Failed {name}: {failure}", err=True)
+    if results.failed:
+        raise typer.Exit(code=1)
 
 
 @app.command("experiments")

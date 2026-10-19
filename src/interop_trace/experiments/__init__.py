@@ -6,11 +6,12 @@ from interop_trace.experiments.config import (
     RunConfiguration,
     load_configuration,
 )
-from interop_trace.experiments.runner import run_experiments
+from interop_trace.experiments.runner import RunResult, run_experiments
 
 __all__ = [
     "Experiment",
     "RunConfiguration",
+    "RunResult",
     "load_configuration",
     "load_experiments",
     "run_experiments",

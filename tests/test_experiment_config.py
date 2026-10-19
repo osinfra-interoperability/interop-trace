@@ -12,46 +12,6 @@ from interop_trace.experiments import load_configuration, load_experiments
 from interop_trace.workflows import SageWorkflow
 
 
-@pytest.fixture
-def configuration(tmp_path: Path) -> Path:
-    directory = tmp_path / "components"
-    directory.mkdir()
-    definitions = {
-        "datasets": {
-            "type": "pride",
-            "parameters": {"project": "PXD1", "files": ["a.mzML"]},
-        },
-        "databases": {"type": "uniprot", "parameters": {"query": "accession:P69905"}},
-        "workflows": {
-            "type": "sage",
-            "parameters": {"configuration": "../settings.json", "threads": 3},
-        },
-        "benchmarks": {
-            "type": "proteobench_dda",
-            "parameters": {"min_observations": 3},
-        },
-    }
-    for layer, definition in definitions.items():
-        (directory / f"{layer}.yaml").write_text(
-            yaml.safe_dump({"selected": definition})
-        )
-    document = {
-        "components": {layer: f"components/{layer}.yaml" for layer in definitions},
-        "experiments": [
-            {
-                "id": "first",
-                "dataset": "selected",
-                "database": "selected",
-                "workflow": "selected",
-                "benchmark": "selected",
-            }
-        ],
-    }
-    path = tmp_path / "run.yaml"
-    path.write_text(yaml.safe_dump(document))
-    return path
-
-
 def test_load_resolves_paths_and_keeps_definition_contents(
     configuration: Path,
     monkeypatch: pytest.MonkeyPatch,

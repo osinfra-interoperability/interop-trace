@@ -2,7 +2,6 @@
 
 import json
 import os
-import shutil
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -52,12 +51,11 @@ def test_launch_validates_and_allows_only_one_process(
     assert not browser.active
 
 
-def test_unknown_ids_fail_before_creating_outputs(tmp_path: Path) -> None:
-    source = Path(__file__).resolve().parents[1] / "experiments"
-    shutil.copytree(source, tmp_path / "experiments")
+def test_unknown_ids_fail_before_creating_outputs(configuration: Path) -> None:
+    checkout = configuration.parent.parent
     with pytest.raises(ValueError, match="Unknown experiment IDs"):
-        RunBrowser(tmp_path).start(["missing"])
-    assert not (tmp_path / "results").exists()
+        RunBrowser(checkout).start(["missing"])
+    assert not (checkout / "results").exists()
 
 
 def test_early_failures_remain_visible_after_later_launches(

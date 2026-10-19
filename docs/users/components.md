@@ -10,6 +10,7 @@ setup before execution where needed. These tables are generated from the registr
 | --- | --- | --- |
 | datasets | [`pride`](components.md#pride) | Selected public PRIDE measurements |
 | databases | [`uniprot`](components.md#uniprot) | Query-based UniProtKB exports |
+| workflows | [`comet`](components.md#comet) | Local Comet peptide identification |
 | workflows | [`sage`](components.md#sage) | Local proteomics search and LFQ |
 | benchmarks | [`expected_peptides`](components.md#expected-peptides) | Expected-peptide recovery from Sage target matches |
 | benchmarks | [`proteobench_dda`](components.md#proteobench-dda) | Q Exactive DDA precursor-ion quantification |
@@ -68,6 +69,22 @@ we preserve both the requested release and executable response.
 A nonzero exit records a workflow failure.
 Native warnings and confidence estimates still require interpretation after a
 successful exit.
+
+## comet
+
+| Parameter | Meaning |
+| --- | --- |
+| `configuration` | Path to native Comet parameters, including thread count |
+| `version` | Release tag without `v`; defaults to `"2026.03.0"` |
+| `executable` | Optional existing executable instead of a download |
+
+Setup caches the [official Comet binary](https://github.com/UWPR/Comet/releases/tag/v2026.03.0)
+for macOS/Linux (Intel or ARM64) or Windows (x86-64). Input paths and output locations
+override the native configuration through Comet's command-line options. Each
+measurement produces numbered native files, a log and its command record.
+`comet.params` preserves the exact settings used. The log includes Comet's version.
+Gzipped measurements are decompressed once beside their cached source; clearing
+the shared cache removes both copies. Inputs are never converted to another format.
 
 ## Expected peptides
 

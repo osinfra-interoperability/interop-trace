@@ -42,6 +42,7 @@ results. See [the interface guide](docs/users/interface.md).
 | --- | --- |
 | datasets | [`pride`](docs/users/components.md#pride) |
 | databases | [`uniprot`](docs/users/components.md#uniprot) |
+| workflows | [`comet`](docs/users/components.md#comet) |
 | workflows | [`sage`](docs/users/components.md#sage) |
 | benchmarks | [`expected_peptides`](docs/users/components.md#expected-peptides) |
 | benchmarks | [`proteobench_dda`](docs/users/components.md#proteobench-dda) |

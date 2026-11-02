@@ -23,7 +23,7 @@ classifiers = [
 test = ["pytest", "pytest-asyncio (>=1,<2)"]
 quality = ["pre-commit", "ruff", "mypy", "types-pyyaml (>=6.0.12.20260906,<7.0.0.0)"]
 docs = ["zensical", "mkdocstrings[python]"]
-proteobench = ["proteobench (==0.18.6)"]
+proteobench = ["proteobench (==0.19.0)"]
 ui = ["nicegui (>=3.18,<4) ; python_version < \"4\""]
 
 [project.scripts]

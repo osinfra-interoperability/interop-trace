@@ -196,6 +196,7 @@ def test_errors_continue_but_interruptions_stop_the_batch(
         nonlocal calls
         calls += 1
         if calls == 1:
+            assert (output / "environment.json").is_file()
             if "output_dir" in kwargs:
                 folder = kwargs["output_dir"]
                 folder.mkdir()
@@ -227,6 +228,7 @@ def test_errors_continue_but_interruptions_stop_the_batch(
         second = json.loads((output / "second/experiment.json").read_text())
         assert second["status"] == "completed"
     record = json.loads((output / "first/experiment.json").read_text())
+    assert (output / "environment.json").is_file()
     assert record["status"] == "failed"
     assert record["stage"] == stage
     assert record["error"]["type"] == error_type.__name__
@@ -285,6 +287,8 @@ def test_cli_check_does_not_set_up_components(
 def test_cli_executes_run(
     pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    release = Mock(return_value="test-release")
+    monkeypatch.setattr("interop_trace.experiments.runner.platform.release", release)
     document = yaml.safe_load(pipeline.read_text())
     other = pipeline.with_name("other.yml")
     other.write_text(
@@ -313,6 +317,13 @@ def test_cli_executes_run(
     assert result.exit_code == 0, result.output
     assert "Completed 2 experiment(s)" in result.output
     assert "failed 0" in result.output
+    assert json.loads((output / "environment.json").read_text()) == {
+        "operating_system": "Darwin",
+        "os_release": "test-release",
+        "architecture": "arm64",
+        "python_version": sys.version.split()[0],
+    }
+    release.assert_called_once_with()
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["second", "first"]
     assert snapshot["sources"] == [str(other), str(pipeline)]

@@ -1,6 +1,7 @@
 """Execute explicit experiments sequentially through the component contracts."""
 
 import json
+import platform
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -38,6 +39,7 @@ def run_experiments(
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=False)
+    _write(output_dir / "environment.json", _environment())
     cache = DownloadCache(cache_dir)
     _write(
         output_dir / "configuration.json",
@@ -61,6 +63,16 @@ def run_experiments(
         {"completed": list(completed), "failed": failed},
     )
     return RunResult(completed, failed)
+
+
+def _environment() -> dict[str, str]:
+    """Describe the runner's environment, not its external tools or runtimes."""
+    return {
+        "operating_system": platform.system(),
+        "os_release": platform.release(),
+        "architecture": platform.machine(),
+        "python_version": platform.python_version(),
+    }
 
 
 def _run_experiment(

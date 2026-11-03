@@ -96,6 +96,12 @@ status and artifact paths. Provider reports record original download provenance;
 workflow outputs preserve native settings and logs. Each evaluated run includes
 metrics and report paths.
 
+Before component setup, `environment.json` automatically records the runner's
+operating system (`operating_system`), OS release (`os_release`), CPU architecture
+(`architecture`) and Python version (`python_version`). One snapshot covers the
+whole batch and remains available if an experiment fails. It describes the Python
+runner; external tools may use different runtimes, containers or emulation.
+
 If an experiment fails, its remaining stages are skipped and the next experiment
 starts. Its `experiment.json` keeps the failed stage and error; logs and partial
 outputs remain available. After the batch, the CLI lists successes and failures,

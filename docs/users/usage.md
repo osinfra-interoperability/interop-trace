@@ -13,6 +13,21 @@ Start with [the first experiment](first-experiment.md), then use
 [configuration](experiments.md) for other combinations.
 `poetry run python -m interop_trace` exposes the same CLI.
 
+## Failure classification
+
+Assess a saved failed experiment separately from execution:
+
+```bash
+poetry run interop-trace classify results/run-001/erwinia_msamanda
+```
+
+This reads the experiment's `experiment.json` and saves `classification.json`
+beside it. The current placeholder always records category `unknown`, with no
+inferred cause or supporting evidence. It does not interpret logs or call external
+services. The assessment references the original record, which remains unchanged.
+Existing assessments are never overwritten. Exit code `0` means the assessment
+was saved; the original experiment remains failed.
+
 ## Download cache
 
 From the repository root, components reuse downloads in `.interop_trace/cache/`.

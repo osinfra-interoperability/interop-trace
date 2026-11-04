@@ -14,6 +14,7 @@ from interop_trace.components import RequiresSetup
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
 from interop_trace.evaluation import EvaluationResult
 from interop_trace.experiments.config import Experiment, RunConfiguration
+from interop_trace.status import ExecutionStatus
 
 
 @dataclass(frozen=True)
@@ -120,17 +121,20 @@ def _stage(path: Path, record: dict[str, Any], name: str) -> None:
 
 @contextmanager
 def _status(path: Path, record: dict[str, Any]) -> Iterator[None]:
-    record.update(status="running", started_at=datetime.now(UTC).isoformat())
+    record.update(
+        status=ExecutionStatus.RUNNING, started_at=datetime.now(UTC).isoformat()
+    )
     _write(path, record)
     try:
         yield
     except BaseException as error:
         record.update(
-            status="failed", error={"type": type(error).__name__, "message": str(error)}
+            status=ExecutionStatus.FAILED,
+            error={"type": type(error).__name__, "message": str(error)},
         )
         raise
     else:
-        record["status"] = "completed"
+        record["status"] = ExecutionStatus.COMPLETED
     finally:
         record["finished_at"] = datetime.now(UTC).isoformat()
         _write(path, record)

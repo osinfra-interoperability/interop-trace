@@ -14,6 +14,7 @@ from typing import Any
 from uuid import uuid4
 
 from interop_trace.experiments import load_experiments
+from interop_trace.status import ExecutionStatus
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class SavedRun:
     """One output directory, its recorded experiments and execution status."""
 
     directory: Path
-    status: str
+    status: ExecutionStatus
     experiments: tuple[dict[str, Any], ...]
 
 
@@ -105,20 +106,22 @@ class RunBrowser:
             experiments.append(
                 {**record, "id": name}
                 if record
-                else {"id": name, "status": "not_started"}
+                else {"id": name, "status": ExecutionStatus.NOT_STARTED}
             )
         process = self._processes.get(directory)
         code = process.poll() if process is not None else None
         if process is not None and code is None:
-            status = "running"
+            status = ExecutionStatus.RUNNING
         elif (code is not None and code != 0) or any(
-            record.get("status") == "failed" for record in experiments
+            record.get("status") == ExecutionStatus.FAILED for record in experiments
         ):
-            status = "failed"
-        elif experiments and all(r.get("status") == "completed" for r in experiments):
-            status = "completed"
+            status = ExecutionStatus.FAILED
+        elif experiments and all(
+            r.get("status") == ExecutionStatus.COMPLETED for r in experiments
+        ):
+            status = ExecutionStatus.COMPLETED
         else:
-            status = "unknown"
+            status = ExecutionStatus.UNKNOWN
         return SavedRun(directory, status, tuple(experiments))
 
 

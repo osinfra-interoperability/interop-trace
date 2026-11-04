@@ -12,6 +12,7 @@ from interop_trace.interfaces.web.runs import (
     console_log,
     file_preview,
 )
+from interop_trace.status import ExecutionStatus
 
 
 def serve(directory: Path, port: int = 8080) -> None:
@@ -158,9 +159,9 @@ class _Dashboard:
         self.experiments.rows = [
             {
                 "id": r["id"],
-                "status": r.get("status", "unknown"),
+                "status": r.get("status", ExecutionStatus.UNKNOWN),
                 "stage": _stage(r.get("stage", "")),
-                "elapsed": _elapsed(r, saved.status == "running"),
+                "elapsed": _elapsed(r, saved.status == ExecutionStatus.RUNNING),
             }
             for r in saved.experiments
         ]

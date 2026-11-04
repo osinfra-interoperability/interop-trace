@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from interop_trace.status import ExecutionStatus
+
 
 def classify_failure(directory: Path) -> Path:
     """Save an unknown assessment for a failed experiment without changing it.
@@ -12,7 +14,7 @@ def classify_failure(directory: Path) -> Path:
     """
     directory = directory.resolve()
     record = json.loads((directory / "experiment.json").read_text(encoding="utf-8"))
-    if not isinstance(record, dict) or record.get("status") != "failed":
+    if not isinstance(record, dict) or record.get("status") != ExecutionStatus.FAILED:
         raise ValueError("Select a failed experiment directory.")
     assessment: dict[str, object] = {
         "source": "experiment.json",

@@ -14,6 +14,7 @@ from interop_trace.interfaces.web.runs import (
     log_tail,
     read_record,
 )
+from interop_trace.status import ExecutionStatus
 
 
 def test_launch_validates_and_allows_only_one_process(
@@ -120,7 +121,7 @@ def test_history_uses_records_and_does_not_claim_old_jobs_are_live(
                 json.dumps({"id": name, "status": status, "stage": "evaluation"})
             )
     run = RunBrowser(tmp_path).history()[0]
-    assert run.status == expected
+    assert run.status is ExecutionStatus(expected)
     assert [record["id"] for record in run.experiments] == ["first", "second"]
     if statuses[1] is None:
         assert run.experiments[1]["status"] == "not_started"

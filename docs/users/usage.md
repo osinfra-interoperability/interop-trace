@@ -15,18 +15,23 @@ Start with [the first experiment](first-experiment.md), then use
 
 ## Failure classification
 
-Assess a saved failed experiment separately from execution:
+Assess a finished experiment with a recorded error, separately from execution:
 
 ```bash
 poetry run interop-trace classify results/run-001/erwinia_msamanda
 ```
 
 This reads the experiment's `experiment.json` and saves `classification.json`
-beside it. The current placeholder always records category `unknown`, with no
+beside it. The current placeholder records outcome and category `unknown`, with no
 inferred cause or supporting evidence. It does not interpret logs or call external
 services. The assessment references the original record, which remains unchanged.
 Existing assessments are never overwritten. Exit code `0` means the assessment
-was saved; the original experiment remains failed.
+was saved; the original execution status and error remain unchanged.
+
+Assessment values use string enums: `AssessmentOutcome` defines `success`,
+`failure` and `unknown`; `AssessmentCategory` currently defines only `unknown`.
+An assessment outcome is separate from execution status: completing execution
+does not establish scientific success.
 
 ## Download cache
 

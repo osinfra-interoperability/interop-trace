@@ -19,6 +19,10 @@ Python >=3.12.
 
 ::: interop_trace.interfaces.cli
 
+## Status and assessment values
+
+::: interop_trace.status
+
 ## Setup and registration
 
 ::: interop_trace.components

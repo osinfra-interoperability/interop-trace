@@ -104,8 +104,9 @@ runner; external tools may use different runtimes, containers or emulation.
 
 If an experiment fails, its remaining stages are skipped and the next experiment
 starts. Its `experiment.json` keeps the failed stage and error; logs and partial
-outputs remain available. After the batch, the CLI lists successes and failures,
-saves their IDs and errors in run-level `summary.json`, and exits with code `1`
+outputs remain available. After the batch, the CLI reports finished experiment
+counts and recorded errors, saves their IDs and errors in run-level `summary.json`,
+and exits with code `1`
 if any experiment failed (`0` otherwise).
 
 Invalid run configuration stops execution before experiments start. `Ctrl+C`
@@ -114,3 +115,8 @@ experiments do not start and no final batch summary is written.
 Use a new output directory to rerun; cached downloads remain reusable.
 Execution status and benchmark quality are separate: completed evaluation can
 report poor recovery.
+
+`ExecutionStatus` defines `not_started`, `running` and `finished`. A finished
+attempt can have a recorded error, including an interruption; status describes
+the lifecycle, not the result. Missing status information is unavailable rather
+than a separate execution state.

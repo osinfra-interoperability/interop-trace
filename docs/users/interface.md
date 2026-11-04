@@ -18,7 +18,7 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    selected initially; the header checkbox selects all. Click **Run** to execute
    the selection in table order, using the shared cache and a new `results/ui-…/`
    directory.
-3. Watch status, stages and elapsed time. Updates arrive about once per second.
+3. Watch status, stages, error types and elapsed time. Updates arrive about once per second.
 4. Select a saved run and expand **Files and provenance**. **File group** selects
    **Run-level files** (configuration and console log) or one experiment's files.
    Use the single preview/download control for outputs and logs; a selected log
@@ -27,7 +27,8 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    configuration snapshot. File names are relative to the selected group.
 
 If an experiment fails, later experiments still run. The batch stays **running**
-until execution finishes, then shows **failed** if any experiment failed.
+until execution finishes, then shows **finished** regardless of recorded errors.
+The experiment table displays recorded error types separately from status.
 Run-level `summary.json` lists completed IDs and failures; each experiment retains
 its stage, error and partial outputs.
 
@@ -43,9 +44,9 @@ keep the terminal server running until the experiment finishes.
 Stop the server with `Ctrl+C` after completion. Stopping it during execution may
 interrupt the experiment.
 
-Completed and failed CLI runs also appear in history. After restarting the server,
-unfinished runs are shown as **unknown** because the interface cannot confirm their
-process state. Inspect their records and logs before starting more work.
+CLI runs also appear in history. If the interface cannot establish a run's
+process state, its status is shown as **unavailable**. Inspect its records and logs
+before starting more work.
 
 The interface shows stages rather than estimated percentages or completion times.
 The shared preview shows the first 32 KiB of UTF-8 text, or the last 32 KiB for logs.

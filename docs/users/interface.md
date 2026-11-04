@@ -25,6 +25,12 @@ For a different checkout or port, use `--directory /path/to/checkout --port 8090
    updates live. Within an experiment, benchmark reports are under
    `evaluation/`; within run-level files, `configuration.json` contains the run
    configuration snapshot. File names are relative to the selected group.
+5. To assess a recorded error, select its experiment in **File group** and click
+   **Assess error**. The experiment must be finished with a recorded error and
+   have no existing assessment. The current placeholder saves outcome and category
+   `unknown` in `classification.json`, then selects it in the same preview.
+   Original records and existing assessments are preserved. The CLI's
+   [classification command](usage.md#failure-classification) uses the same function.
 
 If an experiment fails, later experiments still run. The batch stays **running**
 until execution finishes, then shows **finished** regardless of recorded errors.

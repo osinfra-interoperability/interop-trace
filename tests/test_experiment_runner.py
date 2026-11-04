@@ -16,6 +16,7 @@ from click import unstyle
 from requests import Response
 from typer.testing import CliRunner
 
+from interop_trace.classification import assess_run
 from interop_trace.evaluation import EvaluationResult, ProteoBenchDDA
 from interop_trace.experiments import (
     create_run,
@@ -161,6 +162,12 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
         execute_run(output)
     with (output / "experiments.csv").open() as stream:
         assert [row["status"] for row in csv.DictReader(stream)] == ["finished"] * 2
+    assert len(assess_run(output)) == 2
+    assert assess_run(output) == []
+    with (output / "experiments.csv").open() as stream:
+        assert [row["assessment_outcome"] for row in csv.DictReader(stream)] == [
+            "unknown"
+        ] * 2
     assert not results.failed
     evaluations = results.completed.values()
     assert [result.metrics["nr_feature"] for result in evaluations] == [3, 3]
@@ -301,7 +308,10 @@ def test_cli_check_does_not_set_up_components(
 
 
 def test_cli_executes_run(
-    pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    pipeline: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    http_transport: Mock,
 ) -> None:
     release = Mock(return_value="test-release")
     monkeypatch.setattr("interop_trace.experiments.runner.platform.release", release)
@@ -320,6 +330,7 @@ def test_cli_executes_run(
         app,
         [
             "run",
+            "--prepare-only",
             "second",
             "first",
             "--directory",
@@ -330,6 +341,9 @@ def test_cli_executes_run(
             str(tmp_path / "cache"),
         ],
     )
+    assert result.exit_code == 0, result.output
+    http_transport.assert_not_called()
+    result = CliRunner().invoke(app, ["execute", str(output)])
     assert result.exit_code == 0, result.output
     assert "Finished 2 experiment(s), 0 with errors" in result.output
     assert json.loads((output / "environment.json").read_text()) == {

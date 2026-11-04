@@ -1,11 +1,14 @@
 """Command-line entry point for Interop Trace."""
 
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
+
+if TYPE_CHECKING:
+    from interop_trace.experiments.runner import RunResult
 
 app = typer.Typer(
     help="Tracing interoperability across bioinformatics databases and workflows.",
@@ -42,12 +45,17 @@ def run(
             "--check", help="Validate configuration without setup or execution."
         ),
     ] = False,
+    prepare_only: Annotated[
+        bool, typer.Option("--prepare-only", help="Create run files without execution.")
+    ] = False,
 ) -> None:
     """Select experiment IDs across YAML files and execute them sequentially."""
-    from interop_trace.experiments import load_experiments, run_experiments
+    from interop_trace.experiments import create_run, load_experiments, run_experiments
 
     if bool(experiment_ids) == all_experiments:
         raise typer.BadParameter("Provide experiment IDs or --all, but not both.")
+    if check and prepare_only:
+        raise typer.BadParameter("Choose --check or --prepare-only, not both.")
     try:
         configured = load_experiments(directory, experiment_ids)
         if check:
@@ -55,12 +63,40 @@ def run(
                 f"Valid configuration: {len(configured.experiments)} experiment(s)."
             )
             return
+        if prepare_only:
+            created = create_run(
+                configured, output_dir=output, cache_dir=cache_directory
+            )
+            typer.echo(f"Created run: {created}")
+            return
         results = run_experiments(
             configured, output_dir=output, cache_dir=cache_directory
         )
     except Exception as error:
         typer.echo(f"Run failed: {error}", err=True)
         raise typer.Exit(code=1) from error
+    _report_run(results, output)
+
+
+@app.command("execute")
+def execute(
+    directory: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=False, help="Created run directory."),
+    ],
+) -> None:
+    """Execute a created run using its saved experiment selections and YAML."""
+    from interop_trace.experiments import execute_run
+
+    try:
+        results = execute_run(directory)
+    except Exception as error:
+        typer.echo(f"Run failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    _report_run(results, directory)
+
+
+def _report_run(results: "RunResult", output: Path) -> None:
     typer.echo(
         f"Finished {len(results.completed) + len(results.failed)} experiment(s), "
         f"{len(results.failed)} with errors: {output.resolve()}"
@@ -80,19 +116,23 @@ def classify(
         typer.Argument(
             exists=True,
             file_okay=False,
-            help="Finished experiment output directory with a recorded error.",
+            help="Run directory or finished experiment output directory.",
         ),
     ],
 ) -> None:
-    """Save a post-run failure assessment (currently always unknown)."""
-    from interop_trace.classification import classify_failure
+    """Save post-run assessments (currently always unknown)."""
+    from interop_trace.classification import assess_experiment, assess_run
 
     try:
-        output = classify_failure(directory)
+        outputs = (
+            assess_run(directory)
+            if (directory / "configuration.json").is_file()
+            else [assess_experiment(directory)]
+        )
     except (OSError, ValueError) as error:
         typer.echo(f"Cannot classify experiment: {error}", err=True)
         raise typer.Exit(code=1) from error
-    typer.echo(f"Saved classification: {output}")
+    typer.echo(f"Saved {len(outputs)} assessment(s): {directory.resolve()}")
 
 
 @app.command("experiments")

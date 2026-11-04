@@ -5,7 +5,7 @@ from pathlib import Path
 
 from nicegui import run, ui
 
-from interop_trace.classification import classify_failure
+from interop_trace.classification import assess_experiment
 from interop_trace.experiments import load_experiments
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
@@ -222,7 +222,7 @@ class _Dashboard:
         self.assess_button.disable()
         output = None
         try:
-            output = await run.io_bound(classify_failure, saved.directory / group)
+            output = await run.io_bound(assess_experiment, saved.directory / group)
         except (OSError, ValueError) as error:
             ui.notify(str(error), type="negative")
         finally:

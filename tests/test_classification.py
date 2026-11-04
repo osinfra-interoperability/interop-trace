@@ -9,11 +9,15 @@ from typer.testing import CliRunner
 from interop_trace.interfaces.cli import app
 
 
-def test_unknown_classification_preserves_records(tmp_path: Path) -> None:
+@pytest.mark.parametrize("has_error", [False, True])
+def test_unknown_classification_preserves_records(
+    tmp_path: Path, has_error: bool
+) -> None:
     source = tmp_path / "experiment.json"
-    original = (
-        '{"status":"finished","stage":"evaluation","error":{"message":"missing"}}'
-    )
+    record = {"status": "finished", "stage": "evaluation"}
+    if has_error:
+        record["error"] = {"message": "missing"}
+    original = json.dumps(record)
     source.write_text(original)
     result = CliRunner().invoke(app, ["classify", str(tmp_path)])
     assert result.exit_code == 0, result.output
@@ -39,11 +43,11 @@ def test_unknown_classification_preserves_records(tmp_path: Path) -> None:
         None,
         "{",
         "[]",
-        '{"status":"finished"}',
+        '{"status":"not_started"}',
         '{"status":"running","error":{"message":"missing"}}',
     ],
 )
-def test_classification_requires_a_finished_record_with_an_error(
+def test_classification_requires_a_finished_record(
     tmp_path: Path, record: str | None
 ) -> None:
     if record is not None:

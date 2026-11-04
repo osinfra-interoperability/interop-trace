@@ -20,13 +20,14 @@ def test_unknown_classification_preserves_records(tmp_path: Path) -> None:
     assert assessment == {
         "source": "experiment.json",
         "method": "placeholder",
+        "outcome": "unknown",
         "category": "unknown",
         "cause": None,
         "evidence": [],
     }
-    output.write_text('{"category":"reviewed"}')
+    output.write_text('{"outcome":"success"}')
     assert CliRunner().invoke(app, ["classify", str(tmp_path)]).exit_code == 1
-    assert output.read_text() == '{"category":"reviewed"}'
+    assert output.read_text() == '{"outcome":"success"}'
     assert source.read_text() == original
 
 

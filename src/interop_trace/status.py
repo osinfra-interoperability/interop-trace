@@ -1,4 +1,4 @@
-"""Shared execution status vocabulary for saved records and interfaces."""
+"""Shared execution and assessment vocabularies for records and interfaces."""
 
 from enum import StrEnum
 
@@ -10,4 +10,18 @@ class ExecutionStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+class AssessmentOutcome(StrEnum):
+    """Assessor conclusion, separate from whether execution completed."""
+
+    SUCCESS = "success"
+    FAILURE = "failure"
+    UNKNOWN = "unknown"
+
+
+class AssessmentCategory(StrEnum):
+    """Cause category; only unknown is defined until classification is developed."""
+
     UNKNOWN = "unknown"

@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from interop_trace.status import ExecutionStatus
+from interop_trace.status import AssessmentCategory, AssessmentOutcome, ExecutionStatus
 
 
 def classify_failure(directory: Path) -> Path:
@@ -19,7 +19,8 @@ def classify_failure(directory: Path) -> Path:
     assessment: dict[str, object] = {
         "source": "experiment.json",
         "method": "placeholder",
-        "category": "unknown",
+        "outcome": AssessmentOutcome.UNKNOWN,
+        "category": AssessmentCategory.UNKNOWN,
         "cause": None,
         "evidence": [],
     }

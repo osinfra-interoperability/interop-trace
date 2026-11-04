@@ -73,6 +73,26 @@ def run(
         raise typer.Exit(code=1)
 
 
+@app.command("classify")
+def classify(
+    directory: Annotated[
+        Path,
+        typer.Argument(
+            exists=True, file_okay=False, help="Failed experiment output directory."
+        ),
+    ],
+) -> None:
+    """Save a post-run failure assessment (currently always unknown)."""
+    from interop_trace.classification import classify_failure
+
+    try:
+        output = classify_failure(directory)
+    except (OSError, ValueError) as error:
+        typer.echo(f"Cannot classify experiment: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved classification: {output}")
+
+
 @app.command("experiments")
 def list_experiments(
     directory: Annotated[

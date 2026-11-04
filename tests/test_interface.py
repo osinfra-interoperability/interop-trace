@@ -74,7 +74,7 @@ async def test_launch_and_monitor(
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
-    await user.should_see("Status: unknown")
+    await user.should_see("Status: unavailable")
     assert not user.find(marker="start-run").elements.pop().enabled
     table = user.find(marker="experiment-choices")
     rows = table.elements.copy().pop().rows
@@ -94,15 +94,15 @@ async def test_launch_and_monitor(
         json.dumps(
             {
                 "id": "first",
-                "status": "completed",
+                "status": "finished",
                 "stage": "evaluation",
             }
         )
     )
     process.poll.return_value = 0
-    await user.should_see("Status: completed", retries=20)
+    await user.should_see("Status: finished", retries=20)
     assert any(
-        row.get("id") == "first" and row.get("status") == "completed"
+        row.get("id") == "first" and row.get("status") == "finished"
         for table in user.find(nicegui.ui.table).elements
         for row in table.rows
     )
@@ -259,7 +259,7 @@ async def test_failed_process_shows_console_error_and_allows_another_run(
     rows = table.elements.copy().pop().rows
     table.trigger("selection", {"added": True, "rows": rows, "keys": ["first"]})
     user.find(marker="start-run").click()
-    await user.should_see("Status: failed")
+    await user.should_see("Status: finished")
     user.find("Files and provenance").click()
     await user.should_see("Run failed: missing input")
     assert user.find(marker="start-run").elements.pop().enabled
@@ -288,7 +288,7 @@ async def test_checkboxes_select_ids_across_files(
     )
     await user.should_see("Selected: 2 of 3 experiments")
     user.find(marker="start-run").click()
-    await user.should_see("Status: failed", retries=10)
+    await user.should_see("Status: finished", retries=10)
     command = launch.call_args.args[0]
     assert command[4 : command.index("--directory")] == ["another", "first"]
     http_transport.assert_not_called()

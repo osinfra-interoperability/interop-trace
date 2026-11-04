@@ -68,7 +68,7 @@ class _Dashboard:
             ).classes("w-full")
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
-            self.experiments = _table(("id", "status", "stage", "elapsed"))
+            self.experiments = _table(("id", "status", "stage", "error", "elapsed"))
             with ui.expansion("Files and provenance").classes("w-full"):
                 self.file_group = (
                     ui.select({}, label="File group", on_change=self.show_details)
@@ -137,7 +137,8 @@ class _Dashboard:
             return
         self.runs = {str(r.directory): r for r in history}
         options = {
-            key: f"{r.directory.name} · {r.status}" for key, r in self.runs.items()
+            key: f"{r.directory.name} · {r.status or 'unavailable'}"
+            for key, r in self.runs.items()
         }
         _options(self.selection, options)
         self._selection_changed()
@@ -154,13 +155,14 @@ class _Dashboard:
             _options(self.artifact, {})
             await self.show_file()
             return
-        self.status.set_text(f"Status: {saved.status}")
+        self.status.set_text(f"Status: {saved.status or 'unavailable'}")
         self.location.set_text(str(saved.directory))
         self.experiments.rows = [
             {
                 "id": r["id"],
-                "status": r.get("status", ExecutionStatus.UNKNOWN),
+                "status": r.get("status") or "—",
                 "stage": _stage(r.get("stage", "")),
+                "error": r.get("error", {}).get("type", ""),
                 "elapsed": _elapsed(r, saved.status == ExecutionStatus.RUNNING),
             }
             for r in saved.experiments

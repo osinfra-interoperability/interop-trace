@@ -62,13 +62,13 @@ def run(
         typer.echo(f"Run failed: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(
-        f"Completed {len(results.completed)} experiment(s), "
-        f"failed {len(results.failed)}: {output.resolve()}"
+        f"Finished {len(results.completed) + len(results.failed)} experiment(s), "
+        f"{len(results.failed)} with errors: {output.resolve()}"
     )
     if results.completed:
-        typer.echo("Succeeded: " + ", ".join(results.completed))
+        typer.echo("Without recorded errors: " + ", ".join(results.completed))
     for name, failure in results.failed.items():
-        typer.echo(f"Failed {name}: {failure}", err=True)
+        typer.echo(f"Error {name}: {failure}", err=True)
     if results.failed:
         raise typer.Exit(code=1)
 
@@ -78,7 +78,9 @@ def classify(
     directory: Annotated[
         Path,
         typer.Argument(
-            exists=True, file_okay=False, help="Failed experiment output directory."
+            exists=True,
+            file_okay=False,
+            help="Finished experiment output directory with a recorded error.",
         ),
     ],
 ) -> None:

@@ -7,15 +7,19 @@ from interop_trace.status import AssessmentCategory, AssessmentOutcome, Executio
 
 
 def classify_failure(directory: Path) -> Path:
-    """Save an unknown assessment for a failed experiment without changing it.
+    """Save an unknown assessment for a finished experiment with a recorded error.
 
     Classification is currently a placeholder: no cause is inferred and no logs
     are interpreted. Existing assessments are preserved rather than overwritten.
     """
     directory = directory.resolve()
     record = json.loads((directory / "experiment.json").read_text(encoding="utf-8"))
-    if not isinstance(record, dict) or record.get("status") != ExecutionStatus.FAILED:
-        raise ValueError("Select a failed experiment directory.")
+    if (
+        not isinstance(record, dict)
+        or record.get("status") != ExecutionStatus.FINISHED
+        or not record.get("error")
+    ):
+        raise ValueError("Select a finished experiment with a recorded error.")
     assessment: dict[str, object] = {
         "source": "experiment.json",
         "method": "placeholder",

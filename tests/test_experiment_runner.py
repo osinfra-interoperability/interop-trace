@@ -158,7 +158,8 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == "completed"
+        assert record["status"] == "finished"
+        assert "error" not in record
         assert record["started_at"] <= record["finished_at"]
         assert record["evaluation"]["metrics"]["nr_feature"] == 3
         assert record["database"]["path"]
@@ -226,10 +227,10 @@ def test_errors_continue_but_interruptions_stop_the_batch(
         summary = json.loads((output / "summary.json").read_text())
         assert summary == {"completed": ["second"], "failed": results.failed}
         second = json.loads((output / "second/experiment.json").read_text())
-        assert second["status"] == "completed"
+        assert second["status"] == "finished"
     record = json.loads((output / "first/experiment.json").read_text())
     assert (output / "environment.json").is_file()
-    assert record["status"] == "failed"
+    assert record["status"] == "finished"
     assert record["stage"] == stage
     assert record["error"]["type"] == error_type.__name__
     snapshot = json.loads((output / "configuration.json").read_text())
@@ -315,8 +316,7 @@ def test_cli_executes_run(
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "Completed 2 experiment(s)" in result.output
-    assert "failed 0" in result.output
+    assert "Finished 2 experiment(s), 0 with errors" in result.output
     assert json.loads((output / "environment.json").read_text()) == {
         "operating_system": "Darwin",
         "os_release": "test-release",
@@ -329,7 +329,7 @@ def test_cli_executes_run(
     assert snapshot["sources"] == [str(other), str(pipeline)]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == "completed"
+        assert record["status"] == "finished"
 
 
 @pytest.mark.parametrize("failed_ids", [("first",), ("second",), ("first", "second")])
@@ -360,17 +360,15 @@ def test_cli_summarizes_all_experiments_before_exiting_nonzero(
         ],
     )
     assert result.exit_code == 1, result.output
-    assert (
-        f"Completed {2 - len(failed_ids)} experiment(s), failed {len(failed_ids)}"
-        in result.output
-    )
+    assert f"Finished 2 experiment(s), {len(failed_ids)} with errors" in result.output
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == ("failed" if name in failed_ids else "completed")
+        assert record["status"] == "finished"
+        assert ("error" in record) == (name in failed_ids)
         assert (
-            f"Failed {name}: ValueError: cannot evaluate"
+            f"Error {name}: ValueError: cannot evaluate"
             if name in failed_ids
-            else f"Succeeded: {name}"
+            else f"Without recorded errors: {name}"
         ) in result.output
 
 

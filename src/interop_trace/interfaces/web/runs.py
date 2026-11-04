@@ -22,7 +22,7 @@ class SavedRun:
     """One output directory, its recorded experiments and execution status."""
 
     directory: Path
-    status: ExecutionStatus
+    status: ExecutionStatus | None
     experiments: tuple[dict[str, Any], ...]
 
 
@@ -110,18 +110,15 @@ class RunBrowser:
             )
         process = self._processes.get(directory)
         code = process.poll() if process is not None else None
-        if process is not None and code is None:
-            status = ExecutionStatus.RUNNING
-        elif (code is not None and code != 0) or any(
-            record.get("status") == ExecutionStatus.FAILED for record in experiments
-        ):
-            status = ExecutionStatus.FAILED
+        status = None
+        if process is not None:
+            status = (
+                ExecutionStatus.RUNNING if code is None else ExecutionStatus.FINISHED
+            )
         elif experiments and all(
-            r.get("status") == ExecutionStatus.COMPLETED for r in experiments
+            r.get("status") == ExecutionStatus.FINISHED for r in experiments
         ):
-            status = ExecutionStatus.COMPLETED
-        else:
-            status = ExecutionStatus.UNKNOWN
+            status = ExecutionStatus.FINISHED
         return SavedRun(directory, status, tuple(experiments))
 
 

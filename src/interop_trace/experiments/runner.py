@@ -19,7 +19,7 @@ from interop_trace.status import ExecutionStatus
 
 @dataclass(frozen=True)
 class RunResult:
-    """Successful evaluations and errors, keyed by experiment ID."""
+    """Returned evaluations and recorded errors, keyed by experiment ID."""
 
     completed: dict[str, EvaluationResult]
     failed: dict[str, str]
@@ -128,15 +128,12 @@ def _status(path: Path, record: dict[str, Any]) -> Iterator[None]:
     try:
         yield
     except BaseException as error:
-        record.update(
-            status=ExecutionStatus.FAILED,
-            error={"type": type(error).__name__, "message": str(error)},
-        )
+        record["error"] = {"type": type(error).__name__, "message": str(error)}
         raise
-    else:
-        record["status"] = ExecutionStatus.COMPLETED
     finally:
-        record["finished_at"] = datetime.now(UTC).isoformat()
+        record.update(
+            status=ExecutionStatus.FINISHED, finished_at=datetime.now(UTC).isoformat()
+        )
         _write(path, record)
 
 

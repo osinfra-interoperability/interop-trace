@@ -4,13 +4,11 @@ from enum import StrEnum
 
 
 class ExecutionStatus(StrEnum):
-    """Execution progress, including unknown or not-yet-started UI states."""
+    """Execution lifecycle, independent of errors and assessment results."""
 
     NOT_STARTED = "not_started"
     RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    UNKNOWN = "unknown"
+    FINISHED = "finished"
 
 
 class AssessmentOutcome(StrEnum):

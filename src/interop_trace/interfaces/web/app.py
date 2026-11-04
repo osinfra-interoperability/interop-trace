@@ -5,6 +5,7 @@ from pathlib import Path
 
 from nicegui import run, ui
 
+from interop_trace.classification import classify_failure
 from interop_trace.experiments import load_experiments
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
@@ -75,6 +76,10 @@ class _Dashboard:
                     .classes("w-full")
                     .mark("file-group")
                 )
+                self.assess_button = ui.button(
+                    "Assess error", on_click=self.assess
+                ).mark("assess-error")
+                self.assess_button.disable()
                 self.artifact = (
                     ui.select({}, label="Output file", on_change=self.show_file)
                     .classes("w-full")
@@ -145,6 +150,7 @@ class _Dashboard:
         await self.show_details()
 
     async def show_details(self) -> None:
+        self.assess_button.disable()
         saved = self.runs.get(self.selection.value)
         if saved is None:
             self.status.set_text("No saved runs yet.")
@@ -180,6 +186,12 @@ class _Dashboard:
         )
         group = self.file_group.value
         directory = saved.directory / group
+        record = next((r for r in saved.experiments if r["id"] == group), {})
+        self.assess_button.set_enabled(
+            record.get("status") == ExecutionStatus.FINISHED
+            and bool(record.get("error"))
+            and not (directory / "classification.json").exists()
+        )
         files = (
             await run.io_bound(
                 lambda: sorted(
@@ -201,6 +213,27 @@ class _Dashboard:
             artifacts[str(console)] = "Console log"
         _options(self.artifact, artifacts)
         await self.show_file()
+
+    async def assess(self) -> None:
+        saved = self.runs.get(self.selection.value)
+        group = self.file_group.value
+        if saved is None or group not in {r["id"] for r in saved.experiments}:
+            return
+        self.assess_button.disable()
+        output = None
+        try:
+            output = await run.io_bound(classify_failure, saved.directory / group)
+        except (OSError, ValueError) as error:
+            ui.notify(str(error), type="negative")
+        finally:
+            await self.show_details()
+        if (
+            output is not None
+            and self.selection.value == str(saved.directory)
+            and self.file_group.value == group
+        ):
+            self.artifact.set_value(str(output))
+            ui.notify("Saved assessment.", type="positive")
 
     async def show_file(self) -> None:
         source = self.artifact.value

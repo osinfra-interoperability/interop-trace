@@ -145,6 +145,45 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     assert viewer.language == "JSON"
 
 
+async def test_assess_error_saves_and_previews_the_shared_classification(
+    user, checkout: Path
+) -> None:
+    directory = checkout / "results/assessment"
+    states = {"running": "running", "no_error": "finished", "first": "finished"}
+    directory.mkdir(parents=True)
+    (directory / "configuration.json").write_text(
+        json.dumps({"experiments": [{"id": name} for name in states]})
+    )
+    for name, status in states.items():
+        folder = directory / name
+        folder.mkdir()
+        record = {"id": name, "status": status, "stage": "evaluation"}
+        if name != "no_error":
+            record["error"] = {"type": "ValueError", "message": "missing result"}
+        (folder / "experiment.json").write_text(json.dumps(record))
+    source = directory / "first/experiment.json"
+    original = source.read_bytes()
+    _page(checkout)
+    await user.open("/")
+    user.find("Files and provenance").click()
+    await user.should_see('"experiments":', retries=10)
+    assert not user.find(marker="assess-error").elements.pop().enabled
+    for name in states:
+        user.find(marker="file-group").click()
+        user.find(f"Experiment: {name}").click()
+        await user.should_see(f'"id": "{name}", "status": "{states[name]}"', retries=10)
+        assert user.find(marker="assess-error").elements.pop().enabled == (
+            name == "first"
+        )
+    user.find(marker="assess-error").click()
+    await user.should_see('"outcome": "unknown"', retries=10)
+    output = directory / "first/classification.json"
+    assert json.loads(output.read_text())["method"] == "placeholder"
+    assert source.read_bytes() == original
+    assert not user.find(marker="assess-error").elements.pop().enabled
+    assert user.find(marker="output-file").elements.pop().value == str(output)
+
+
 async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

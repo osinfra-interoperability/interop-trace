@@ -1,5 +1,6 @@
 """Exercise YAML, cache, process and reporting boundaries without real downloads."""
 
+import csv
 import json
 import sys
 import tarfile
@@ -16,7 +17,12 @@ from requests import Response
 from typer.testing import CliRunner
 
 from interop_trace.evaluation import EvaluationResult, ProteoBenchDDA
-from interop_trace.experiments import load_configuration, run_experiments
+from interop_trace.experiments import (
+    create_run,
+    execute_run,
+    load_configuration,
+    run_experiments,
+)
 from interop_trace.interfaces.cli import app
 from interop_trace.workflows import SageWorkflow
 
@@ -144,9 +150,17 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     output = tmp_path / "results"
     configuration = load_configuration(pipeline)
     http_transport.assert_not_called()
-    results = run_experiments(
-        configuration, output_dir=output, cache_dir=tmp_path / "cache"
-    )
+    create_run(configuration, output_dir=output, cache_dir=tmp_path / "cache")
+    http_transport.assert_not_called()
+    with (output / "experiments.csv").open() as stream:
+        assert [row["status"] for row in csv.DictReader(stream)] == ["not_started"] * 2
+    assert not (output / "environment.json").exists()
+    pipeline.write_text("changed after creation")
+    results = execute_run(output)
+    with pytest.raises(ValueError, match="already started"):
+        execute_run(output)
+    with (output / "experiments.csv").open() as stream:
+        assert [row["status"] for row in csv.DictReader(stream)] == ["finished"] * 2
     assert not results.failed
     evaluations = results.completed.values()
     assert [result.metrics["nr_feature"] for result in evaluations] == [3, 3]
@@ -214,7 +228,8 @@ def test_errors_continue_but_interruptions_stop_the_batch(
                 output_dir=output,
                 cache_dir=tmp_path / "cache",
             )
-        assert not (output / "second").exists()
+        second = json.loads((output / "second/experiment.json").read_text())
+        assert second["status"] == "not_started" and "started_at" not in second
         assert not (output / "summary.json").exists()
     else:
         results = run_experiments(

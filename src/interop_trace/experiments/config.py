@@ -34,12 +34,19 @@ class Experiment:
         if (
             not isinstance(self.id, str)
             or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", self.id)
-            or self.id == "configuration.json"
+            or self.id
+            in {
+                "configuration.json",
+                "environment.json",
+                "summary.json",
+                "execution.json",
+                "experiments.csv",
+            }
         ):
             raise ValueError(
                 "Experiment id must be a simple directory name "
                 "starting with a letter or digit, "
-                "excluding configuration.json."
+                "excluding run-level filenames."
             )
 
 
@@ -56,7 +63,9 @@ class RunConfiguration:
             raise ValueError("Experiment ids must be unique and the run nonempty.")
 
 
-def load_configuration(path: Path) -> RunConfiguration:
+def load_configuration(
+    path: Path, *, files: dict[str, str] | None = None
+) -> RunConfiguration:
     """Validate references and construct every experiment before any setup.
 
     Each layer references one component file. Paths resolve relative to the file
@@ -64,9 +73,11 @@ def load_configuration(path: Path) -> RunConfiguration:
     The loader never downloads resources or starts workflow processes.
     """
     path = path.resolve()
-    document, text = _read_yaml(path)
+    document, text = _read_yaml(path, files)
     _keys(document, {"components", "experiments"}, str(path))
-    definitions, contents = _read_component_files(document["components"], path.parent)
+    definitions, contents = _read_component_files(
+        document["components"], path.parent, files
+    )
     choices = document["experiments"]
     if not isinstance(choices, list) or not choices:
         raise ValueError("experiments must be a nonempty list.")
@@ -81,8 +92,23 @@ def load_configuration(path: Path) -> RunConfiguration:
     )
 
 
+def load_snapshot(snapshot: dict[str, Any]) -> RunConfiguration:
+    """Reconstruct selected components from the YAML saved when a run was created."""
+    sources = snapshot.get("sources") or [snapshot["source"]]
+    experiments = {
+        experiment.id: experiment
+        for source in sources
+        for experiment in load_configuration(
+            Path(source), files=snapshot["files"]
+        ).experiments
+    }
+    return RunConfiguration(
+        tuple(experiments[choice["id"]] for choice in snapshot["experiments"]), snapshot
+    )
+
+
 def _read_component_files(
-    sources: object, directory: Path
+    sources: object, directory: Path, files: dict[str, str] | None = None
 ) -> tuple[dict[str, tuple[Path, dict[str, Any]]], dict[str, str]]:
     sources = _mapping(sources, "components")
     _keys(sources, {"datasets", "databases", "workflows", "benchmarks"}, "components")
@@ -91,7 +117,7 @@ def _read_component_files(
         if not isinstance(relative, str):
             raise ValueError(f"components.{layer} must reference a YAML file.")
         path = (directory / relative).resolve()
-        document, text = _read_yaml(path)
+        document, text = _read_yaml(path, files)
         definitions[layer] = (path, document)
         contents[str(path)] = text
     return definitions, contents
@@ -166,11 +192,13 @@ class _UniqueSafeLoader(yaml.SafeLoader):
     """Safe YAML construction that also rejects silently overwritten settings."""
 
 
-def _read_yaml(path: Path) -> tuple[dict[str, Any], str]:
+def _read_yaml(
+    path: Path, files: dict[str, str] | None = None
+) -> tuple[dict[str, Any], str]:
     _UniqueSafeLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping
     )
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8") if files is None else files[str(path)]
     try:
         value = yaml.load(text, Loader=_UniqueSafeLoader)
     except yaml.YAMLError as error:

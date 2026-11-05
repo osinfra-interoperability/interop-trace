@@ -13,20 +13,27 @@ Start with [the first experiment](first-experiment.md), then use
 [configuration](experiments.md) for other combinations.
 `poetry run python -m interop_trace` exposes the same CLI.
 
-## Failure classification
+## Separate run stages
 
-Assess a finished experiment with a recorded error, separately from execution:
+Create a run without downloads or execution, then execute its saved selection:
 
 ```bash
-poetry run interop-trace classify results/run-001/erwinia_msamanda
+poetry run interop-trace run erwinia_sage --prepare-only --output results/my-run
+poetry run interop-trace execute results/my-run
+poetry run interop-trace classify results/my-run
 ```
 
-This reads the experiment's `experiment.json` and saves `classification.json`
-beside it. The current placeholder records outcome and category `unknown`, with no
-inferred cause or supporting evidence. It does not interpret logs or call external
-services. The assessment references the original record, which remains unchanged.
-Existing assessments are never overwritten. Exit code `0` means the assessment
-was saved; the original execution status and error remain unchanged.
+Without `--prepare-only`, `run` creates and executes in one command as before.
+Execution uses the saved YAML and can start only once per run. Environment
+information is collected at execution time. `experiments.csv` records the same
+experiment table as the [UI](interface.md).
+
+`classify` accepts a run directory or a single finished experiment directory.
+It saves `classification.json` for finished experiments, including those without
+exceptions, and skips existing assessments when processing a run. The placeholder
+records outcome and category `unknown`, with no inferred cause or supporting
+evidence. It does not interpret logs or call external services. Original records
+remain unchanged. Exit code `0` means the command completed, not scientific success.
 
 Assessment values use string enums: `AssessmentOutcome` defines `success`,
 `failure` and `unknown`; `AssessmentCategory` currently defines only `unknown`.

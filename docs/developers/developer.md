@@ -53,12 +53,19 @@ references through typed registries. Each experiment gets fresh component instan
 IDs and selects experiments in requested order. Both interfaces use it; it
 performs no setup. Selected source/component contents are merged into the run
 snapshot, with each experiment's source file recorded.
-`experiments/runner.py` performs setup, dataset/database preparation, workflow and
-evaluation sequentially. It records each failure, skips that experiment's remaining
+`create_run` saves selected YAML and initial records without setup. `execute_run`
+reconstructs the selection from that snapshot and claims `execution.json` before
+starting; the same run cannot execute twice. `run_experiments` combines both calls.
+Execution performs setup, dataset/database preparation, workflow and evaluation
+sequentially. It records each failure, skips that experiment's remaining
 stages and continues with the next. It returns `RunResult` with `completed`
 evaluations and `failed` errors keyed by ID, and writes `summary.json` after the
 batch. Interruptions propagate and stop the batch; configuration validation happens
 before execution. The CLI reports the outcome and exits nonzero if any failed.
+`experiments/records.py` projects choices, execution and assessment records into
+the same rows used by the UI and exported as `experiments.csv`. JSON records are
+authoritative. `classification.py` provides explicit experiment/run assessment;
+the current placeholder always returns unknown and preserves existing assessments.
 `interfaces/cli.py` exposes this orchestration and cache commands.
 `interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
 launches the same CLI in a subprocess and reads existing output records without

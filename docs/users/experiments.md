@@ -96,6 +96,13 @@ status and artifact paths. Provider reports record original download provenance;
 workflow outputs preserve native settings and logs. Each evaluated run includes
 metrics and report paths.
 
+Use `--prepare-only` to create these initial files without execution. Each selected
+experiment starts as `not_started`, and `experiments.csv` saves the run table.
+`poetry run interop-trace execute results/run-001` uses the saved YAML selections and
+writes `execution.json` for the batch lifecycle. Native settings and input files
+remain at their configured paths. Execution and assessment update the CSV from
+the underlying records; no table cells need manual editing.
+
 Before component setup, `environment.json` automatically records the runner's
 operating system (`operating_system`), OS release (`os_release`), CPU architecture
 (`architecture`) and Python version (`python_version`). One snapshot covers the

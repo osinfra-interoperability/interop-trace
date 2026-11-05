@@ -10,6 +10,7 @@ from interop_trace.datasets import Dataset
 from interop_trace.errors import (
     MissingOutputError,
     ResultSchemaError,
+    UnsupportedEvaluationError,
     UnsupportedFormatError,
 )
 from interop_trace.evaluation import ExpectedPeptides
@@ -151,7 +152,7 @@ def test_native_recovery_uses_top_target_sequences_without_inventing_q_values(
     assert report["confidence_filter"] == "none"
     assert report["matched"] == ["FIRST"]
     assert report["missing"] == ["DECOY", "SECOND"]
-    with pytest.raises(ValueError, match="native scores are not spectrum q-values"):
+    with pytest.raises(UnsupportedEvaluationError, match="max_q_value=null"):
         ExpectedPeptides(("FIRST",), sequence_only=True).evaluate(
             *inputs, output_dir=tmp_path / "invalid"
         )

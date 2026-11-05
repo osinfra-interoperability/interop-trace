@@ -12,6 +12,7 @@ from interop_trace.datasets import Dataset
 from interop_trace.errors import (
     MissingOutputError,
     ResultSchemaError,
+    UnsupportedEvaluationError,
     UnsupportedFormatError,
 )
 from interop_trace.evaluation.base import EvaluationResult
@@ -130,10 +131,9 @@ class ExpectedPeptides:
                 f"received {result.format!r}."
             )
         if self.max_q_value is not None or not self.sequence_only:
-            raise ValueError(
-                "Comet/MS Amanda recovery requires max_q_value=null "
-                "and sequence_only=true; "
-                "native scores are not spectrum q-values."
+            raise UnsupportedEvaluationError(
+                f"ExpectedPeptides reader for {result.format!r} requires "
+                "max_q_value=null and sequence_only=true."
             )
         suffix = ".comet.txt" if result.format == "comet" else ".msamanda.csv"
         sources = sorted(p for name, p in result.files.items() if name.endswith(suffix))

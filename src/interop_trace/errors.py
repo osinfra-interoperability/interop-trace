@@ -11,3 +11,11 @@ class MissingOutputError(ValueError):
 
 class ResultSchemaError(ValueError):
     """An output lacks the structure required by its consumer."""
+
+
+class UnsupportedEvaluationError(ValueError):
+    """The supplied information cannot support the requested evaluation."""
+
+
+class BenchmarkInputMismatchError(ValueError):
+    """Supplied inputs do not match the benchmark's required reference selection."""

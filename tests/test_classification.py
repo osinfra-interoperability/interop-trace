@@ -31,6 +31,24 @@ from interop_trace.interfaces.cli import app
             ("failure", "schema_mismatch", "schema_mismatch_error", ["error.type"]),
         ),
         (
+            {"type": "UnsupportedEvaluationError"},
+            (
+                "failure",
+                "unsupported_evaluation",
+                "unsupported_evaluation_error",
+                ["error.type"],
+            ),
+        ),
+        (
+            {"type": "BenchmarkInputMismatchError"},
+            (
+                "failure",
+                "benchmark_input_mismatch",
+                "benchmark_input_mismatch_error",
+                ["error.type"],
+            ),
+        ),
+        (
             {"type": "KeyboardInterrupt"},
             ("unknown", "unknown", "execution_interrupted", ["error.type"]),
         ),

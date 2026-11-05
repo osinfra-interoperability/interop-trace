@@ -11,6 +11,8 @@ _ERROR_CATEGORIES = {
     "UnsupportedFormatError": AssessmentCategory.UNSUPPORTED_FORMAT,
     "MissingOutputError": AssessmentCategory.MISSING_OUTPUT,
     "ResultSchemaError": AssessmentCategory.SCHEMA_MISMATCH,
+    "UnsupportedEvaluationError": AssessmentCategory.UNSUPPORTED_EVALUATION,
+    "BenchmarkInputMismatchError": AssessmentCategory.BENCHMARK_INPUT_MISMATCH,
     "FileNotFoundError": AssessmentCategory.MISSING_FILE,
     "NotADirectoryError": AssessmentCategory.FILESYSTEM,
     "IsADirectoryError": AssessmentCategory.FILESYSTEM,

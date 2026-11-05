@@ -10,7 +10,12 @@ from typing import Any
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
-from interop_trace.errors import MissingOutputError, UnsupportedFormatError
+from interop_trace.errors import (
+    BenchmarkInputMismatchError,
+    MissingOutputError,
+    UnsupportedEvaluationError,
+    UnsupportedFormatError,
+)
 from interop_trace.evaluation.base import EvaluationResult
 from interop_trace.evaluation.registry import registry
 from interop_trace.workflows import WorkflowResult
@@ -120,11 +125,13 @@ def _load_parser() -> tuple[Any, Path]:
 def _validate_runs(dataset: Dataset, expected: set[str]) -> None:
     names = [Path(path.name.removesuffix(".gz")).stem for path in dataset.files]
     if len(names) != len(expected) or set(names) != expected:
-        raise ValueError(
-            "ProteoBenchDDA requires its six distinct published Q Exactive runs. "
+        error = BenchmarkInputMismatchError(
+            "ProteoBenchDDA requires its six distinct reference run identifiers. "
             f"Missing: {sorted(expected - set(names))}; "
             f"unexpected: {sorted(set(names) - expected)}."
         )
+        error.add_note(f"Observed run identifiers: {names}")
+        raise error
 
 
 def _score(
@@ -136,10 +143,11 @@ def _score(
 
     data = load_input_file(str(lfq), "Sage")
     if not data["charge"].gt(0).all():
-        raise ValueError(
-            "ProteoBenchDDA requires separate precursor charge states. "
-            "Set quant.lfq_settings.combine_charge_states=false in Sage."
+        error = UnsupportedEvaluationError(
+            "ProteoBenchDDA requires a positive precursor charge for every input row."
         )
+        error.add_note(f"File: {lfq}")
+        raise error
     data = data.rename(
         columns={str(path.resolve()): path.name for path in dataset.files}
     )

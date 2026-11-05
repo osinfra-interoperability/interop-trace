@@ -33,4 +33,6 @@ class AssessmentCategory(StrEnum):
     UNSUPPORTED_FORMAT = "unsupported_format"
     MISSING_OUTPUT = "missing_output"
     SCHEMA_MISMATCH = "schema_mismatch"
+    UNSUPPORTED_EVALUATION = "unsupported_evaluation"
+    BENCHMARK_INPUT_MISMATCH = "benchmark_input_mismatch"
     UNKNOWN = "unknown"

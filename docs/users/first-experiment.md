@@ -57,11 +57,6 @@ four at that threshold. The verified laptop run met this criterion.
 This establishes consistency with selected deposited identifications, not overall
 accuracy, independent FDR validation or TMT quantification accuracy.
 
-Other configured IDs are `erwinia_comet` and `erwinia_msamanda`. They use the same
-inputs and require all four sequences without confidence filtering. See
-[component prerequisites](components.md), including Rosetta for Amanda on Apple
-silicon. These experiments exercise separate interoperability connections.
-
 ## Saved evidence
 
 Each run contains:

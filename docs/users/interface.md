@@ -7,56 +7,37 @@ poetry install --extras ui
 poetry run interop-trace ui
 ```
 
-Open <http://127.0.0.1:8080/>. For another checkout or port, use
-`--directory /path/to/checkout --port 8090`.
+Open <http://127.0.0.1:8080/>. Use `--directory /path/to/checkout --port 8090`
+for another checkout or port.
 
-## Create a run
+## Create, execute and assess
 
-Enter a run name, check the experiments to include, and click **Create run**.
-Names start with a letter or digit and use letters, digits, dots, underscores or
-hyphens. An existing name is never overwritten.
+1. Select experiments, enter a new run name and click **Create run**. This saves
+   the configuration, initial experiment records and `experiments.csv` without
+   downloading or executing anything.
+2. Choose the **Saved run** and click **Run experiments**. Its experiment table
+   updates as execution and evaluation proceed.
+3. Click **Assess results** after execution ends. This classifies recorded errors
+   and checks saved acceptance criteria. See [assessment outcomes](usage.md#assessment-results).
 
-Creation saves the selected experiment/component YAML in `configuration.json`,
-initial `not_started` experiment records and the run table in `experiments.csv`.
-It does not download resources or execute tools. Native settings and input paths
-remain references; their execution provenance is recorded when the tools run.
-
-## Execute and assess
-
-Choose a **Saved run**. Its experiment table and stage actions appear together:
-
-- **Run experiments** executes the created run once, including its configured
-  benchmarks. Status, stage and error columns update as execution progresses.
-- **Assess results** processes finished experiments after execution ends. The
-  [deterministic rules](usage.md#separate-run-stages) classify recorded errors and
-  compare saved evaluation metrics with experiment acceptance criteria. Existing
-  assessments are preserved; runs without criteria remain `unknown` when no
-  error is recorded.
-
-The UI and `experiments.csv` use the same table projection. Execution and
-assessment update the saved CSV; the individual JSON records remain authoritative.
-Assessment columns stay empty until an assessment is saved.
-
-`not_started`, `running` and `finished` describe execution, not scientific success.
-Recorded errors appear separately. A component error skips that experiment's
-remaining stages; the next experiment still runs. Missing process information is
-shown as **unavailable**. See [CLI commands](usage.md) for the same stages.
+The table is also saved as `experiments.csv`; individual JSON records hold the
+full evidence. Existing assessments are preserved. To repeat execution or apply
+changed settings, create a new run.
 
 ## Inspect files
 
-Expand **Files and provenance**. **File group** selects run-level files or an
-experiment; **Output file** selects the file to preview or download. The table is
-available as `experiments.csv`, and each saved assessment as `classification.json`
-inside its experiment folder.
+Expand **Files and provenance**. Choose a run-level or experiment **File group**,
+then an **Output file** to preview or download. Each experiment's
+`classification.json` contains its assessment and criterion checks.
 
-Previews show the first 32 KiB of text, or the last 32 KiB for logs. JSON, YAML,
-XML and TOML have syntax highlighting. Binary files can be downloaded. The UI
-console log is saved beside the run directory as `<run-name>.console.log` and
-appears with run-level files; native tool logs stay inside their experiments.
+JSON, YAML, XML and TOML have syntax highlighting. Previews show the first 32 KiB
+of text or the last 32 KiB of logs; download a file for its complete contents.
+The UI console log is saved beside the run directory as `<run-name>.console.log`;
+native tool logs stay inside each experiment.
 
-## Limits
+## Execution limits
 
-One execution can be active per UI server. Creating another run does not start
-it. Closing the browser leaves execution running; keep the server terminal open.
-Use a new run name to repeat execution; downloaded resources remain cached.
-ProteoBench configurations require `poetry install --extras "ui proteobench"`.
+One execution can be active per server; experiments within it run sequentially.
+Closing the browser leaves execution running, but the server terminal must stay
+open. Downloads remain cached between runs. For ProteoBench, install the combined
+extras with `poetry install --extras "ui proteobench"`.

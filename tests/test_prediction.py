@@ -1,5 +1,6 @@
 """Exercise the declared-interface baseline without tools, outcomes or network."""
 
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import pytest
 
 from interop_trace.edam import Edam
+from interop_trace.experiments.records import experiment_rows, save_table
 from interop_trace.prediction import predict_interoperability, predict_run
 
 
@@ -224,3 +226,12 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     (tmp_path / "execution.json").touch()
     with pytest.raises(ValueError, match="before execution"):
         predict_run(tmp_path)
+    monkeypatch.setattr(Path, "read_text", read_text)
+    save_table(tmp_path)
+    with (tmp_path / "experiments.csv").open() as stream:
+        saved = list(csv.DictReader(stream))
+    for row in (saved[0], experiment_rows(tmp_path)[0]):
+        assert row["technical_prediction"] == "support"
+        assert row["technical_coverage"] == str(1 / 3)
+        assert row["semantic_prediction"] == "unknown"
+        assert row["semantic_coverage"] == "0.0"

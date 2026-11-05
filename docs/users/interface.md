@@ -18,8 +18,9 @@ for another checkout or port.
 2. Choose the **Saved run** and click **Collect metadata** to save its public
    descriptions. Unavailable references are recorded in the metadata index.
 3. Click **Predict interoperability** before execution to compare the saved
-   declarations with this host. The table shows the conclusion and evidence
-   coverage; coverage is not confidence. See [prediction scope](usage.md#metadata-predictions).
+   declarations with this host. The table shows overall, technical and semantic
+   predictions, each with its evidence coverage. Coverage is not confidence.
+   See [prediction scope](usage.md#metadata-predictions).
 4. Click **Run experiments**. Its experiment table
    updates as execution and evaluation proceed.
 5. Click **Assess results** after execution ends. This classifies recorded errors

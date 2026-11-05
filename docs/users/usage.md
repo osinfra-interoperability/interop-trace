@@ -80,6 +80,8 @@ Coverage is the fraction of applicable checks returning support or conflict,
 **not confidence or a probability**. One supported check out of five gives
 `support` with `0.2` coverage. Clearly remote-only workflows exclude the OS check.
 The same aggregation is used for each aspect. `failure_probability` stays `null`.
+The UI table and `experiments.csv` include the overall, technical and semantic
+conclusions with their respective coverage values.
 
 OS declarations are treated as allowed alternatives; omissions can cause false
 conflicts. Subtype acceptance is a prediction assumption, not a parser guarantee.

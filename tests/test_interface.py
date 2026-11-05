@@ -124,6 +124,9 @@ async def test_create_collect_predict_execute_and_assess_a_named_run(
     assert saved_rows[0]["assessment_outcome"] == "success"
     assert saved_rows[0]["prediction_conclusion"] == "unknown"
     assert saved_rows[0]["prediction_coverage"] == "0.0"
+    for aspect in ("technical", "semantic"):
+        assert saved_rows[0][f"{aspect}_prediction"] == "unknown"
+        assert saved_rows[0][f"{aspect}_coverage"] == "0.0"
     assert any(
         table.rows == saved_rows for table in user.find(nicegui.ui.table).elements
     )

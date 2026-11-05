@@ -1,12 +1,14 @@
 """A local NiceGUI view over configured runs and their saved evidence."""
 
-from datetime import UTC, datetime
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from nicegui import run, ui
 
-from interop_trace.classification import assess_experiment
+from interop_trace.classification import assess_run
 from interop_trace.experiments import load_experiments
+from interop_trace.experiments.records import TABLE_FIELDS
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
     SavedRun,
@@ -37,6 +39,7 @@ class _Dashboard:
     def __init__(self, browser: RunBrowser) -> None:
         self.browser = browser
         self.runs: dict[str, SavedRun] = {}
+        self.busy = False
         ui.label("Interop Trace").classes("text-3xl font-semibold")
         ui.label("Run interoperability experiments and inspect their evidence.")
         self._launcher()
@@ -45,7 +48,10 @@ class _Dashboard:
 
     def _launcher(self) -> None:
         with ui.card().classes("w-full"):
-            ui.label("Start a run").classes("text-xl font-medium")
+            ui.label("Create a run").classes("text-xl font-medium")
+            self.name = ui.input("Run name", on_change=self._selection_changed).mark(
+                "run-name"
+            )
             ui.label("Choose experiments; use the header checkbox to select all.")
             self.problem = ui.label().classes("text-red-700")
             self.summary = ui.label()
@@ -54,10 +60,10 @@ class _Dashboard:
             )
             self.choices.set_selection("multiple").on_select(self._selection_changed)
             self.choices.mark("experiment-choices")
-            self.start_button = ui.button(
-                "Run", on_click=self.start, icon="play_arrow"
-            ).mark("start-run")
-            self.start_button.disable()
+            self.create_button = ui.button("Create run", on_click=self.create).mark(
+                "create-run"
+            )
+            self.create_button.disable()
 
     def _results(self) -> None:
         with ui.card().classes("w-full"):
@@ -69,28 +75,36 @@ class _Dashboard:
             ).classes("w-full")
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
-            self.experiments = _table(("id", "status", "stage", "error", "elapsed"))
-            with ui.expansion("Files and provenance").classes("w-full"):
-                self.file_group = (
-                    ui.select({}, label="File group", on_change=self.show_details)
-                    .classes("w-full")
-                    .mark("file-group")
-                )
+            with ui.row():
+                self.start_button = ui.button(
+                    "Run experiments", on_click=self.start, icon="play_arrow"
+                ).mark("start-run")
                 self.assess_button = ui.button(
-                    "Assess error", on_click=self.assess
-                ).mark("assess-error")
-                self.assess_button.disable()
-                self.artifact = (
-                    ui.select({}, label="Output file", on_change=self.show_file)
-                    .classes("w-full")
-                    .mark("output-file")
-                )
-                ui.label("Preview: first 32 KiB; logs show the last 32 KiB.")
-                self.artifact_content = ui.codemirror().classes("w-full h-80")
-                self.artifact_content.disable()
-                ui.button(
-                    "Download file", on_click=self.download, icon="download"
-                ).mark("download-file")
+                    "Assess results", on_click=self.assess
+                ).mark("assess-run")
+            self.start_button.disable()
+            self.assess_button.disable()
+            self.experiments = _table(TABLE_FIELDS)
+            self._file_explorer()
+
+    def _file_explorer(self) -> None:
+        with ui.expansion("Files and provenance").classes("w-full"):
+            self.file_group = (
+                ui.select({}, label="File group", on_change=self.show_details)
+                .classes("w-full")
+                .mark("file-group")
+            )
+            self.artifact = (
+                ui.select({}, label="Output file", on_change=self.show_file)
+                .classes("w-full")
+                .mark("output-file")
+            )
+            ui.label("Preview: first 32 KiB; logs show the last 32 KiB.")
+            self.artifact_content = ui.codemirror().classes("w-full h-80")
+            self.artifact_content.disable()
+            ui.button("Download file", on_click=self.download, icon="download").mark(
+                "download-file"
+            )
 
     async def preview(self) -> None:
         self.problem.set_text("")
@@ -116,25 +130,51 @@ class _Dashboard:
             f"Selected: {len(self.choices.selected)} "
             f"of {len(self.choices.rows)} experiments"
         )
-        self.start_button.set_enabled(
-            bool(self.choices.selected) and not self.browser.active
+        self.create_button.set_enabled(
+            bool(self.choices.selected)
+            and bool(self.name.value.strip())
+            and not self.busy
         )
 
-    async def start(self) -> None:
+    async def _perform[T](self, action: Callable[..., T], *args: Any) -> T | None:
+        if self.busy:
+            return None
+        self.busy = True
+        self.create_button.disable()
         self.start_button.disable()
-        output = None
+        self.assess_button.disable()
         try:
-            output = await run.io_bound(
-                self.browser.start,
-                [r["id"] for r in self.choices.rows if r in self.choices.selected],
-            )
+            return await run.io_bound(action, *args)
         except Exception as error:
             ui.notify(str(error), type="negative")
         finally:
+            self.busy = False
             await self.refresh()
+        return None
+
+    async def create(self) -> None:
+        output = await self._perform(
+            self.browser.create,
+            self.name.value.strip(),
+            [r["id"] for r in self.choices.rows if r in self.choices.selected],
+        )
         if output is not None:
             self.selection.set_value(str(output))
-            ui.notify("Run started.", type="positive")
+            ui.notify("Run created.", type="positive")
+
+    async def start(self) -> None:
+        saved = self.runs.get(self.selection.value)
+        if saved is not None:
+            output = await self._perform(self.browser.start, saved.directory)
+            if output is not None:
+                ui.notify("Execution started.", type="positive")
+
+    async def assess(self) -> None:
+        saved = self.runs.get(self.selection.value)
+        if saved:
+            outputs = await self._perform(assess_run, saved.directory)
+            if outputs is not None:
+                ui.notify(f"Saved {len(outputs)} assessment(s).", type="positive")
 
     async def refresh(self) -> None:
         history = await run.io_bound(self.browser.history)
@@ -150,6 +190,7 @@ class _Dashboard:
         await self.show_details()
 
     async def show_details(self) -> None:
+        self.start_button.disable()
         self.assess_button.disable()
         saved = self.runs.get(self.selection.value)
         if saved is None:
@@ -163,17 +204,23 @@ class _Dashboard:
             return
         self.status.set_text(f"Status: {saved.status or 'unavailable'}")
         self.location.set_text(str(saved.directory))
-        self.experiments.rows = [
-            {
-                "id": r["id"],
-                "status": r.get("status") or "—",
-                "stage": _stage(r.get("stage", "")),
-                "error": r.get("error", {}).get("type", ""),
-                "elapsed": _elapsed(r, saved.status == ExecutionStatus.RUNNING),
-            }
-            for r in saved.experiments
-        ]
+        self.experiments.rows = list(saved.experiments)
         self.experiments.update()
+        self.start_button.set_enabled(
+            not self.busy
+            and not self.browser.active
+            and saved.status == ExecutionStatus.NOT_STARTED
+            and not (saved.directory / "execution.json").exists()
+        )
+        self.assess_button.set_enabled(
+            not self.busy
+            and saved.status == ExecutionStatus.FINISHED
+            and any(
+                r["status"] == ExecutionStatus.FINISHED
+                and not (saved.directory / r["id"] / "classification.json").exists()
+                for r in saved.experiments
+            )
+        )
         await self._show_files(saved)
 
     async def _show_files(self, saved: SavedRun) -> None:
@@ -186,12 +233,6 @@ class _Dashboard:
         )
         group = self.file_group.value
         directory = saved.directory / group
-        record = next((r for r in saved.experiments if r["id"] == group), {})
-        self.assess_button.set_enabled(
-            record.get("status") == ExecutionStatus.FINISHED
-            and bool(record.get("error"))
-            and not (directory / "classification.json").exists()
-        )
         files = (
             await run.io_bound(
                 lambda: sorted(
@@ -213,27 +254,6 @@ class _Dashboard:
             artifacts[str(console)] = "Console log"
         _options(self.artifact, artifacts)
         await self.show_file()
-
-    async def assess(self) -> None:
-        saved = self.runs.get(self.selection.value)
-        group = self.file_group.value
-        if saved is None or group not in {r["id"] for r in saved.experiments}:
-            return
-        self.assess_button.disable()
-        output = None
-        try:
-            output = await run.io_bound(assess_experiment, saved.directory / group)
-        except (OSError, ValueError) as error:
-            ui.notify(str(error), type="negative")
-        finally:
-            await self.show_details()
-        if (
-            output is not None
-            and self.selection.value == str(saved.directory)
-            and self.file_group.value == group
-        ):
-            self.artifact.set_value(str(output))
-            ui.notify("Saved assessment.", type="positive")
 
     async def show_file(self) -> None:
         source = self.artifact.value
@@ -274,27 +294,3 @@ def _options(element: ui.select, options: dict[str, str]) -> None:
         element.set_options(
             options, value=value if value in options else next(iter(options), None)
         )
-
-
-def _stage(value: str) -> str:
-    if value.startswith("setup:"):
-        return "Preparing " + value.split(":", 1)[1]
-    return {"workflow": "Workflow", "evaluation": "Evaluation"}.get(
-        value, value.capitalize()
-    )
-
-
-def _elapsed(record: dict[str, object], live: bool) -> str:
-    try:
-        start = datetime.fromisoformat(str(record["started_at"]))
-        finished_at = record.get("finished_at")
-        if not finished_at and not live:
-            return "—"
-        finish = (
-            datetime.fromisoformat(str(finished_at))
-            if finished_at
-            else datetime.now(UTC)
-        )
-        return f"{int((finish - start).total_seconds())} s"
-    except (KeyError, ValueError, TypeError):
-        return "—"

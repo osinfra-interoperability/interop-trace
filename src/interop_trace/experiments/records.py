@@ -3,6 +3,7 @@
 import csv
 import json
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
 from interop_trace.status import ExecutionStatus
@@ -57,9 +58,10 @@ def save_table(directory: Path) -> None:
     """Save the same rows shown in the UI; source JSON records remain authoritative."""
     if not (directory / "configuration.json").is_file():
         return
-    with (directory / "experiments.csv").open(
-        "w", encoding="utf-8", newline=""
+    with NamedTemporaryFile(
+        "w", encoding="utf-8", newline="", dir=directory.parent, delete=False
     ) as stream:
         writer = csv.DictWriter(stream, fieldnames=TABLE_FIELDS)
         writer.writeheader()
         writer.writerows(experiment_rows(directory))
+    Path(stream.name).replace(directory / "experiments.csv")

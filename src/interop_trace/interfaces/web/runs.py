@@ -1,19 +1,19 @@
 """Launch the existing CLI and inspect its files without a UI dependency."""
 
 import codecs
-import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 from typing import Any
-from uuid import uuid4
 
-from interop_trace.experiments import load_experiments
+from interop_trace.downloads import DEFAULT_CACHE_DIR
+from interop_trace.experiments import create_run, load_experiments
+from interop_trace.experiments.records import experiment_rows, read_record
 from interop_trace.status import ExecutionStatus
 
 
@@ -40,47 +40,55 @@ class RunBrowser:
             process.poll() is None for process in tuple(self._processes.values())
         )
 
-    def start(self, ids: Sequence[str]) -> Path:
-        """Validate, then launch a single CLI process with a durable console log."""
+    def create(self, name: str, ids: Sequence[str]) -> Path:
+        """Create a named run and its initial files without starting any process."""
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", name):
+            raise ValueError(
+                "Run names must start with a letter or digit and contain only "
+                "letters, digits, dots, underscores or hyphens."
+            )
+        configuration = load_experiments(self.directory / "experiments", ids)
+        return create_run(
+            configuration,
+            output_dir=self.directory / "results" / name,
+            cache_dir=self.directory / DEFAULT_CACHE_DIR,
+        )
+
+    def start(self, directory: Path) -> Path:
+        """Execute a created run in one CLI process with a durable console log."""
         with self._lock:
             if self.active:
                 raise RuntimeError("A run is already active in this interface.")
-            source = self.directory / "experiments"
-            load_experiments(source, ids)
-            name = (
-                datetime.now(UTC).strftime("ui-%Y%m%dT%H%M%S") + f"-{uuid4().hex[:8]}"
-            )
-            output = self.directory / "results" / name
-            output.parent.mkdir(parents=True, exist_ok=True)
-            with console_log(output).open("xb") as stream:
+            directory = directory.resolve()
+            rows = experiment_rows(directory)
+            if (
+                directory.parent != (self.directory / "results").resolve()
+                or not rows
+                or (directory / "execution.json").exists()
+                or any(r["status"] != ExecutionStatus.NOT_STARTED for r in rows)
+            ):
+                raise ValueError("Select a created run that has not started.")
+            with console_log(directory).open("ab") as stream:
                 process = subprocess.Popen(
                     [
                         sys.executable,
                         "-m",
                         "interop_trace",
-                        "run",
-                        *ids,
-                        "--directory",
-                        str(source),
-                        "--output",
-                        str(output),
+                        "execute",
+                        str(directory),
                     ],
                     cwd=self.directory,
                     env={**os.environ, "PYTHONUNBUFFERED": "1"},
                     stdout=stream,
                     stderr=subprocess.STDOUT,
                 )
-            self._processes[output] = process
-            return output
+            self._processes[directory] = process
+            return directory
 
     def history(self) -> list[SavedRun]:
-        """Include CLI runs and launches that failed before creating a snapshot."""
+        """List created runs, including executions started through the CLI."""
         results = self.directory / "results"
         directories = {path.parent for path in results.glob("*/configuration.json")}
-        directories.update(
-            path.with_name(path.name.removesuffix(".console.log"))
-            for path in results.glob("ui-*.console.log")
-        )
         directories.update(self._processes)
         return [
             self._read(path)
@@ -88,26 +96,7 @@ class RunBrowser:
         ]
 
     def _read(self, directory: Path) -> SavedRun:
-        configuration = read_record(directory / "configuration.json")
-        experiments = []
-        choices = configuration.get("experiments", [])
-        for choice in choices if isinstance(choices, list) else []:
-            if not isinstance(choice, dict):
-                continue
-            name = choice.get("id")
-            if (
-                not isinstance(name, str)
-                or not name
-                or name in {".", ".."}
-                or Path(name).name != name
-            ):
-                continue
-            record = read_record(directory / name / "experiment.json")
-            experiments.append(
-                {**record, "id": name}
-                if record
-                else {"id": name, "status": ExecutionStatus.NOT_STARTED}
-            )
+        experiments = experiment_rows(directory)
         process = self._processes.get(directory)
         code = process.poll() if process is not None else None
         status = None
@@ -115,20 +104,21 @@ class RunBrowser:
             status = (
                 ExecutionStatus.RUNNING if code is None else ExecutionStatus.FINISHED
             )
-        elif experiments and all(
-            r.get("status") == ExecutionStatus.FINISHED for r in experiments
+        elif (
+            read_record(directory / "execution.json").get("status")
+            == ExecutionStatus.FINISHED
+        ) or (
+            experiments
+            and all(r.get("status") == ExecutionStatus.FINISHED for r in experiments)
         ):
             status = ExecutionStatus.FINISHED
+        elif (
+            experiments
+            and not (directory / "execution.json").exists()
+            and all(r["status"] == ExecutionStatus.NOT_STARTED for r in experiments)
+        ):
+            status = ExecutionStatus.NOT_STARTED
         return SavedRun(directory, status, tuple(experiments))
-
-
-def read_record(path: Path) -> dict[str, Any]:
-    """Tolerate missing or partially written records; the next poll retries."""
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return value if isinstance(value, dict) else {}
 
 
 def console_log(directory: Path) -> Path:

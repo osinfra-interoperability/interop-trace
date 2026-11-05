@@ -18,33 +18,27 @@ from interop_trace.status import ExecutionStatus
 
 
 def test_launch_validates_and_allows_only_one_process(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    configuration: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
 ) -> None:
-    source = tmp_path / "experiments/example.yaml"
-    source.parent.mkdir(parents=True)
-    source.write_text("an invalid configuration")
-    browser = RunBrowser(tmp_path)
+    checkout = configuration.parent.parent
+    browser = RunBrowser(checkout)
     popen = Mock()
     monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", popen)
-    with pytest.raises(ValueError):
-        browser.start(["first"])
+    output = browser.create("example", ["first"])
+    assert browser.history()[0].status == "not_started"
+    assert (output / "experiments.csv").is_file()
+    http_transport.assert_not_called()
     popen.assert_not_called()
-    assert not (tmp_path / "results").exists()
-
-    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_experiments", Mock())
     process = popen.return_value
     process.poll.return_value = None
-    output = browser.start(["first"])
+    browser.start(output)
     arguments, options = popen.call_args
-    assert arguments[0][1:4] == ["-m", "interop_trace", "run"]
-    assert arguments[0][4] == "first"
-    assert str(source.parent) in arguments[0] and str(output) in arguments[0]
-    assert options["cwd"] == tmp_path
+    assert arguments[0][1:] == ["-m", "interop_trace", "execute", str(output)]
+    assert options["cwd"] == checkout
     assert options["env"]["PYTHONUNBUFFERED"] == "1"
     assert console_log(output).is_file()
-    assert not output.exists()  # The existing runner creates its own directory.
     with pytest.raises(RuntimeError, match="already active"):
-        browser.start(["first"])
+        browser.start(output)
     assert popen.call_count == 1
     assert browser.history()[0].status == "running"
     process.poll.return_value = 1
@@ -52,10 +46,19 @@ def test_launch_validates_and_allows_only_one_process(
     assert not browser.active
 
 
-def test_unknown_ids_fail_before_creating_outputs(configuration: Path) -> None:
+@pytest.mark.parametrize(
+    "name, ids, message",
+    [
+        ("example", ["missing"], "Unknown experiment IDs"),
+        ("../escape", ["first"], "Run names"),
+    ],
+)
+def test_invalid_creation_leaves_no_outputs(
+    configuration: Path, name: str, ids: list[str], message: str
+) -> None:
     checkout = configuration.parent.parent
-    with pytest.raises(ValueError, match="Unknown experiment IDs"):
-        RunBrowser(checkout).start(["missing"])
+    with pytest.raises(ValueError, match=message):
+        RunBrowser(checkout).create(name, ids)
     assert not (checkout / "results").exists()
 
 
@@ -68,35 +71,30 @@ def test_active_batch_stays_running_after_an_experiment_fails(
         "interop_trace.interfaces.web.runs.subprocess.Popen", Mock(return_value=process)
     )
     browser = RunBrowser(configuration.parent.parent)
-    output = browser.start(["first"])
-    (output / "first").mkdir(parents=True)
-    (output / "configuration.json").write_text('{"experiments": [{"id": "first"}]}')
+    output = browser.create("example", ["first"])
+    browser.start(output)
     (output / "first/experiment.json").write_text(
         '{"status":"finished","error":{"type":"ValueError","message":"missing"}}'
     )
     saved = browser.history()[0]
     assert saved.status == "running"
     assert saved.experiments[0]["status"] == "finished"
-    assert saved.experiments[0]["error"]["message"] == "missing"
+    assert saved.experiments[0]["error"] == "ValueError"
     process.poll.return_value = 1
     assert browser.history()[0].status == "finished"
 
 
 def test_early_failures_remain_visible_after_later_launches(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    configuration: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    source = tmp_path / "experiments/example.yaml"
-    source.parent.mkdir(parents=True)
-    source.write_text("validated below")
-    monkeypatch.setattr("interop_trace.interfaces.web.runs.load_experiments", Mock())
     process = Mock()
     process.poll.return_value = 1
     monkeypatch.setattr(
         "interop_trace.interfaces.web.runs.subprocess.Popen", Mock(return_value=process)
     )
-    browser = RunBrowser(tmp_path)
-    browser.start(["first"])
-    browser.start(["first"])
+    browser = RunBrowser(configuration.parent.parent)
+    browser.start(browser.create("first-run", ["first"]))
+    browser.start(browser.create("second-run", ["first"]))
     assert [run.status for run in browser.history()] == ["finished", "finished"]
 
 

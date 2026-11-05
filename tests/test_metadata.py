@@ -12,6 +12,7 @@ from requests import Response
 from typer.testing import CliRunner
 
 from interop_trace.downloads import DownloadCache
+from interop_trace.edam import EDAM_RELEASE, EDAM_URL
 from interop_trace.experiments import create_run, load_experiments
 from interop_trace.interfaces.cli import app
 from interop_trace.metadata import collect_run_metadata, snapshot_biotools
@@ -83,6 +84,7 @@ def test_collection_failure_is_not_reported_as_a_snapshot(
 def test_run_collection_uses_saved_selection_and_shared_snapshots(
     configuration: Path,
     tmp_path: Path,
+    edam_path: Path,
     http_transport: Mock,
     http_response: Callable[..., Response],
 ) -> None:
@@ -113,6 +115,8 @@ def test_run_collection_uses_saved_selection_and_shared_snapshots(
     }
 
     def respond(request):
+        if request.url == EDAM_URL:
+            return http_response(edam_path.read_bytes())
         assert request.url.startswith("https://bio.tools/")
         identifier = request.url.split("/")[-1].split("?")[0]
         return http_response(json.dumps({"biotoolsID": identifier}).encode())
@@ -120,7 +124,17 @@ def test_run_collection_uses_saved_selection_and_shared_snapshots(
     http_transport.side_effect = respond
     index = json.loads(collect_run_metadata(run).read_text())
     rows = index["components"]
-    assert len(rows) == 6 and http_transport.call_count == 3
+    assert len(rows) == 6 and http_transport.call_count == 4
+    assert (run / "metadata/edam.owl").read_bytes() == edam_path.read_bytes()
+    assert index["ontology"] == {
+        "status": "collected",
+        "version": EDAM_RELEASE,
+        "url": EDAM_URL,
+        "response": "edam.owl",
+        "retrieved_at": next(
+            e for e in DownloadCache(tmp_path / "cache").entries() if e.url == EDAM_URL
+        ).downloaded_at,
+    }
     assert {row["experiment"] for row in rows} == {"first", "second"}
     assert all(
         row["status"] == "collected" and row["profile"] == "selected" for row in rows
@@ -166,6 +180,7 @@ def test_run_collection_records_unavailable_metadata_and_continues(
     http_transport.side_effect = [
         http_response(b"unavailable", status=status),
         http_response(b'{"name":"Sage"}'),
+        http_response(b"ontology unavailable", status=503),
     ]
     result = CliRunner().invoke(app, ["metadata", "collect", str(run)])
     assert result.exit_code == 1
@@ -179,4 +194,7 @@ def test_run_collection_records_unavailable_metadata_and_continues(
     assert rows[1]["error"]["http_status"] == status
     assert rows[1]["error"]["type"] == "HTTPError"
     assert (run / "metadata" / rows[2]["directory"] / "source.json").is_file()
-    assert http_transport.call_count == 2
+    ontology = json.loads((run / "metadata/index.json").read_text())["ontology"]
+    assert ontology["status"] == "retrieval_failed"
+    assert ontology["error"]["http_status"] == 503
+    assert http_transport.call_count == 3

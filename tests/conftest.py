@@ -46,6 +46,11 @@ def http_transport(
 
 
 @pytest.fixture
+def edam_path() -> Path:
+    return Path(__file__).parent / "fixtures/edam.owl"
+
+
+@pytest.fixture
 def configuration(tmp_path: Path) -> Path:
     """One synthetic experiment with reusable profiles; no external resources."""
     directory = tmp_path / "experiments" / "components"

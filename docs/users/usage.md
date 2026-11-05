@@ -107,6 +107,8 @@ poetry run interop-trace metadata collect results/run-002
 
 This saves `metadata/index.json`, linking experiment roles and profiles to
 snapshots under `metadata/biotools/<entry-id>/`. Shared IDs use one snapshot.
+Collection also caches and copies the pinned EDAM `1.25.20260626T1230Z` ontology
+(about 3.4 MB) to `metadata/edam.owl`; the index records its source and retrieval time.
 The index distinguishes `collected`, `missing_reference`, `not_found` (HTTP 404)
 and `retrieval_failed`, retaining error details. Other entries are still collected
 after a retrieval failure; the command then exits with code `1`. Collection leaves

@@ -179,9 +179,10 @@ class _Dashboard:
         if saved is not None:
             index = await self._perform(collect_run_metadata, saved.directory)
             if index is not None:
+                collected = read_record(index)
                 unavailable = any(
                     row["status"] != MetadataStatus.COLLECTED
-                    for row in read_record(index).get("components", [])
+                    for row in [*collected["components"], collected["ontology"]]
                 )
                 ui.notify(
                     "Metadata index saved; some references are unavailable."

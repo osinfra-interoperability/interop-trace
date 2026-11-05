@@ -249,9 +249,9 @@ def collect_metadata(
 
     try:
         index = collect_run_metadata(directory)
-        statuses = {
-            row["status"] for row in json.loads(index.read_text())["components"]
-        }
+        collected = json.loads(index.read_text())
+        statuses = {row["status"] for row in collected["components"]}
+        statuses.add(collected["ontology"]["status"])
     except Exception as error:
         typer.echo(f"Metadata collection failed: {error}", err=True)
         raise typer.Exit(code=1) from error

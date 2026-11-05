@@ -1,11 +1,13 @@
 """Preserve public component descriptions independently of execution."""
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from interop_trace.downloads import DownloadCache
+from interop_trace.edam import EDAM_RELEASE, EDAM_URL
 from interop_trace.status import MetadataStatus
 
 
@@ -86,7 +88,32 @@ def collect_run_metadata(directory: Path) -> Path:
             (output / "index.json").write_text(
                 json.dumps(index, indent=2) + "\n", encoding="utf-8"
             )
+    index["ontology"] = _collect_edam(output, cache)
+    (output / "index.json").write_text(
+        json.dumps(index, indent=2) + "\n", encoding="utf-8"
+    )
     return output / "index.json"
+
+
+def _collect_edam(output: Path, cache: DownloadCache) -> dict[str, Any]:
+    result: dict[str, Any] = {"version": EDAM_RELEASE, "url": EDAM_URL}
+    try:
+        download = cache.fetch(
+            EDAM_URL,
+            name="EDAM",
+            kind="metadata",
+            filename="edam.owl",
+            metadata={"version": EDAM_RELEASE},
+        )
+        shutil.copyfile(download.path, output / "edam.owl")
+        result.update(
+            status=MetadataStatus.COLLECTED,
+            response="edam.owl",
+            retrieved_at=download.downloaded_at,
+        )
+    except Exception as error:
+        result.update(_retrieval_failure(error))
+    return result
 
 
 def _collect_entry(
@@ -101,15 +128,21 @@ def _collect_entry(
         snapshot_biotools(biotools_id, output_dir=target, cache=cache)
         result["status"] = MetadataStatus.COLLECTED
     except Exception as error:
-        status = getattr(getattr(error, "response", None), "status_code", None)
-        result["status"] = (
+        result.update(_retrieval_failure(error))
+    return result
+
+
+def _retrieval_failure(error: Exception) -> dict[str, Any]:
+    status = getattr(getattr(error, "response", None), "status_code", None)
+    return {
+        "status": (
             MetadataStatus.NOT_FOUND
             if status == 404
             else MetadataStatus.RETRIEVAL_FAILED
-        )
-        result["error"] = {
+        ),
+        "error": {
             "type": type(error).__name__,
             "message": str(error),
             "http_status": status,
-        }
-    return result
+        },
+    }

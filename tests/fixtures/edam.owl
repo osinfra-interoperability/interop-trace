@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!-- Small synthetic hierarchy for offline matching tests. -->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#">
+  <owl:Class rdf:about="http://edamontology.org/data_0006"/>
+  <owl:Class rdf:about="http://edamontology.org/data_2044">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/data_0006"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/data_2976">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/data_2044"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/data_0943">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/data_0006"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/format_1915"/>
+  <owl:Class rdf:about="http://edamontology.org/format_2330">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/format_1915"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/format_1929">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/format_2330"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/format_3244">
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/format_2330"/>
+    <rdfs:subClassOf rdf:resource="http://edamontology.org/format_1915"/>
+  </owl:Class>
+  <owl:Class rdf:about="http://edamontology.org/format_9999">
+    <owl:deprecated>true</owl:deprecated>
+  </owl:Class>
+</rdf:RDF>

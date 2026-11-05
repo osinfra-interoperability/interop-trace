@@ -10,6 +10,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
+from interop_trace.edam import EDAM_URL
 from interop_trace.interfaces.cli import app
 
 nicegui = pytest.importorskip("nicegui")
@@ -43,8 +44,18 @@ def checkout(configuration: Path) -> Path:
 
 
 async def test_create_collect_predict_execute_and_assess_a_named_run(
-    user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
+    user,
+    checkout: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    http_transport: Mock,
+    http_response,
+    edam_path: Path,
 ) -> None:
+    def respond(request):
+        assert request.url == EDAM_URL
+        return http_response(edam_path.read_bytes())
+
+    http_transport.side_effect = respond
     process = Mock()
     process.poll.return_value = None
     output = checkout / "results/example"

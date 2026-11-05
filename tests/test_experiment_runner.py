@@ -1,7 +1,9 @@
 """Exercise YAML, cache, process and reporting boundaries without real downloads."""
 
 import csv
+import errno
 import json
+import subprocess
 import sys
 import tarfile
 from collections.abc import Callable
@@ -190,13 +192,22 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
         assert (output / name / "evaluation/proteobench.json").is_file()
 
 
-@pytest.mark.parametrize("stage", ["setup:database", "workflow", "evaluation"])
-@pytest.mark.parametrize("error_type", [RuntimeError, KeyboardInterrupt])
+@pytest.mark.parametrize(
+    "stage,error",
+    [
+        ("setup:database", PermissionError(errno.EACCES, "deliberate failure")),
+        ("workflow", subprocess.CalledProcessError(2, ["test-tool"])),
+        ("evaluation", RuntimeError("deliberate failure")),
+        ("setup:database", KeyboardInterrupt("deliberate failure")),
+        ("workflow", KeyboardInterrupt("deliberate failure")),
+        ("evaluation", KeyboardInterrupt("deliberate failure")),
+    ],
+)
 def test_errors_continue_but_interruptions_stop_the_batch(
     pipeline: Path,
     tmp_path: Path,
     stage: str,
-    error_type: type[BaseException],
+    error: BaseException,
     monkeypatch: pytest.MonkeyPatch,
     http_transport: Mock,
 ) -> None:
@@ -223,12 +234,12 @@ def test_errors_continue_but_interruptions_stop_the_batch(
                 folder = kwargs["output_dir"]
                 folder.mkdir()
                 (folder / "partial.log").write_text("partial evidence")
-            raise error_type("deliberate failure")
+            raise error
         return original(*args, **kwargs)
 
     monkeypatch.setattr(component, method, fail_first)
     output = tmp_path / "failed"
-    if error_type is KeyboardInterrupt:
+    if isinstance(error, KeyboardInterrupt):
         with pytest.raises(KeyboardInterrupt, match="deliberate failure"):
             run_experiments(
                 load_configuration(pipeline),
@@ -245,7 +256,7 @@ def test_errors_continue_but_interruptions_stop_the_batch(
             cache_dir=tmp_path / "cache",
         )
         assert list(results.completed) == ["second"]
-        assert results.failed == {"first": "RuntimeError: deliberate failure"}
+        assert results.failed == {"first": f"{type(error).__name__}: {error}"}
         summary = json.loads((output / "summary.json").read_text())
         assert summary == {"completed": ["second"], "failed": results.failed}
         second = json.loads((output / "second/experiment.json").read_text())
@@ -254,7 +265,12 @@ def test_errors_continue_but_interruptions_stop_the_batch(
     assert (output / "environment.json").is_file()
     assert record["status"] == "finished"
     assert record["stage"] == stage
-    assert record["error"]["type"] == error_type.__name__
+    assert record["error"]["type"] == type(error).__name__
+    if isinstance(error, PermissionError):
+        assert record["error"]["errno"] == errno.EACCES
+        assert record["error"]["errno_name"] == "EACCES"
+    if isinstance(error, subprocess.CalledProcessError):
+        assert record["error"]["returncode"] == 2
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     assert record["finished_at"]

@@ -1,7 +1,9 @@
 """Execute explicit experiments sequentially through the component contracts."""
 
+import errno
 import json
 import platform
+import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -173,6 +175,12 @@ def _status(path: Path, record: dict[str, Any]) -> Iterator[None]:
         yield
     except BaseException as error:
         record["error"] = {"type": type(error).__name__, "message": str(error)}
+        if isinstance(error, OSError) and error.errno is not None:
+            record["error"].update(
+                errno=error.errno, errno_name=errno.errorcode.get(error.errno)
+            )
+        if isinstance(error, subprocess.CalledProcessError):
+            record["error"]["returncode"] = error.returncode
         raise
     finally:
         record.update(

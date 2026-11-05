@@ -10,6 +10,7 @@ from typing import Any
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.errors import MissingOutputError, UnsupportedFormatError
 from interop_trace.evaluation.base import EvaluationResult
 from interop_trace.evaluation.registry import registry
 from interop_trace.workflows import WorkflowResult
@@ -56,14 +57,19 @@ class ProteoBenchDDA:
         JSON report and omitted from the numeric result. No data are submitted.
         """
         if result.format != "sage":
-            raise ValueError("ProteoBenchDDA currently accepts Sage results only.")
+            raise UnsupportedFormatError(
+                "ProteoBenchDDA currently accepts Sage results only; "
+                f"received {result.format!r}."
+            )
         try:
             lfq = result.files["lfq.tsv"]
             parameters = json.loads(result.files["results.json"].read_bytes())
-        except KeyError as error:
-            raise ValueError(
+        except KeyError as original:
+            error = MissingOutputError(
                 "ProteoBenchDDA requires Sage lfq.tsv and results.json."
-            ) from error
+            )
+            error.add_note(f"Available output files: {sorted(result.files)}")
+            raise error from original
         output_dir = output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=False)
         parser, settings_dir = _load_parser()

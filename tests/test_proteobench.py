@@ -11,6 +11,7 @@ import pytest
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.errors import MissingOutputError, UnsupportedFormatError
 from interop_trace.evaluation import ProteoBenchDDA
 from interop_trace.workflows import WorkflowResult
 
@@ -241,17 +242,20 @@ def test_missing_sage_output(
     result = WorkflowResult(
         "sage", {k: v for k, v in result.files.items() if k != missing}
     )
-    with pytest.raises(ValueError, match="requires Sage lfq.tsv and results.json"):
+    with pytest.raises(
+        MissingOutputError, match="requires Sage lfq.tsv and results.json"
+    ) as error:
         ProteoBenchDDA().evaluate(
             result, dataset, database, output_dir=tmp_path / "invalid"
         )
+    assert isinstance(error.value.__cause__, KeyError)
 
 
 def test_unsupported_result_format(
     inputs: tuple[Dataset, Database, WorkflowResult], tmp_path: Path
 ) -> None:
     dataset, database, _ = inputs
-    with pytest.raises(ValueError, match="accepts Sage results only"):
+    with pytest.raises(UnsupportedFormatError, match="accepts Sage results only"):
         ProteoBenchDDA().evaluate(
             WorkflowResult("other", {}),
             dataset,

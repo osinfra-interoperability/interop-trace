@@ -1,6 +1,7 @@
 """Post-run failure assessment, separate from execution and benchmarking."""
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +50,7 @@ _ERRNO_CATEGORIES = {
 
 
 def assess_experiment(directory: Path) -> Path:
-    """Assess a finished experiment using deterministic error rules.
+    """Assess a finished experiment using saved errors and acceptance criteria.
 
     Logs are not interpreted. Existing assessments are preserved rather than
     overwritten; execution without an error does not imply scientific success.
@@ -96,13 +97,56 @@ def _assess(record: dict[str, Any]) -> dict[str, object]:
         elif error.get("errno_name") in _ERRNO_CATEGORIES:
             category = _ERRNO_CATEGORIES[error["errno_name"]]
             rule, evidence = f"{category}_error", ["error.errno_name"]
-    return {
+    assessment: dict[str, object] = {
         "source": "experiment.json",
         "rule": rule,
         "outcome": outcome,
         "category": category,
         "detected_stage": record.get("stage") if error else None,
         "evidence": evidence,
+    }
+    if not error and record.get("acceptance"):
+        assessment.update(_check_acceptance(record))
+    return assessment
+
+
+def _check_acceptance(record: dict[str, Any]) -> dict[str, object]:
+    metrics = record.get("evaluation", {}).get("metrics", {})
+    checks = {}
+    for metric, limits in record["acceptance"].items():
+        value = metrics.get(metric)
+        outcome = AssessmentOutcome.UNKNOWN
+        if type(value) in {int, float} and math.isfinite(value):
+            outcome = (
+                AssessmentOutcome.SUCCESS
+                if limits.get("min", -math.inf) <= value <= limits.get("max", math.inf)
+                else AssessmentOutcome.FAILURE
+            )
+        else:
+            value = None
+        checks[metric] = {**limits, "value": value, "outcome": outcome}
+    outcomes = {check["outcome"] for check in checks.values()}
+    if AssessmentOutcome.FAILURE in outcomes:
+        outcome = AssessmentOutcome.FAILURE
+        rule = "acceptance_not_met"
+        category = AssessmentCategory.ACCEPTANCE_CRITERION_NOT_MET
+    elif AssessmentOutcome.UNKNOWN in outcomes:
+        outcome, rule, category = (
+            AssessmentOutcome.UNKNOWN,
+            "acceptance_unavailable",
+            AssessmentCategory.UNKNOWN,
+        )
+    else:
+        outcome, rule, category = AssessmentOutcome.SUCCESS, "acceptance_met", None
+    return {
+        "outcome": outcome,
+        "category": category,
+        "rule": rule,
+        "detected_stage": "assessment"
+        if outcome == AssessmentOutcome.FAILURE
+        else None,
+        "checks": checks,
+        "evidence": ["acceptance", "evaluation.metrics"],
     }
 
 

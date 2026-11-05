@@ -35,4 +35,5 @@ class AssessmentCategory(StrEnum):
     SCHEMA_MISMATCH = "schema_mismatch"
     UNSUPPORTED_EVALUATION = "unsupported_evaluation"
     BENCHMARK_INPUT_MISMATCH = "benchmark_input_mismatch"
+    ACCEPTANCE_CRITERION_NOT_MET = "acceptance_criterion_not_met"
     UNKNOWN = "unknown"

@@ -172,7 +172,7 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     assert assess_run(output) == []
     with (output / "experiments.csv").open() as stream:
         assert [row["assessment_outcome"] for row in csv.DictReader(stream)] == [
-            "unknown"
+            "success"
         ] * 2
     assert not results.failed
     evaluations = results.completed.values()

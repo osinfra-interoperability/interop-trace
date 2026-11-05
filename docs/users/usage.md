@@ -38,6 +38,11 @@ uses deterministic rules on the recorded error:
 | Permission error | `failure` | `permission` |
 | Executable architecture/format error (`EBADARCH` or `ENOEXEC`) | `failure` | `environment` |
 | Nonzero subprocess exit | `failure` | `process_error` |
+| Missing file or directory | `failure` | `missing_file` |
+| Wrong path kind or read-only filesystem | `failure` | `filesystem` |
+| Storage, quota, memory or open-file limit | `failure` | `resource_limit` |
+| Explicit OS, subprocess or request timeout | `failure` | `timeout` |
+| Connection failure or unreachable network | `failure` | `network` |
 | Other recorded error | `failure` | `unknown` |
 | Interruption or no recorded error | `unknown` | `unknown` |
 
@@ -46,6 +51,10 @@ references to fields in `experiment.json`. Categories describe observed errors, 
 proven underlying causes or inherent component incompatibility. Logs are not
 interpreted and no external services are called. Original records remain
 unchanged. Exit code `0` means the command completed, not scientific success.
+
+A missing path does not identify whether an input, executable or output was
+missing. General `ValueError` and `RuntimeError` exceptions keep category
+`unknown`; their messages are not used to guess a category.
 
 Assessment values use string enums: `AssessmentOutcome` defines `success`,
 `failure` and `unknown`; `AssessmentCategory` defines the categories above.

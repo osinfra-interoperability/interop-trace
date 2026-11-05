@@ -33,6 +33,8 @@ Profiles select a registered `type` and implementation-specific `parameters`:
 ```yaml
 erwinia_and_spikes:
   type: uniprot
+  metadata:
+    biotools: uniprotkb
   parameters:
     query: >-
       (organism_id:218491) OR (accession:P00924) OR (accession:P02769)
@@ -45,6 +47,11 @@ Paths resolve relative to the YAML file containing them. Workflow search setting
 remain in native files, such as Sage JSON. See [components](components.md) for
 parameters and supported formats; the runner does not convert inputs or generate
 all possible component combinations.
+
+Optional `metadata.biotools` names the public entry for a resource or tool,
+separately from its scientific parameters. New runs save these references for
+selected datasets, databases and workflows; benchmark descriptions are excluded.
+The selected file, query and native settings remain experiment configuration.
 
 ## Acceptance criteria
 

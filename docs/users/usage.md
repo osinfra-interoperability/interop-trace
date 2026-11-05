@@ -69,7 +69,20 @@ regardless of the recorded assessment outcome.
 
 ## Public metadata
 
-Collect a bio.tools description independently of experiment execution:
+Collect the references saved with a created run, before or after execution:
+
+```bash
+poetry run interop-trace metadata collect results/run-002
+```
+
+This saves `metadata/index.json`, linking experiment roles and profiles to
+snapshots under `metadata/biotools/<entry-id>/`. Shared IDs use one snapshot.
+The index distinguishes `collected`, `missing_reference`, `not_found` (HTTP 404)
+and `retrieval_failed`, retaining error details. Other entries are still collected
+after a retrieval failure; the command then exits with code `1`. Collection leaves
+execution and assessment records unchanged. Existing metadata is never overwritten.
+
+For an individual bio.tools entry:
 
 ```bash
 poetry run interop-trace metadata biotools Sage-proteomics --output results/metadata-sage-001

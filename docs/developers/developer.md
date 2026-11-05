@@ -71,6 +71,10 @@ Metric meanings belong to their benchmark; criteria refer to metric names withou
 inspecting implementations. Passing criteria does not establish general scientific
 validity. See [assessment behavior](../users/usage.md#assessment-results).
 
+`metadata.py` collects the explicit public references frozen in a run's
+configuration, without constructing components. Its index links selected profiles
+to deduplicated snapshots and records availability errors; execution is independent.
+
 ## Add a component
 
 1. Implement the relevant protocol and keep native settings as constructor

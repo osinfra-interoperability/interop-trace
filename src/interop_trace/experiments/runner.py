@@ -4,6 +4,7 @@ import errno
 import json
 import platform
 import subprocess
+import traceback
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -174,7 +175,12 @@ def _status(path: Path, record: dict[str, Any]) -> Iterator[None]:
     try:
         yield
     except BaseException as error:
-        record["error"] = {"type": type(error).__name__, "message": str(error)}
+        record["error"] = {
+            "type": type(error).__name__,
+            "module": type(error).__module__,
+            "message": str(error),
+            "traceback": "".join(traceback.format_exception(error)),
+        }
         if isinstance(error, OSError) and error.errno is not None:
             record["error"].update(
                 errno=error.errno, errno_name=errno.errorcode.get(error.errno)

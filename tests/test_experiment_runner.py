@@ -234,7 +234,8 @@ def test_errors_continue_but_interruptions_stop_the_batch(
                 folder = kwargs["output_dir"]
                 folder.mkdir()
                 (folder / "partial.log").write_text("partial evidence")
-            raise error
+            error.add_note("Component test context")
+            raise error from ValueError("underlying failure")
         return original(*args, **kwargs)
 
     monkeypatch.setattr(component, method, fail_first)
@@ -266,6 +267,9 @@ def test_errors_continue_but_interruptions_stop_the_batch(
     assert record["status"] == "finished"
     assert record["stage"] == stage
     assert record["error"]["type"] == type(error).__name__
+    assert record["error"]["module"] == type(error).__module__
+    assert "ValueError: underlying failure\n" in record["error"]["traceback"]
+    assert record["error"]["traceback"].endswith("Component test context\n")
     if isinstance(error, PermissionError):
         assert record["error"]["errno"] == errno.EACCES
         assert record["error"]["errno_name"] == "EACCES"

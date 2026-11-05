@@ -30,13 +30,25 @@ experiment table as the [UI](interface.md).
 
 `classify` accepts a run directory or a single finished experiment directory.
 It saves `classification.json` for finished experiments, including those without
-exceptions, and skips existing assessments when processing a run. The placeholder
-records outcome and category `unknown`, with no inferred cause or supporting
-evidence. It does not interpret logs or call external services. Original records
-remain unchanged. Exit code `0` means the command completed, not scientific success.
+exceptions, and skips existing assessments when processing a run. The assessor
+uses deterministic rules on the recorded error:
+
+| Evidence | Outcome | Category |
+| --- | --- | --- |
+| Permission error | `failure` | `permission` |
+| Executable architecture/format error (`EBADARCH` or `ENOEXEC`) | `failure` | `environment` |
+| Nonzero subprocess exit | `failure` | `process_error` |
+| Other recorded error | `failure` | `unknown` |
+| Interruption or no recorded error | `unknown` | `unknown` |
+
+Each assessment saves method `deterministic`, the rule identifier and evidence
+references to fields in `experiment.json`. Categories describe observed errors, not
+proven underlying causes or inherent component incompatibility. Logs are not
+interpreted and no external services are called. Original records remain
+unchanged. Exit code `0` means the command completed, not scientific success.
 
 Assessment values use string enums: `AssessmentOutcome` defines `success`,
-`failure` and `unknown`; `AssessmentCategory` currently defines only `unknown`.
+`failure` and `unknown`; `AssessmentCategory` defines the categories above.
 An assessment outcome is separate from execution status: completing execution
 does not establish scientific success.
 

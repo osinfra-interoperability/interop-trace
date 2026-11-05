@@ -65,7 +65,10 @@ before execution. The CLI reports the outcome and exits nonzero if any failed.
 `experiments/records.py` projects choices, execution and assessment records into
 the same rows used by the UI and exported as `experiments.csv`. JSON records are
 authoritative. `classification.py` provides explicit experiment/run assessment;
-the current placeholder always returns unknown and preserves existing assessments.
+deterministic rules use saved errors, preserve existing assessments and record
+the applied rule and evidence fields. The runner retains OS error codes and
+subprocess return codes at its existing exception boundary. Components contain
+no classification logic; error-free execution does not imply scientific success.
 `interfaces/cli.py` exposes this orchestration and cache commands.
 `interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
 launches the same CLI in a subprocess and reads existing output records without

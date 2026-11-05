@@ -28,8 +28,9 @@ Choose a **Saved run**. Its experiment table and stage actions appear together:
 - **Run experiments** executes the created run once, including its configured
   benchmarks. Status, stage and error columns update as execution progresses.
 - **Assess results** processes finished experiments after execution ends. The
-  placeholder records outcome and category `unknown`, including for experiments
-  without exceptions. Existing assessments are preserved.
+  [deterministic rules](usage.md#separate-run-stages) classify recorded errors;
+  interruptions and experiments without errors remain `unknown`. Existing
+  assessments are preserved.
 
 The UI and `experiments.csv` use the same table projection. Execution and
 assessment update the saved CSV; the individual JSON records remain authoritative.

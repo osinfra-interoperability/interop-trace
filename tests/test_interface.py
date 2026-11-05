@@ -42,7 +42,7 @@ def checkout(configuration: Path) -> Path:
     return configuration.parent.parent
 
 
-async def test_create_execute_and_assess_a_named_run(
+async def test_create_collect_execute_and_assess_a_named_run(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
 ) -> None:
     process = Mock()
@@ -74,6 +74,10 @@ async def test_create_execute_and_assess_a_named_run(
     popen.assert_not_called()
     http_transport.assert_not_called()
     assert not user.find(marker="assess-run").elements.pop().enabled
+    user.find(marker="collect-metadata").click()
+    await user.should_see("Metadata index saved", retries=20)
+    assert (output / "metadata/index.json").is_file()
+    assert not user.find(marker="collect-metadata").elements.pop().enabled
     user.find(marker="start-run").click()
     await user.should_see("Status: running", retries=20)
     assert not user.find(marker="start-run").elements.pop().enabled

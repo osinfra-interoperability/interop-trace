@@ -8,14 +8,15 @@ from nicegui import run, ui
 
 from interop_trace.classification import assess_run
 from interop_trace.experiments import load_experiments
-from interop_trace.experiments.records import TABLE_FIELDS
+from interop_trace.experiments.records import TABLE_FIELDS, read_record
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
     SavedRun,
     console_log,
     file_preview,
 )
-from interop_trace.status import ExecutionStatus
+from interop_trace.metadata import collect_run_metadata
+from interop_trace.status import ExecutionStatus, MetadataStatus
 
 
 def serve(directory: Path, port: int = 8080) -> None:
@@ -76,12 +77,16 @@ class _Dashboard:
             self.status = ui.label()
             self.location = ui.label().classes("text-sm text-gray-600")
             with ui.row():
+                self.metadata_button = ui.button(
+                    "Collect metadata", on_click=self.collect_metadata
+                ).mark("collect-metadata")
                 self.start_button = ui.button(
                     "Run experiments", on_click=self.start, icon="play_arrow"
                 ).mark("start-run")
                 self.assess_button = ui.button(
                     "Assess results", on_click=self.assess
                 ).mark("assess-run")
+            self.metadata_button.disable()
             self.start_button.disable()
             self.assess_button.disable()
             self.experiments = _table(TABLE_FIELDS)
@@ -141,6 +146,7 @@ class _Dashboard:
             return None
         self.busy = True
         self.create_button.disable()
+        self.metadata_button.disable()
         self.start_button.disable()
         self.assess_button.disable()
         try:
@@ -161,6 +167,22 @@ class _Dashboard:
         if output is not None:
             self.selection.set_value(str(output))
             ui.notify("Run created.", type="positive")
+
+    async def collect_metadata(self) -> None:
+        saved = self.runs.get(self.selection.value)
+        if saved is not None:
+            index = await self._perform(collect_run_metadata, saved.directory)
+            if index is not None:
+                unavailable = any(
+                    row["status"] != MetadataStatus.COLLECTED
+                    for row in read_record(index).get("components", [])
+                )
+                ui.notify(
+                    "Metadata index saved; some references are unavailable."
+                    if unavailable
+                    else "Metadata index saved.",
+                    type="warning" if unavailable else "positive",
+                )
 
     async def start(self) -> None:
         saved = self.runs.get(self.selection.value)
@@ -190,6 +212,7 @@ class _Dashboard:
         await self.show_details()
 
     async def show_details(self) -> None:
+        self.metadata_button.disable()
         self.start_button.disable()
         self.assess_button.disable()
         saved = self.runs.get(self.selection.value)
@@ -206,6 +229,11 @@ class _Dashboard:
         self.location.set_text(str(saved.directory))
         self.experiments.rows = list(saved.experiments)
         self.experiments.update()
+        self.metadata_button.set_enabled(
+            not self.busy
+            and saved.status != ExecutionStatus.RUNNING
+            and not (saved.directory / "metadata").exists()
+        )
         self.start_button.set_enabled(
             not self.busy
             and not self.browser.active

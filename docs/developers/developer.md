@@ -65,8 +65,12 @@ before execution. The CLI reports the outcome and exits nonzero if any failed.
 `experiments/records.py` projects choices, execution and assessment records into
 the same rows used by the UI and exported as `experiments.csv`. JSON records are
 authoritative. `classification.py` provides explicit experiment/run assessment;
-deterministic rules use saved errors, preserve existing assessments and record
-the applied rule, evidence fields and detection stage. Its `_diagnose` placeholder
+deterministic rules use saved errors and numeric acceptance bounds, preserve
+existing assessments and record the applied rule, evidence fields and detection
+stage. The runner copies validated criteria into experiment records; assessment
+compares saved metrics without rerunning or inspecting component implementations.
+Unmet criteria are assessment outcomes, not execution exceptions.
+Its `_diagnose` placeholder
 receives the record and experiment directory for future evidence-based diagnosis,
 including an LLM. It currently leaves the originating stage unknown.
 The runner retains OS error codes,

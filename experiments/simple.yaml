@@ -10,3 +10,6 @@ experiments:
     database: erwinia_and_spikes
     workflow: sage_erwinia_tmt
     benchmark: erwinia_spike_peptides
+    acceptance:
+      expected_recovery_at_threshold:
+        min: 1.0

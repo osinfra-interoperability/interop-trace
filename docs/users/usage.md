@@ -31,7 +31,8 @@ experiment table as the [UI](interface.md).
 `classify` accepts a run directory or a single finished experiment directory.
 It saves `classification.json` for finished experiments, including those without
 exceptions, and skips existing assessments when processing a run. The assessor
-uses deterministic rules on the recorded error:
+classifies recorded errors first, then checks saved acceptance criteria when
+there is no error:
 
 | Evidence | Outcome | Category |
 | --- | --- | --- |
@@ -49,7 +50,9 @@ uses deterministic rules on the recorded error:
 | Explicit OS, subprocess or request timeout | `failure` | `timeout` |
 | Connection failure or unreachable network | `failure` | `network` |
 | Other recorded error | `failure` | `unknown` |
-| Interruption or no recorded error | `unknown` | `unknown` |
+| Any acceptance bound is unmet | `failure` | `acceptance_criterion_not_met` |
+| All declared acceptance criteria pass | `success` | `null` |
+| Interruption, no criteria or unavailable required metrics | `unknown` | `unknown` |
 
 Each assessment saves the rule identifier and evidence
 references to fields in `experiment.json`. Categories describe observed errors, not
@@ -57,8 +60,15 @@ proven underlying causes or inherent component incompatibility. Logs are not
 interpreted and no external services are called. Original records remain
 unchanged. Exit code `0` means the command completed, not scientific success.
 
+Acceptance checks save their bounds, observed values and individual outcomes in
+`checks`. Missing, nonnumeric or nonfinite metrics are unavailable; a definite
+failed criterion takes precedence over another unavailable metric. Success means
+the configured criteria were met, not general scientific correctness. Criteria
+are saved with each experiment; changed YAML applies only to newly created runs.
+
 `classification.json` also records `detected_stage`, copied from the experiment
-when an error is recorded, or `null` otherwise. Its separate `diagnosis` contains
+when an error is recorded, or `assessment` for an unmet criterion, and `null`
+otherwise. Its separate `diagnosis` contains
 method `placeholder`, `origin_stage: null` and empty evidence. The origin is not
 assumed to be the detection stage; diagnosis currently infers nothing.
 

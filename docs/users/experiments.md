@@ -32,6 +32,9 @@ experiments:
     database: erwinia_and_spikes
     workflow: sage_erwinia_tmt
     benchmark: erwinia_spike_peptides
+    acceptance:
+      expected_recovery_at_threshold:
+        min: 1.0
 ```
 
 Profile names identify a particular set of settings; `type` selects the registered
@@ -59,6 +62,13 @@ relative to the YAML file declaring them, including paths in component parameter
 Each experiment selects **one** dataset, database, workflow and benchmark.
 A dataset can contain several measurements. Evaluation is a required step;
 missing or null benchmark selections are rejected before downloads or execution.
+
+Optional `acceptance` entries set inclusive numeric `min` and/or `max` bounds on
+named benchmark metrics. Classification checks them after evaluation; components
+do not interpret these criteria. The Erwinia experiments require recovery of all
+four reference peptides: Sage after its configured confidence filter, Comet and
+Amanda without that filter. Passing means meeting this recovery criterion,
+not establishing the accuracy of every identification.
 
 ## Run and inspect
 

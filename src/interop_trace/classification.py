@@ -56,9 +56,13 @@ def assess_experiment(directory: Path) -> Path:
     record = json.loads((directory / "experiment.json").read_text(encoding="utf-8"))
     if not isinstance(record, dict) or record.get("status") != ExecutionStatus.FINISHED:
         raise ValueError("Select a finished experiment.")
+    assessment = {
+        **_assess(record),
+        "diagnosis": _diagnose(directory, record),
+    }
     output = directory / "classification.json"
     with output.open("x", encoding="utf-8") as stream:
-        stream.write(json.dumps(_assess(record), indent=2) + "\n")
+        stream.write(json.dumps(assessment, indent=2) + "\n")
     save_table(directory.parent)
     return output
 
@@ -96,8 +100,18 @@ def _assess(record: dict[str, Any]) -> dict[str, object]:
         "rule": rule,
         "outcome": outcome,
         "category": category,
+        "detected_stage": record.get("stage") if error else None,
         "evidence": evidence,
     }
+
+
+def _diagnose(directory: Path, record: dict[str, Any]) -> dict[str, object]:
+    """Placeholder for diagnosis using the saved record and experiment files.
+
+    A future diagnostic method, such as an LLM, can use these inputs. For now,
+    no cause or originating stage is inferred and no external calls are made.
+    """
+    return {"method": "placeholder", "origin_stage": None, "evidence": []}
 
 
 def assess_run(directory: Path) -> list[Path]:

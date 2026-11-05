@@ -123,7 +123,9 @@ def test_classification_preserves_records(
         "rule": rule,
         "outcome": outcome,
         "category": category,
+        "detected_stage": "evaluation" if error else None,
         "evidence": evidence,
+        "diagnosis": {"method": "placeholder", "origin_stage": None, "evidence": []},
     }
     output.write_text('{"outcome":"success"}')
     assert CliRunner().invoke(app, ["classify", str(tmp_path)]).exit_code == 1

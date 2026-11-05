@@ -75,6 +75,10 @@
 
 ::: interop_trace.evaluation.proteobench
 
+## Public metadata
+
+::: interop_trace.metadata
+
 ## Download cache
 
 ::: interop_trace.downloads

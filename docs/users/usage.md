@@ -67,6 +67,21 @@ Existing assessments and execution records are preserved. Use a new run after
 changing criteria. Exit code `0` from `classify` means the command completed,
 regardless of the recorded assessment outcome.
 
+## Public metadata
+
+Collect a bio.tools description independently of experiment execution:
+
+```bash
+poetry run interop-trace metadata biotools Sage-proteomics --output results/metadata-sage-001
+```
+
+Use the exact entry ID: `Sage-proteomics` is the proteomics engine; `sage` is a
+different resource. Each new folder contains the unchanged response in
+`entry.json` and its source URL, ID and original retrieval time in `source.json`.
+Snapshots survive cache cleanup. Cached entries are reused without checking for
+updates, retaining their original retrieval time. Use `--cache-directory` for a
+dedicated metadata cache that can be cleared independently of tool/input downloads.
+
 ## Download cache
 
 Downloads are reused from `.interop_trace/cache/`:

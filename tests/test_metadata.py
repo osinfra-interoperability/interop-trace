@@ -17,7 +17,7 @@ from interop_trace.interfaces.cli import app
 from interop_trace.metadata import collect_run_metadata, snapshot_biotools
 
 
-def test_snapshot_preserves_response_and_cached_provenance(
+def test_snapshot_formats_response_and_preserves_cached_provenance(
     tmp_path: Path, http_transport: Mock, http_response: Callable[..., Response]
 ) -> None:
     body = b'{ "biotoolsID": "Sage-proteomics", "unknown_field": null }\n'
@@ -45,7 +45,11 @@ def test_snapshot_preserves_response_and_cached_provenance(
     http_transport.assert_called_once()
     assert http_transport.call_args.args[0].url == source["url"]
     for directory in (first, second):
-        assert (directory / "entry.json").read_bytes() == body
+        saved = (directory / "entry.json").read_text()
+        assert json.loads(saved) == json.loads(body)
+        assert saved == (
+            '{\n  "biotoolsID": "Sage-proteomics",\n  "unknown_field": null\n}\n'
+        )
         assert json.loads((directory / "source.json").read_text()) == source
 
 

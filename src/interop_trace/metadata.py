@@ -1,7 +1,6 @@
 """Preserve public component descriptions independently of execution."""
 
 import json
-import shutil
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -17,7 +16,7 @@ def _biotools_url(biotools_id: str) -> str:
 def snapshot_biotools(
     biotools_id: str, *, output_dir: Path, cache: DownloadCache
 ) -> Path:
-    """Save a bio.tools response unchanged alongside its source provenance.
+    """Save an indented bio.tools response alongside its source provenance.
 
     IDs are explicit and case is preserved. The output directory must be new.
     Cached responses retain their original retrieval time; snapshot copies
@@ -33,7 +32,11 @@ def snapshot_biotools(
         kind="metadata",
         filename="entry.json",
     )
-    shutil.copyfile(download.path, output_dir / "entry.json")
+    (output_dir / "entry.json").write_text(
+        json.dumps(json.loads(download.path.read_bytes()), indent=2, ensure_ascii=False)
+        + "\n",
+        encoding="utf-8",
+    )
     (output_dir / "source.json").write_text(
         json.dumps(
             {

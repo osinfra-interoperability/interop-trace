@@ -119,8 +119,9 @@ poetry run interop-trace metadata biotools Sage-proteomics --output results/meta
 ```
 
 Use the exact entry ID: `Sage-proteomics` is the proteomics engine; `sage` is a
-different resource. Each new folder contains the unchanged response in
-`entry.json` and its source URL, ID and original retrieval time in `source.json`.
+different resource. Each new folder contains the response as indented JSON in
+`entry.json`, preserving its fields and values, and its source URL, ID and original
+retrieval time in `source.json`.
 Snapshots survive cache cleanup. Cached entries are reused without checking for
 updates, retaining their original retrieval time. Use `--cache-directory` for a
 dedicated metadata cache that can be cleared independently of tool/input downloads.

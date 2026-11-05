@@ -9,6 +9,12 @@ from pathlib import Path
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.errors import (
+    MissingOutputError,
+    ResultSchemaError,
+    UnsupportedEvaluationError,
+    UnsupportedFormatError,
+)
 from interop_trace.evaluation.base import EvaluationResult
 from interop_trace.evaluation.registry import registry
 from interop_trace.workflows import WorkflowResult
@@ -110,23 +116,31 @@ class ExpectedPeptides:
         self, result: WorkflowResult
     ) -> tuple[list[Path], set[str], set[str] | None]:
         if result.format == "sage":
-            source = result.files["results.sage.tsv"]
+            source = result.files.get("results.sage.tsv")
+            if source is None:
+                error = MissingOutputError(
+                    "ExpectedPeptides requires results.sage.tsv."
+                )
+                error.add_note(f"Available output files: {sorted(result.files)}")
+                raise error
             observed, accepted = _read_peptides(source, self.max_q_value)
             return [source], observed, accepted
         if result.format not in {"comet", "msamanda"}:
-            raise ValueError(
-                "ExpectedPeptides accepts Sage, Comet or MS Amanda results."
+            raise UnsupportedFormatError(
+                "ExpectedPeptides accepts Sage, Comet or MS Amanda results; "
+                f"received {result.format!r}."
             )
         if self.max_q_value is not None or not self.sequence_only:
-            raise ValueError(
-                "Comet/MS Amanda recovery requires max_q_value=null "
-                "and sequence_only=true; "
-                "native scores are not spectrum q-values."
+            raise UnsupportedEvaluationError(
+                f"ExpectedPeptides reader for {result.format!r} requires "
+                "max_q_value=null and sequence_only=true."
             )
         suffix = ".comet.txt" if result.format == "comet" else ".msamanda.csv"
         sources = sorted(p for name, p in result.files.items() if name.endswith(suffix))
         if not sources:
-            raise ValueError(f"No native {suffix} result tables.")
+            error = MissingOutputError(f"No native {suffix} result tables.")
+            error.add_note(f"Available output files: {sorted(result.files)}")
+            raise error
         observed = set().union(*(_read_native(p, result.format) for p in sources))
         return sources, observed, None
 
@@ -143,8 +157,14 @@ def _read_peptides(
     with path.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         required = {"peptide", "rank", "label", "spectrum_q"}
-        if not required.issubset(reader.fieldnames or []):
-            raise ValueError(f"Sage table must contain {sorted(required)}.")
+        missing = required - set(reader.fieldnames or [])
+        if missing:
+            error = ResultSchemaError(
+                f"Sage table is missing required columns: {sorted(missing)}."
+            )
+            error.add_note(f"File: {path}")
+            error.add_note(f"Observed columns: {reader.fieldnames or []}")
+            raise error
         for row in reader:
             if int(row["rank"]) != 1 or int(row["label"]) != 1:
                 continue
@@ -168,8 +188,14 @@ def _read_native(path: Path, format: str) -> set[str]:
             stream.seek(0)
         reader = csv.DictReader(stream, delimiter="\t")
         required = {peptide, rank, proteins}
-        if not required.issubset(reader.fieldnames or []):
-            raise ValueError(f"{format} table must contain {sorted(required)}.")
+        missing = required - set(reader.fieldnames or [])
+        if missing:
+            error = ResultSchemaError(
+                f"{format} table is missing required columns: {sorted(missing)}."
+            )
+            error.add_note(f"File: {path}")
+            error.add_note(f"Observed columns: {reader.fieldnames or []}")
+            raise error
         for row in reader:
             if int(row[rank]) != 1:
                 continue

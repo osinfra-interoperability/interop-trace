@@ -1,6 +1,9 @@
 """Exercise YAML, cache, process and reporting boundaries without real downloads."""
 
+import csv
+import errno
 import json
+import subprocess
 import sys
 import tarfile
 from collections.abc import Callable
@@ -15,8 +18,14 @@ from click import unstyle
 from requests import Response
 from typer.testing import CliRunner
 
+from interop_trace.classification import assess_run
 from interop_trace.evaluation import EvaluationResult, ProteoBenchDDA
-from interop_trace.experiments import load_configuration, run_experiments
+from interop_trace.experiments import (
+    create_run,
+    execute_run,
+    load_configuration,
+    run_experiments,
+)
 from interop_trace.interfaces.cli import app
 from interop_trace.workflows import SageWorkflow
 
@@ -142,11 +151,29 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
 ) -> None:
     pytest.importorskip("proteobench")
     output = tmp_path / "results"
+    document = yaml.safe_load(pipeline.read_text())
+    for choice in document["experiments"]:
+        choice["acceptance"] = {"nr_feature": {"min": 3}}
+    pipeline.write_text(yaml.safe_dump(document))
     configuration = load_configuration(pipeline)
     http_transport.assert_not_called()
-    results = run_experiments(
-        configuration, output_dir=output, cache_dir=tmp_path / "cache"
-    )
+    create_run(configuration, output_dir=output, cache_dir=tmp_path / "cache")
+    http_transport.assert_not_called()
+    with (output / "experiments.csv").open() as stream:
+        assert [row["status"] for row in csv.DictReader(stream)] == ["not_started"] * 2
+    assert not (output / "environment.json").exists()
+    pipeline.write_text("changed after creation")
+    results = execute_run(output)
+    with pytest.raises(ValueError, match="already started"):
+        execute_run(output)
+    with (output / "experiments.csv").open() as stream:
+        assert [row["status"] for row in csv.DictReader(stream)] == ["finished"] * 2
+    assert len(assess_run(output)) == 2
+    assert assess_run(output) == []
+    with (output / "experiments.csv").open() as stream:
+        assert [row["assessment_outcome"] for row in csv.DictReader(stream)] == [
+            "success"
+        ] * 2
     assert not results.failed
     evaluations = results.completed.values()
     assert [result.metrics["nr_feature"] for result in evaluations] == [3, 3]
@@ -158,7 +185,9 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == "completed"
+        assert record["acceptance"] == {"nr_feature": {"min": 3}}
+        assert record["status"] == "finished"
+        assert "error" not in record
         assert record["started_at"] <= record["finished_at"]
         assert record["evaluation"]["metrics"]["nr_feature"] == 3
         assert record["database"]["path"]
@@ -168,13 +197,22 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
         assert (output / name / "evaluation/proteobench.json").is_file()
 
 
-@pytest.mark.parametrize("stage", ["setup:database", "workflow", "evaluation"])
-@pytest.mark.parametrize("error_type", [RuntimeError, KeyboardInterrupt])
+@pytest.mark.parametrize(
+    "stage,error",
+    [
+        ("setup:database", PermissionError(errno.EACCES, "deliberate failure")),
+        ("workflow", subprocess.CalledProcessError(2, ["test-tool"])),
+        ("evaluation", RuntimeError("deliberate failure")),
+        ("setup:database", KeyboardInterrupt("deliberate failure")),
+        ("workflow", KeyboardInterrupt("deliberate failure")),
+        ("evaluation", KeyboardInterrupt("deliberate failure")),
+    ],
+)
 def test_errors_continue_but_interruptions_stop_the_batch(
     pipeline: Path,
     tmp_path: Path,
     stage: str,
-    error_type: type[BaseException],
+    error: BaseException,
     monkeypatch: pytest.MonkeyPatch,
     http_transport: Mock,
 ) -> None:
@@ -196,23 +234,26 @@ def test_errors_continue_but_interruptions_stop_the_batch(
         nonlocal calls
         calls += 1
         if calls == 1:
+            assert (output / "environment.json").is_file()
             if "output_dir" in kwargs:
                 folder = kwargs["output_dir"]
                 folder.mkdir()
                 (folder / "partial.log").write_text("partial evidence")
-            raise error_type("deliberate failure")
+            error.add_note("Component test context")
+            raise error from ValueError("underlying failure")
         return original(*args, **kwargs)
 
     monkeypatch.setattr(component, method, fail_first)
     output = tmp_path / "failed"
-    if error_type is KeyboardInterrupt:
+    if isinstance(error, KeyboardInterrupt):
         with pytest.raises(KeyboardInterrupt, match="deliberate failure"):
             run_experiments(
                 load_configuration(pipeline),
                 output_dir=output,
                 cache_dir=tmp_path / "cache",
             )
-        assert not (output / "second").exists()
+        second = json.loads((output / "second/experiment.json").read_text())
+        assert second["status"] == "not_started" and "started_at" not in second
         assert not (output / "summary.json").exists()
     else:
         results = run_experiments(
@@ -221,15 +262,24 @@ def test_errors_continue_but_interruptions_stop_the_batch(
             cache_dir=tmp_path / "cache",
         )
         assert list(results.completed) == ["second"]
-        assert results.failed == {"first": "RuntimeError: deliberate failure"}
+        assert results.failed == {"first": f"{type(error).__name__}: {error}"}
         summary = json.loads((output / "summary.json").read_text())
         assert summary == {"completed": ["second"], "failed": results.failed}
         second = json.loads((output / "second/experiment.json").read_text())
-        assert second["status"] == "completed"
+        assert second["status"] == "finished"
     record = json.loads((output / "first/experiment.json").read_text())
-    assert record["status"] == "failed"
+    assert (output / "environment.json").is_file()
+    assert record["status"] == "finished"
     assert record["stage"] == stage
-    assert record["error"]["type"] == error_type.__name__
+    assert record["error"]["type"] == type(error).__name__
+    assert record["error"]["module"] == type(error).__module__
+    assert "ValueError: underlying failure\n" in record["error"]["traceback"]
+    assert record["error"]["traceback"].endswith("Component test context\n")
+    if isinstance(error, PermissionError):
+        assert record["error"]["errno"] == errno.EACCES
+        assert record["error"]["errno_name"] == "EACCES"
+    if isinstance(error, subprocess.CalledProcessError):
+        assert record["error"]["returncode"] == 2
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     assert record["finished_at"]
@@ -283,8 +333,13 @@ def test_cli_check_does_not_set_up_components(
 
 
 def test_cli_executes_run(
-    pipeline: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    pipeline: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    http_transport: Mock,
 ) -> None:
+    release = Mock(return_value="test-release")
+    monkeypatch.setattr("interop_trace.experiments.runner.platform.release", release)
     document = yaml.safe_load(pipeline.read_text())
     other = pipeline.with_name("other.yml")
     other.write_text(
@@ -300,6 +355,7 @@ def test_cli_executes_run(
         app,
         [
             "run",
+            "--prepare-only",
             "second",
             "first",
             "--directory",
@@ -311,14 +367,23 @@ def test_cli_executes_run(
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "Completed 2 experiment(s)" in result.output
-    assert "failed 0" in result.output
+    http_transport.assert_not_called()
+    result = CliRunner().invoke(app, ["execute", str(output)])
+    assert result.exit_code == 0, result.output
+    assert "Finished 2 experiment(s), 0 with errors" in result.output
+    assert json.loads((output / "environment.json").read_text()) == {
+        "operating_system": "Darwin",
+        "os_release": "test-release",
+        "architecture": "arm64",
+        "python_version": sys.version.split()[0],
+    }
+    release.assert_called_once_with()
     snapshot = json.loads((output / "configuration.json").read_text())
     assert [choice["id"] for choice in snapshot["experiments"]] == ["second", "first"]
     assert snapshot["sources"] == [str(other), str(pipeline)]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == "completed"
+        assert record["status"] == "finished"
 
 
 @pytest.mark.parametrize("failed_ids", [("first",), ("second",), ("first", "second")])
@@ -349,17 +414,15 @@ def test_cli_summarizes_all_experiments_before_exiting_nonzero(
         ],
     )
     assert result.exit_code == 1, result.output
-    assert (
-        f"Completed {2 - len(failed_ids)} experiment(s), failed {len(failed_ids)}"
-        in result.output
-    )
+    assert f"Finished 2 experiment(s), {len(failed_ids)} with errors" in result.output
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
-        assert record["status"] == ("failed" if name in failed_ids else "completed")
+        assert record["status"] == "finished"
+        assert ("error" in record) == (name in failed_ids)
         assert (
-            f"Failed {name}: ValueError: cannot evaluate"
+            f"Error {name}: ValueError: cannot evaluate"
             if name in failed_ids
-            else f"Succeeded: {name}"
+            else f"Without recorded errors: {name}"
         ) in result.output
 
 

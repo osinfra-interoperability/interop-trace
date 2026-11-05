@@ -1,5 +1,6 @@
 """Exercise real NiceGUI events without a browser or scientific downloads."""
 
+import csv
 import json
 import shutil
 from pathlib import Path
@@ -41,20 +42,15 @@ def checkout(configuration: Path) -> Path:
     return configuration.parent.parent
 
 
-async def test_launch_and_monitor(
+async def test_create_execute_and_assess_a_named_run(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
 ) -> None:
     process = Mock()
     process.poll.return_value = None
-    output: Path | None = None
+    output = checkout / "results/example"
 
     def launch(command, **kwargs):
-        nonlocal output
-        output = Path(command[command.index("--output") + 1])
-        (output / "first").mkdir(parents=True)
-        (output / "configuration.json").write_text(
-            json.dumps({"experiments": [{"id": "first"}]})
-        )
+        assert command[1:] == ["-m", "interop_trace", "execute", str(output)]
         (output / "first/experiment.json").write_text(
             json.dumps({"id": "first", "status": "running", "stage": "workflow"})
         )
@@ -62,52 +58,60 @@ async def test_launch_and_monitor(
         kwargs["stdout"].flush()
         return process
 
-    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", launch)
-    previous = checkout / "results/previous"
-    previous.mkdir(parents=True)
-    (previous / "configuration.json").write_text('{"experiments": []}')
+    popen = Mock(side_effect=launch)
+    monkeypatch.setattr("interop_trace.interfaces.web.runs.subprocess.Popen", popen)
     _page(checkout)
     await user.open("/")
     await user.should_see("Selected: 0 of 1 experiments", retries=10)
-    assert any(
-        row.get("database") == "selected"
-        for table in user.find(nicegui.ui.table).elements
-        for row in table.rows
-    )
-    await user.should_see("Status: unknown")
-    assert not user.find(marker="start-run").elements.pop().enabled
+    user.find(marker="run-name").type("example")
     table = user.find(marker="experiment-choices")
     rows = table.elements.copy().pop().rows
     table.trigger("selection", {"added": True, "rows": rows, "keys": ["first"]})
+    user.find(marker="create-run").click()
+    await user.should_see("Status: not_started", retries=20)
+    assert (output / "experiments.csv").is_file()
+    assert not (output / "environment.json").exists()
+    popen.assert_not_called()
+    http_transport.assert_not_called()
+    assert not user.find(marker="assess-run").elements.pop().enabled
     user.find(marker="start-run").click()
-    await user.should_see("Status: running")
-    assert output is not None
+    await user.should_see("Status: running", retries=20)
+    assert not user.find(marker="start-run").elements.pop().enabled
+    assert not user.find(marker="assess-run").elements.pop().enabled
     user.find("Files and provenance").click()
     user.find(marker="output-file").click()
     user.find("Console log").click()
     await user.should_see("native tool log")
-    with output.with_name(output.name + ".console.log").open("a") as stream:
-        stream.write("progress update\n")
-    await user.should_see("progress update", retries=20)
-    assert not user.find(marker="start-run").elements.pop().enabled
-    (output / "first/experiment.json").write_text(
-        json.dumps(
-            {
-                "id": "first",
-                "status": "completed",
-                "stage": "evaluation",
-            }
-        )
+    source = output / "first/experiment.json"
+    original = json.dumps(
+        {
+            "id": "first",
+            "status": "finished",
+            "stage": "evaluation",
+            "acceptance": {"recovery": {"min": 1}},
+            "evaluation": {"metrics": {"recovery": 1}},
+        }
     )
+    source.write_text(original)
     process.poll.return_value = 0
-    await user.should_see("Status: completed", retries=20)
-    assert any(
-        row.get("id") == "first" and row.get("status") == "completed"
-        for table in user.find(nicegui.ui.table).elements
-        for row in table.rows
+    await user.should_see("Status: finished", retries=20)
+    user.find(marker="assess-run").click()
+    await user.should_see("Saved 1 assessment(s).", retries=20)
+    assert (
+        json.loads((output / "first/classification.json").read_text())["outcome"]
+        == "success"
     )
-    assert user.find(marker="start-run").elements.pop().enabled
-    http_transport.assert_not_called()
+    assert source.read_text() == original
+    assert not user.find(marker="assess-run").elements.pop().enabled
+    with (output / "experiments.csv").open() as stream:
+        saved_rows = list(csv.DictReader(stream))
+    assert saved_rows[0]["assessment_outcome"] == "success"
+    assert any(
+        table.rows == saved_rows for table in user.find(nicegui.ui.table).elements
+    )
+    user.find(marker="file-group").click()
+    user.find("Experiment: first").click()
+    await user.should_see('"outcome": "success"', retries=10)
 
 
 async def test_empty_checkout_keeps_run_disabled(user, tmp_path: Path) -> None:
@@ -258,11 +262,16 @@ async def test_failed_process_shows_console_error_and_allows_another_run(
     table = user.find(marker="experiment-choices")
     rows = table.elements.copy().pop().rows
     table.trigger("selection", {"added": True, "rows": rows, "keys": ["first"]})
+    user.find(marker="run-name").type("example")
+    user.find(marker="create-run").click()
+    await user.should_see("Status: not_started", retries=20)
     user.find(marker="start-run").click()
-    await user.should_see("Status: failed")
+    await user.should_see("Status: finished")
     user.find("Files and provenance").click()
+    user.find(marker="output-file").click()
+    user.find("Console log").click()
     await user.should_see("Run failed: missing input")
-    assert user.find(marker="start-run").elements.pop().enabled
+    assert user.find(marker="create-run").elements.pop().enabled
 
 
 async def test_checkboxes_select_ids_across_files(
@@ -287,10 +296,14 @@ async def test_checkboxes_select_ids_across_files(
         "selection", {"added": True, "rows": rows, "keys": [r["id"] for r in rows]}
     )
     await user.should_see("Selected: 2 of 3 experiments")
+    user.find(marker="run-name").type("example")
+    user.find(marker="create-run").click()
+    await user.should_see("Status: not_started", retries=20)
     user.find(marker="start-run").click()
-    await user.should_see("Status: failed", retries=10)
+    await user.should_see("Status: finished", retries=10)
     command = launch.call_args.args[0]
-    assert command[4 : command.index("--directory")] == ["another", "first"]
+    saved = json.loads((Path(command[-1]) / "configuration.json").read_text())
+    assert [choice["id"] for choice in saved["experiments"]] == ["another", "first"]
     http_transport.assert_not_called()
 
 

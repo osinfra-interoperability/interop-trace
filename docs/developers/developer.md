@@ -1,8 +1,8 @@
 # Development guide
 
-Keep each change small and preserve evidence needed to explain interoperability
-outcomes. Implementations own their scientific settings and format interpretation;
-the runner coordinates their execution.
+Keep changes small and preserve evidence of interoperability outcomes. Components
+own their native settings and input interpretation; orchestration and assessment
+stay outside their implementations.
 
 ## Setup and checks
 
@@ -13,93 +13,76 @@ poetry run ruff format --check .
 poetry run ruff check .
 poetry run mypy src
 poetry run python -m pytest
-poetry run python scripts/update_component_tables.py --check
 poetry run zensical build --strict
 ```
 
 Tests run offline with controlled HTTP responses and local subprocess fixtures.
-ProteoBench tests exercise the installed scoring library on synthetic tables; they
-skip without the extra. These tests validate adapters, not scientific performance
-on the published reference measurements. The [first experiment](../users/first-experiment.md)
-is the separate real-data integration example.
-
-See [CONTRIBUTING.md](https://github.com/osinfra-interoperability/interop-trace/blob/main/CONTRIBUTING.md)
+Optional ProteoBench tests exercise its installed scorer on synthetic tables;
+UI tests use NiceGUI's user simulation. They validate software behavior, not
+scientific accuracy. See [CONTRIBUTING.md](https://github.com/osinfra-interoperability/interop-trace/blob/main/CONTRIBUTING.md)
 for branch, commit and review policy.
 
-## Boundaries
+## Component boundaries
 
-Each domain package has contracts in `base.py`, a registry in `registry.py`, and
-explicit implementation exports in `__init__.py`.
+Each domain package defines its protocol in `base.py`, registrations in
+`registry.py`, and implementation exports in `__init__.py`.
 
 | Package | Contract | Responsibility |
 | --- | --- | --- |
-| `datasets` | `DatasetProvider.prepare` | Return measurement paths and optional sample metadata |
-| `databases` | `DatabaseProvider.prepare` | Return a database path and native format identifier |
-| `workflows` | `Workflow.run` | Consume inputs and preserve native result files |
-| `evaluation` | `Benchmark.evaluate` | Score results against explicit reference expectations |
+| `datasets` | `DatasetProvider.prepare` | Measurement paths and optional sample metadata |
+| `databases` | `DatabaseProvider.prepare` | Database path and native format identifier |
+| `workflows` | `Workflow.run` | Consume inputs and preserve native outputs |
+| `evaluation` | `Benchmark.evaluate` | Metrics and reports against reference expectations |
 
-`components.py` provides `Registry` and the optional `RequiresSetup` protocol.
-Components needing external resources implement `setup(cache=...)`; constructors
-and registration never download. Preparation/execution raises if required setup
-has not completed. Repeat setup after clearing cached resources.
+`components.py` provides typed registries and the optional `RequiresSetup`
+protocol. Constructors and registration never download. Components needing
+external resources implement `setup(cache=...)`, using `DownloadCache.fetch` from
+`downloads.py` for shared transfers and provenance.
 
-`downloads.py` provides shared Pooch transfers, extraction support and provenance
-records. Reuse is based on URL, file presence and size, not content checksums.
-Components supply their name, kind and source metadata when fetching.
+Consumers interpret supplied records and enforce their own requirements.
+`errors.py` provides descriptive exceptions for existing boundary checks. Use
+`add_note()` for observed context and `raise ... from error` when translating an
+exception. Report facts about inputs, rather than diagnosing another component's
+implementation. Search databases supply candidates, not benchmark ground truth.
 
-`experiments/config.py` loads safe YAML, rejects duplicate keys and resolves
-references through typed registries. Each experiment gets fresh component instances.
-`experiments/catalogue.py` reads root-level YAML files, enforces globally unique
-IDs and selects experiments in requested order. Both interfaces use it; it
-performs no setup. Selected source/component contents are merged into the run
-snapshot, with each experiment's source file recorded.
-`experiments/runner.py` performs setup, dataset/database preparation, workflow and
-evaluation sequentially. It records each failure, skips that experiment's remaining
-stages and continues with the next. It returns `RunResult` with `completed`
-evaluations and `failed` errors keyed by ID, and writes `summary.json` after the
-batch. Interruptions propagate and stop the batch; configuration validation happens
-before execution. The CLI reports the outcome and exits nonzero if any failed.
-`interfaces/cli.py` exposes this orchestration and cache commands.
-`interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
-launches the same CLI in a subprocess and reads existing output records without
-depending on NiceGUI. The core packages never import the user interfaces.
-One launcher is shared by browser tabs, while each tab owns its selections.
-There is no separate execution or scoring implementation in the UI. Interaction
-tests use NiceGUI's browserless user simulation and controlled subprocess responses;
-they skip without the `ui` extra.
+## Runs and assessment
 
-Records carry native formats and paths; they do not convert or inspect files.
-Consumers interpret them. Sage delegates input compatibility to its executable;
-benchmarks enforce the result schema and reference design they require.
-Search databases contain candidates; benchmark expectations come from independent
-references. Do not infer scientific validity from protocol conformance or exit codes.
+`experiments/config.py` validates YAML, resolves profiles and checks numeric
+acceptance bounds. `catalogue.py` discovers root-level YAML files and selects
+globally unique IDs. Every experiment gets fresh component instances.
+
+- `create_run` saves selected YAML, criteria and initial records without setup.
+- `execute_run` uses that snapshot once, records the platform, then performs
+  setup, input preparation, workflow execution and evaluation sequentially.
+  Ordinary experiment errors preserve evidence and allow the batch to continue;
+  invalid configuration and interruptions stop execution.
+- `classification.py` reads saved errors and metrics, applies acceptance criteria
+  and writes assessments without changing execution records. Its diagnostic
+  placeholder leaves the originating stage unknown.
+
+`run_experiments` combines creation and execution. `experiments/records.py`
+projects saved JSON into the UI table and `experiments.csv`; JSON records hold
+full evidence. The CLI and optional NiceGUI interface share this orchestration.
+`interfaces/web/runs.py` launches the CLI and reads outputs without importing
+NiceGUI. Core packages never import interfaces.
+
+Unmet acceptance criteria are assessment outcomes, not execution exceptions.
+Metric meanings belong to their benchmark; criteria refer to metric names without
+inspecting implementations. Passing criteria does not establish general scientific
+validity. See [assessment behavior](../users/usage.md#assessment-results).
 
 ## Add a component
 
-1. Implement the appropriate protocol in its domain package. Keep native settings
-   as constructor arguments; there is no universal scientific parameter schema.
-2. Add `setup(cache=...)` only if external resources are needed. Reuse
-   `DownloadCache.fetch` rather than introducing another downloader.
-3. Decorate the constructor with `@registry.register`, declaring its name, summary,
-   documentation anchor and any path parameters. Paths are resolved relative to
-   the component YAML file.
-4. Import/export the implementation in its package's `__init__.py`. Keep optional
-   scientific imports inside execution; listing components must remain lightweight.
-5. Document parameters and scope in [components](../users/components.md), and test meaningful
-   success/failure boundaries without network downloads.
+1. Implement the relevant protocol and keep native settings as constructor
+   arguments. Add `setup(cache=...)` only for external resources.
+2. Register the implementation with `@registry.register`, including its name,
+   summary, documentation anchor and any path parameters.
+3. Export it from the package's `__init__.py`. Keep optional scientific imports
+   inside execution so catalogue listing stays lightweight.
+4. Document parameters and scope in [components](../users/components.md), and test
+   meaningful success/failure boundaries without network downloads.
 
-The runner uses the protocols, so a new implementation normally needs no runner
-changes. Benchmark metrics have implementation-specific meanings and are not
-implicitly comparable between evaluators. See the [API](reference.md) for signatures.
-
-## Generated component tables
-
-```bash
-poetry run python scripts/update_component_tables.py
-```
-
-The script updates only marked README/catalogue sections from the registries.
-The pre-commit hook runs it automatically; if files change, review and stage them,
-then retry the commit. Poetry must be on `PATH` for local hooks.
-Tests reject stale committed tables. Documentation CI generates tables before
-building, without bot commits; see [documentation builds](documentation.md).
+New implementations normally need no runner changes. Pre-commit updates the
+component tables; review and stage any generated changes before retrying a commit.
+See [documentation maintenance](documentation.md) for table generation and CI,
+and the [API reference](reference.md) for signatures.

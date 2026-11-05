@@ -39,12 +39,36 @@ def test_reused_definitions_construct_independent_instances(
     configuration: Path,
 ) -> None:
     document = yaml.safe_load(configuration.read_text())
+    document["experiments"][0]["acceptance"] = {"score": {"min": 0, "max": 1}}
     document["experiments"].append({**document["experiments"][0], "id": "second"})
     configuration.write_text(yaml.safe_dump(document))
     first, second = load_configuration(configuration).experiments
     assert first.dataset is not second.dataset
     assert first.workflow is not second.workflow
     assert first.database == second.database
+    assert first.acceptance == second.acceptance == {"score": {"min": 0, "max": 1}}
+
+
+@pytest.mark.parametrize(
+    "criteria",
+    [
+        None,
+        {"score": {}},
+        {"score": {"minimum": 1}},
+        {"score": {"min": True}},
+        {"score": {"min": float("nan")}},
+        {"score": {"min": 2, "max": 1}},
+    ],
+)
+def test_invalid_acceptance_is_rejected_before_setup(
+    configuration: Path, criteria: object, http_transport: Mock
+) -> None:
+    document = yaml.safe_load(configuration.read_text())
+    document["experiments"][0]["acceptance"] = criteria
+    configuration.write_text(yaml.safe_dump(document))
+    with pytest.raises(ValueError, match="acceptance"):
+        load_configuration(configuration)
+    http_transport.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,12 @@ import pytest
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.errors import (
+    BenchmarkInputMismatchError,
+    MissingOutputError,
+    UnsupportedEvaluationError,
+    UnsupportedFormatError,
+)
 from interop_trace.evaluation import ProteoBenchDDA
 from interop_trace.workflows import WorkflowResult
 
@@ -203,7 +209,7 @@ def test_combined_charge_states_are_rejected(
         row[1] = -1  # Sage's marker for LFQ with combined charge states.
     _write_lfq(result.files["lfq.tsv"], dataset, rows)
     output = tmp_path / "combined"
-    with pytest.raises(ValueError, match="combine_charge_states=false"):
+    with pytest.raises(UnsupportedEvaluationError, match="positive precursor charge"):
         ProteoBenchDDA().evaluate(result, dataset, database, output_dir=output)
     assert not (output / "proteobench.json").exists()
 
@@ -220,17 +226,22 @@ def test_invalid_observation_threshold(
 
 
 @pytest.mark.parametrize("files", [("other.mzML",), (), ("duplicate",) * 6])
-def test_unrelated_or_incomplete_design_is_rejected(
+def test_reference_run_selection_is_required(
     inputs: tuple[Dataset, Database, WorkflowResult],
     tmp_path: Path,
     files: tuple[str, ...],
 ) -> None:
     _, database, result = inputs
     dataset = Dataset(tuple(tmp_path / name for name in files))
-    with pytest.raises(ValueError, match="six distinct published Q Exactive runs"):
+    with pytest.raises(
+        BenchmarkInputMismatchError, match="six distinct reference run identifiers"
+    ) as error:
         ProteoBenchDDA().evaluate(
             result, dataset, database, output_dir=tmp_path / "invalid"
         )
+    assert error.value.__notes__ == [
+        f"Observed run identifiers: {[Path(name).stem for name in files]}"
+    ]
 
 
 @pytest.mark.parametrize("missing", ["lfq.tsv", "results.json"])
@@ -241,17 +252,20 @@ def test_missing_sage_output(
     result = WorkflowResult(
         "sage", {k: v for k, v in result.files.items() if k != missing}
     )
-    with pytest.raises(ValueError, match="requires Sage lfq.tsv and results.json"):
+    with pytest.raises(
+        MissingOutputError, match="requires Sage lfq.tsv and results.json"
+    ) as error:
         ProteoBenchDDA().evaluate(
             result, dataset, database, output_dir=tmp_path / "invalid"
         )
+    assert isinstance(error.value.__cause__, KeyError)
 
 
 def test_unsupported_result_format(
     inputs: tuple[Dataset, Database, WorkflowResult], tmp_path: Path
 ) -> None:
     dataset, database, _ = inputs
-    with pytest.raises(ValueError, match="accepts Sage results only"):
+    with pytest.raises(UnsupportedFormatError, match="accepts Sage results only"):
         ProteoBenchDDA().evaluate(
             WorkflowResult("other", {}),
             dataset,

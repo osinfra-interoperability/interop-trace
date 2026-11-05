@@ -7,6 +7,12 @@ import pytest
 
 from interop_trace.databases import Database
 from interop_trace.datasets import Dataset
+from interop_trace.errors import (
+    MissingOutputError,
+    ResultSchemaError,
+    UnsupportedEvaluationError,
+    UnsupportedFormatError,
+)
 from interop_trace.evaluation import ExpectedPeptides
 from interop_trace.workflows import WorkflowResult
 
@@ -50,21 +56,48 @@ def test_target_rank_confidence_and_duplicate_matches(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "table",
+    "table,error_type",
     [
-        "peptide\nFIRST\n",
-        "peptide\trank\tlabel\tspectrum_q\nFIRST\t1\t1\tnan\n",
-        "peptide\trank\tlabel\tspectrum_q\nFIRST\t1\t1\t-1\n",
+        ("peptide\nFIRST\n", ResultSchemaError),
+        ("peptide\trank\tlabel\tspectrum_q\nFIRST\t1\t1\tnan\n", ValueError),
+        ("peptide\trank\tlabel\tspectrum_q\nFIRST\t1\t1\t-1\n", ValueError),
     ],
 )
 def test_invalid_table_cannot_be_reported_as_zero_recovery(
-    tmp_path: Path, table: str
+    tmp_path: Path, table: str, error_type: type[ValueError]
 ) -> None:
     source = tmp_path / "results.sage.tsv"
     source.write_text(table)
-    with pytest.raises(ValueError):
+    with pytest.raises(error_type) as error:
         ExpectedPeptides(("FIRST",)).evaluate(
             WorkflowResult("sage", {source.name: source}),
+            Dataset(()),
+            Database(tmp_path / "unused.fasta", "fasta"),
+            output_dir=tmp_path / "evaluation",
+        )
+    if error_type is ResultSchemaError:
+        assert error.value.__notes__ == [
+            f"File: {source}",
+            "Observed columns: ['peptide']",
+        ]
+    assert not (tmp_path / "evaluation").exists()
+
+
+@pytest.mark.parametrize(
+    "format,error_type",
+    [
+        ("sage", MissingOutputError),
+        ("comet", MissingOutputError),
+        ("msamanda", MissingOutputError),
+        ("unknown", UnsupportedFormatError),
+    ],
+)
+def test_unusable_outputs_are_rejected(
+    tmp_path: Path, format: str, error_type: type[ValueError]
+) -> None:
+    with pytest.raises(error_type):
+        ExpectedPeptides(("FIRST",), max_q_value=None, sequence_only=True).evaluate(
+            WorkflowResult(format, {}),
             Dataset(()),
             Database(tmp_path / "unused.fasta", "fasta"),
             output_dir=tmp_path / "evaluation",
@@ -119,13 +152,17 @@ def test_native_recovery_uses_top_target_sequences_without_inventing_q_values(
     assert report["confidence_filter"] == "none"
     assert report["matched"] == ["FIRST"]
     assert report["missing"] == ["DECOY", "SECOND"]
-    with pytest.raises(ValueError, match="native scores are not spectrum q-values"):
+    with pytest.raises(UnsupportedEvaluationError, match="max_q_value=null"):
         ExpectedPeptides(("FIRST",), sequence_only=True).evaluate(
             *inputs, output_dir=tmp_path / "invalid"
         )
     source.write_text("wrong columns\n")
-    with pytest.raises(ValueError, match="table must contain"):
+    with pytest.raises(ResultSchemaError, match="missing required columns") as error:
         benchmark.evaluate(*inputs, output_dir=tmp_path / "malformed")
+    assert error.value.__notes__ == [
+        f"File: {source}",
+        "Observed columns: ['wrong columns']",
+    ]
     assert not (tmp_path / "malformed").exists()
 
 

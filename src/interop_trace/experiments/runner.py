@@ -1,6 +1,10 @@
 """Execute explicit experiments sequentially through the component contracts."""
 
+import errno
 import json
+import platform
+import subprocess
+import traceback
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -12,12 +16,14 @@ from interop_trace import __version__
 from interop_trace.components import RequiresSetup
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
 from interop_trace.evaluation import EvaluationResult
-from interop_trace.experiments.config import Experiment, RunConfiguration
+from interop_trace.experiments.config import Experiment, RunConfiguration, load_snapshot
+from interop_trace.experiments.records import read_record, save_table
+from interop_trace.status import ExecutionStatus
 
 
 @dataclass(frozen=True)
 class RunResult:
-    """Successful evaluations and errors, keyed by experiment ID."""
+    """Returned evaluations and recorded errors, keyed by experiment ID."""
 
     completed: dict[str, EvaluationResult]
     failed: dict[str, str]
@@ -29,24 +35,69 @@ def run_experiments(
     output_dir: Path,
     cache_dir: Path = DEFAULT_CACHE_DIR,
 ) -> RunResult:
-    """Run each experiment in a new directory, continuing after ordinary errors.
+    """Create and execute a run, continuing after ordinary experiment errors."""
+    create_run(configuration, output_dir=output_dir, cache_dir=cache_dir)
+    return execute_run(output_dir)
 
-    Preserve the loaded YAML contents and selected settings before setup. A failed
-    experiment retains its reports, logs and failed-stage record. Its remaining
-    stages are skipped; the next experiment starts. Interruptions still propagate.
-    Downloads share a cache, but workflow results are not reused.
-    """
+
+def create_run(
+    configuration: RunConfiguration,
+    *,
+    output_dir: Path,
+    cache_dir: Path = DEFAULT_CACHE_DIR,
+) -> Path:
+    """Save selected YAML, initial records and a table without setup or downloads."""
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=False)
-    cache = DownloadCache(cache_dir)
     _write(
         output_dir / "configuration.json",
         {
             **configuration.snapshot,
             "interop_trace_version": __version__,
-            "cache": str(cache.root),
+            "cache": str(cache_dir.resolve()),
+            "name": output_dir.name,
+            "created_at": datetime.now(UTC).isoformat(),
         },
     )
+    for experiment in configuration.experiments:
+        folder = output_dir / experiment.id
+        folder.mkdir()
+        _write(
+            folder / "experiment.json",
+            {
+                "id": experiment.id,
+                "status": ExecutionStatus.NOT_STARTED,
+                "acceptance": experiment.acceptance,
+            },
+        )
+    save_table(output_dir)
+    return output_dir
+
+
+def execute_run(output_dir: Path) -> RunResult:
+    """Execute a created run once, using its saved YAML and recording the platform."""
+    output_dir = output_dir.resolve()
+    snapshot = read_record(output_dir / "configuration.json")
+    configuration = load_snapshot(snapshot)
+    if any(
+        read_record(output_dir / e.id / "experiment.json").get("status")
+        != ExecutionStatus.NOT_STARTED
+        for e in configuration.experiments
+    ):
+        raise ValueError(
+            "This run has already started; create a new run to execute again."
+        )
+    (output_dir / "execution.json").touch(exist_ok=False)
+    with _status(output_dir / "execution.json", {}):
+        _write(output_dir / "environment.json", _environment())
+        return _execute(
+            configuration, output_dir, DownloadCache(Path(snapshot["cache"]))
+        )
+
+
+def _execute(
+    configuration: RunConfiguration, output_dir: Path, cache: DownloadCache
+) -> RunResult:
     completed: dict[str, EvaluationResult] = {}
     failed: dict[str, str] = {}
     for experiment in configuration.experiments:
@@ -63,14 +114,24 @@ def run_experiments(
     return RunResult(completed, failed)
 
 
+def _environment() -> dict[str, str]:
+    """Describe the runner's environment, not its external tools or runtimes."""
+    return {
+        "operating_system": platform.system(),
+        "os_release": platform.release(),
+        "architecture": platform.machine(),
+        "python_version": platform.python_version(),
+    }
+
+
 def _run_experiment(
     experiment: Experiment, directory: Path, cache: DownloadCache
 ) -> EvaluationResult:
-    directory.mkdir()
     path = directory / "experiment.json"
     record: dict[str, Any] = {
         "id": experiment.id,
         "stage": "setup",
+        "acceptance": experiment.acceptance,
     }
     with _status(path, record):
         for role, component in (
@@ -104,24 +165,38 @@ def _run_experiment(
 def _stage(path: Path, record: dict[str, Any], name: str) -> None:
     record["stage"] = name
     _write(path, record)
+    save_table(path.parent.parent)
 
 
 @contextmanager
 def _status(path: Path, record: dict[str, Any]) -> Iterator[None]:
-    record.update(status="running", started_at=datetime.now(UTC).isoformat())
+    record.update(
+        status=ExecutionStatus.RUNNING, started_at=datetime.now(UTC).isoformat()
+    )
     _write(path, record)
     try:
         yield
     except BaseException as error:
-        record.update(
-            status="failed", error={"type": type(error).__name__, "message": str(error)}
-        )
+        record["error"] = {
+            "type": type(error).__name__,
+            "module": type(error).__module__,
+            "message": str(error),
+            "traceback": "".join(traceback.format_exception(error)),
+        }
+        if isinstance(error, OSError) and error.errno is not None:
+            record["error"].update(
+                errno=error.errno, errno_name=errno.errorcode.get(error.errno)
+            )
+        if isinstance(error, subprocess.CalledProcessError):
+            record["error"]["returncode"] = error.returncode
         raise
-    else:
-        record["status"] = "completed"
     finally:
-        record["finished_at"] = datetime.now(UTC).isoformat()
+        record.update(
+            status=ExecutionStatus.FINISHED, finished_at=datetime.now(UTC).isoformat()
+        )
         _write(path, record)
+        if path.name == "experiment.json":
+            save_table(path.parent.parent)
 
 
 def _write(path: Path, record: dict[str, Any]) -> None:

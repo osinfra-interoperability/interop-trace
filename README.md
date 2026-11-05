@@ -14,19 +14,13 @@ With Python 3.12+ and Poetry installed, from a source checkout:
 ```bash
 poetry install
 poetry run interop-trace run erwinia_sage --output results/simple-001
+poetry run interop-trace classify results/simple-001
 ```
 
-This uses a public PRIDE processed peak list (5.98 MB), an Erwinia-and-spikes
-UniProt database (2.14 MB in the verified run), and a pinned Sage binary
-(about 6.6 MB on Apple silicon). Downloads are cached and Sage is installed
-automatically. All four selected deposited reference peptides were recovered at
-the configured 1% spectrum q-value threshold. This checks interoperability and
-reference-result consistency, not overall search accuracy.
-See [the first experiment](docs/users/first-experiment.md) for verified sizes and outputs.
-
-The same inputs can also run through **Comet** and **MS Amanda**, with unfiltered
-reference-peptide recovery. See [compare search engines](docs/users/search-engines.md)
-for commands, prerequisites and evaluation scope.
+This uses a small public PRIDE peak list, a UniProt database and Sage, installed
+automatically. Downloads are cached. Classification checks recovery of four
+reference peptides; passing does not establish overall scientific accuracy.
+See [the first experiment](docs/users/first-experiment.md) for sizes and outputs.
 
 For a local browser interface:
 
@@ -62,10 +56,6 @@ Generated from the registries. See [parameters and scope](docs/users/components.
   [configuration](docs/users/experiments.md), [CLI and cache](docs/users/usage.md).
 - **[Developers](docs/developers/README.md):** [development guide](docs/developers/developer.md),
   [API reference](docs/developers/reference.md), [documentation builds](docs/developers/documentation.md).
-
-Every experiment selects an evaluator. Runs use new output directories and share
-downloaded resources. Components preserve native formats; interoperability failures remain
-visible rather than being silently converted.
 
 ## Contributing
 

@@ -10,8 +10,14 @@ experiments:
     database: erwinia_and_spikes
     workflow: comet_erwinia_tmt
     benchmark: erwinia_spike_sequences
+    acceptance:
+      expected_recovery:
+        min: 1.0
   - id: erwinia_msamanda
     dataset: erwinia_tmt
     database: erwinia_and_spikes
     workflow: msamanda_erwinia_tmt
     benchmark: erwinia_spike_sequences
+    acceptance:
+      expected_recovery:
+        min: 1.0

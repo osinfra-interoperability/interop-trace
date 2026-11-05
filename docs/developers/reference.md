@@ -1,9 +1,5 @@
 # Technical reference
 
-## Implementation language
-
-Python >=3.12.
-
 ## Interfaces
 
 - CLI help, experiment selection, component listing and cache commands through
@@ -19,6 +15,12 @@ Python >=3.12.
 
 ::: interop_trace.interfaces.cli
 
+## Status and assessment values
+
+::: interop_trace.status
+
+::: interop_trace.errors
+
 ## Setup and registration
 
 ::: interop_trace.components
@@ -32,6 +34,12 @@ Python >=3.12.
 ::: interop_trace.experiments.catalogue
 
 ::: interop_trace.experiments.runner
+
+::: interop_trace.experiments.records
+
+## Assessments
+
+::: interop_trace.classification
 
 ## Local run browser
 

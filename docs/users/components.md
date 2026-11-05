@@ -144,7 +144,8 @@ accuracy, and unlisted peptides are not assumed incorrect. No extras are needed.
 | `min_observations` | Minimum observations across all six runs; integer 1–6, default `3` |
 
 Install with `poetry install --extras proteobench`.
-`proteobench_dda` uses ProteoBench 0.18.6 to score Sage's `lfq.tsv` and `results.json`
+`proteobench_dda` uses the pinned ProteoBench release to score Sage's `lfq.tsv`
+and `results.json`
 for the [published Q Exactive DDA HYE design](https://proteobench.readthedocs.io/en/stable/modules/dda/dda-ion-qexactive/).
 It requires all six runs from [PXD028735](https://www.ebi.ac.uk/pride/archive/projects/PXD028735):
 

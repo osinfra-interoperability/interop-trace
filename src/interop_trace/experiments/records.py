@@ -46,7 +46,7 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
                 "stage": record.get("stage", ""),
                 "error": record.get("error", {}).get("type", ""),
                 "assessment_outcome": assessment.get("outcome", ""),
-                "assessment_category": assessment.get("category", ""),
+                "assessment_category": assessment.get("category") or "",
             }
         )
     return rows

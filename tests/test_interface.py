@@ -83,7 +83,15 @@ async def test_create_execute_and_assess_a_named_run(
     user.find("Console log").click()
     await user.should_see("native tool log")
     source = output / "first/experiment.json"
-    original = json.dumps({"id": "first", "status": "finished", "stage": "evaluation"})
+    original = json.dumps(
+        {
+            "id": "first",
+            "status": "finished",
+            "stage": "evaluation",
+            "acceptance": {"recovery": {"min": 1}},
+            "evaluation": {"metrics": {"recovery": 1}},
+        }
+    )
     source.write_text(original)
     process.poll.return_value = 0
     await user.should_see("Status: finished", retries=20)
@@ -91,19 +99,19 @@ async def test_create_execute_and_assess_a_named_run(
     await user.should_see("Saved 1 assessment(s).", retries=20)
     assert (
         json.loads((output / "first/classification.json").read_text())["outcome"]
-        == "unknown"
+        == "success"
     )
     assert source.read_text() == original
     assert not user.find(marker="assess-run").elements.pop().enabled
     with (output / "experiments.csv").open() as stream:
         saved_rows = list(csv.DictReader(stream))
-    assert saved_rows[0]["assessment_outcome"] == "unknown"
+    assert saved_rows[0]["assessment_outcome"] == "success"
     assert any(
         table.rows == saved_rows for table in user.find(nicegui.ui.table).elements
     )
     user.find(marker="file-group").click()
     user.find("Experiment: first").click()
-    await user.should_see('"outcome": "unknown"', retries=10)
+    await user.should_see('"outcome": "success"', retries=10)
 
 
 async def test_empty_checkout_keeps_run_disabled(user, tmp_path: Path) -> None:

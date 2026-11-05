@@ -82,7 +82,16 @@ def test_invalid_acceptance_is_rejected_before_setup(
 
 @pytest.mark.parametrize(
     "experiment_id",
-    ["../outside", "/absolute", ".", "", False, "configuration.json", "metadata"],
+    [
+        "../outside",
+        "/absolute",
+        ".",
+        "",
+        False,
+        "configuration.json",
+        "metadata",
+        "prediction_environment.json",
+    ],
 )
 def test_ids_cannot_escape_run_directory(
     configuration: Path, experiment_id: object

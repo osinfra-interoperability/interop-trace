@@ -28,6 +28,14 @@ class AssessmentOutcome(StrEnum):
     UNKNOWN = "unknown"
 
 
+class PredictionConclusion(StrEnum):
+    """Agreement of declarations under a rule, not observed interoperability."""
+
+    SUPPORT = "support"
+    CONFLICT = "conflict"
+    UNKNOWN = "unknown"
+
+
 class AssessmentCategory(StrEnum):
     """Observed error category, without claiming an underlying cause."""
 

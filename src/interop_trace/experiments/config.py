@@ -40,6 +40,7 @@ class Experiment:
             in {
                 "configuration.json",
                 "environment.json",
+                "prediction_environment.json",
                 "summary.json",
                 "execution.json",
                 "experiments.csv",

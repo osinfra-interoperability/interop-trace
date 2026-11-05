@@ -112,6 +112,28 @@ def _report_run(results: "RunResult", output: Path) -> None:
         raise typer.Exit(code=1)
 
 
+@app.command("predict")
+def predict(
+    directory: Annotated[
+        Path,
+        typer.Argument(
+            exists=True, file_okay=False, help="Created, unexecuted run directory."
+        ),
+    ],
+) -> None:
+    """Compare collected public declarations before execution, without running tools."""
+    from interop_trace.experiments.records import save_table
+    from interop_trace.prediction import predict_run
+
+    try:
+        outputs = predict_run(directory)
+        save_table(directory)
+    except (OSError, ValueError) as error:
+        typer.echo(f"Cannot predict interoperability: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved {len(outputs)} prediction(s): {directory.resolve()}")
+
+
 @app.command("classify")
 def classify(
     directory: Annotated[

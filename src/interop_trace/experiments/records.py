@@ -12,6 +12,8 @@ TABLE_FIELDS = (
     "database",
     "workflow",
     "benchmark",
+    "prediction_conclusion",
+    "prediction_coverage",
     "status",
     "stage",
     "error",
@@ -39,9 +41,12 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
         folder = directory / name
         record = read_record(folder / "experiment.json")
         assessment = read_record(folder / "classification.json")
+        prediction = read_record(folder / "prediction.json")
         rows.append(
             {
                 **{field: choice.get(field, "") for field in TABLE_FIELDS},
+                "prediction_conclusion": prediction.get("conclusion", ""),
+                "prediction_coverage": str(prediction.get("evidence_coverage", "")),
                 "status": record.get("status"),
                 "stage": record.get("stage", ""),
                 "error": record.get("error", {}).get("type", ""),

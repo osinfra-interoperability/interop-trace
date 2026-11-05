@@ -8,7 +8,7 @@ from nicegui import run, ui
 
 from interop_trace.classification import assess_run
 from interop_trace.experiments import load_experiments
-from interop_trace.experiments.records import TABLE_FIELDS, read_record
+from interop_trace.experiments.records import TABLE_FIELDS, read_record, save_table
 from interop_trace.interfaces.web.runs import (
     RunBrowser,
     SavedRun,
@@ -16,6 +16,7 @@ from interop_trace.interfaces.web.runs import (
     file_preview,
 )
 from interop_trace.metadata import collect_run_metadata
+from interop_trace.prediction import predict_run
 from interop_trace.status import ExecutionStatus, MetadataStatus
 
 
@@ -80,6 +81,9 @@ class _Dashboard:
                 self.metadata_button = ui.button(
                     "Collect metadata", on_click=self.collect_metadata
                 ).mark("collect-metadata")
+                self.predict_button = ui.button(
+                    "Predict interoperability", on_click=self.predict
+                ).mark("predict-run")
                 self.start_button = ui.button(
                     "Run experiments", on_click=self.start, icon="play_arrow"
                 ).mark("start-run")
@@ -87,6 +91,7 @@ class _Dashboard:
                     "Assess results", on_click=self.assess
                 ).mark("assess-run")
             self.metadata_button.disable()
+            self.predict_button.disable()
             self.start_button.disable()
             self.assess_button.disable()
             self.experiments = _table(TABLE_FIELDS)
@@ -147,6 +152,7 @@ class _Dashboard:
         self.busy = True
         self.create_button.disable()
         self.metadata_button.disable()
+        self.predict_button.disable()
         self.start_button.disable()
         self.assess_button.disable()
         try:
@@ -184,6 +190,14 @@ class _Dashboard:
                     type="warning" if unavailable else "positive",
                 )
 
+    async def predict(self) -> None:
+        saved = self.runs.get(self.selection.value)
+        if saved is not None:
+            outputs = await self._perform(predict_run, saved.directory)
+            if outputs is not None:
+                await run.io_bound(save_table, saved.directory)
+                ui.notify(f"Saved {len(outputs)} prediction(s).", type="positive")
+
     async def start(self) -> None:
         saved = self.runs.get(self.selection.value)
         if saved is not None:
@@ -213,6 +227,7 @@ class _Dashboard:
 
     async def show_details(self) -> None:
         self.metadata_button.disable()
+        self.predict_button.disable()
         self.start_button.disable()
         self.assess_button.disable()
         saved = self.runs.get(self.selection.value)
@@ -233,6 +248,13 @@ class _Dashboard:
             not self.busy
             and saved.status != ExecutionStatus.RUNNING
             and not (saved.directory / "metadata").exists()
+        )
+        self.predict_button.set_enabled(
+            not self.busy
+            and saved.status == ExecutionStatus.NOT_STARTED
+            and (saved.directory / "metadata/index.json").is_file()
+            and not (saved.directory / "execution.json").exists()
+            and not (saved.directory / "prediction_environment.json").exists()
         )
         self.start_button.set_enabled(
             not self.busy

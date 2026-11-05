@@ -42,7 +42,7 @@ def checkout(configuration: Path) -> Path:
     return configuration.parent.parent
 
 
-async def test_create_collect_execute_and_assess_a_named_run(
+async def test_create_collect_predict_execute_and_assess_a_named_run(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
 ) -> None:
     process = Mock()
@@ -74,10 +74,18 @@ async def test_create_collect_execute_and_assess_a_named_run(
     popen.assert_not_called()
     http_transport.assert_not_called()
     assert not user.find(marker="assess-run").elements.pop().enabled
+    assert not user.find(marker="predict-run").elements.pop().enabled
     user.find(marker="collect-metadata").click()
     await user.should_see("Metadata index saved", retries=20)
     assert (output / "metadata/index.json").is_file()
     assert not user.find(marker="collect-metadata").elements.pop().enabled
+    user.find(marker="predict-run").click()
+    await user.should_see("Saved 1 prediction(s).", retries=20)
+    prediction = json.loads((output / "first/prediction.json").read_text())
+    assert prediction["conclusion"] == "unknown"
+    assert prediction["evidence_coverage"] == 0
+    assert prediction["failure_probability"] is None
+    assert not user.find(marker="predict-run").elements.pop().enabled
     user.find(marker="start-run").click()
     await user.should_see("Status: running", retries=20)
     assert not user.find(marker="start-run").elements.pop().enabled
@@ -110,6 +118,8 @@ async def test_create_collect_execute_and_assess_a_named_run(
     with (output / "experiments.csv").open() as stream:
         saved_rows = list(csv.DictReader(stream))
     assert saved_rows[0]["assessment_outcome"] == "success"
+    assert saved_rows[0]["prediction_conclusion"] == "unknown"
+    assert saved_rows[0]["prediction_coverage"] == "0.0"
     assert any(
         table.rows == saved_rows for table in user.find(nicegui.ui.table).elements
     )

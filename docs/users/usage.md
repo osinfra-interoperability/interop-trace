@@ -35,6 +35,9 @@ uses deterministic rules on the recorded error:
 
 | Evidence | Outcome | Category |
 | --- | --- | --- |
+| Consumer does not support the supplied result format | `failure` | `unsupported_format` |
+| Required workflow output is absent | `failure` | `missing_output` |
+| Result table lacks required columns | `failure` | `schema_mismatch` |
 | Permission error | `failure` | `permission` |
 | Executable architecture/format error (`EBADARCH` or `ENOEXEC`) | `failure` | `environment` |
 | Nonzero subprocess exit | `failure` | `process_error` |
@@ -51,6 +54,11 @@ references to fields in `experiment.json`. Categories describe observed errors, 
 proven underlying causes or inherent component incompatibility. Logs are not
 interpreted and no external services are called. Original records remain
 unchanged. Exit code `0` means the command completed, not scientific success.
+
+The expected-peptide evaluator reports these boundary errors from its existing
+checks. Error records also include the exception module and a formatted traceback
+with chained exceptions and notes, such as available files or observed columns.
+Assessments use exception types and error codes, not the traceback text.
 
 A missing path does not identify whether an input, executable or output was
 missing. General `ValueError` and `RuntimeError` exceptions keep category

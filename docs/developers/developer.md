@@ -66,9 +66,14 @@ before execution. The CLI reports the outcome and exits nonzero if any failed.
 the same rows used by the UI and exported as `experiments.csv`. JSON records are
 authoritative. `classification.py` provides explicit experiment/run assessment;
 deterministic rules use saved errors, preserve existing assessments and record
-the applied rule and evidence fields. The runner retains OS error codes and
-subprocess return codes at its existing exception boundary. Components contain
-no classification logic; error-free execution does not imply scientific success.
+the applied rule and evidence fields. The runner retains OS error codes,
+subprocess return codes, exception modules and formatted tracebacks with chains
+and notes at its existing exception boundary. `errors.py` defines three small
+exceptions for unsupported formats, missing outputs and invalid result schemas;
+the expected-peptide evaluator raises them at its existing consumer checks.
+Use `add_note()` for diagnostic context and `raise ... from error` when translating
+an exception. Components contain no classification logic; error-free execution
+does not imply scientific success.
 `interfaces/cli.py` exposes this orchestration and cache commands.
 `interfaces/web/app.py` provides the optional NiceGUI page; its sibling `runs.py`
 launches the same CLI in a subprocess and reads existing output records without

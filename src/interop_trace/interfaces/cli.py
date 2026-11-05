@@ -17,6 +17,8 @@ app = typer.Typer(
 )
 cache_app = typer.Typer(help="Inspect and clear downloaded files.")
 app.add_typer(cache_app, name="cache")
+metadata_app = typer.Typer(help="Save public component descriptions.")
+app.add_typer(metadata_app, name="metadata")
 
 
 @app.command("run")
@@ -188,6 +190,27 @@ def launch_interface(
         typer.echo("Install the interface with: poetry install --extras ui", err=True)
         raise typer.Exit(code=1) from error
     serve(directory.resolve(), port)
+
+
+@metadata_app.command("biotools")
+def collect_biotools(
+    biotools_id: Annotated[str, typer.Argument(help="Exact bio.tools entry ID.")],
+    output: Annotated[Path, typer.Option(help="New snapshot directory.")],
+    cache_directory: Annotated[
+        Path, typer.Option("--cache-directory", help="Download cache directory.")
+    ] = DEFAULT_CACHE_DIR,
+) -> None:
+    """Save the original bio.tools response and retrieval provenance."""
+    from interop_trace.metadata import snapshot_biotools
+
+    try:
+        directory = snapshot_biotools(
+            biotools_id, output_dir=output, cache=DownloadCache(cache_directory)
+        )
+    except Exception as error:
+        typer.echo(f"Metadata collection failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved bio.tools snapshot: {directory}")
 
 
 @cache_app.command("list")

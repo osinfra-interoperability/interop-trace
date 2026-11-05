@@ -59,5 +59,11 @@ def load_experiments(
                 for path, text in configurations[source].snapshot["files"].items()
             },
             "experiments": choices,
+            "metadata_references": {
+                choice["id"]: configurations[choice["source"]].snapshot[
+                    "metadata_references"
+                ][choice["id"]]
+                for choice in choices
+            },
         },
     )

@@ -18,6 +18,10 @@ def test_load_resolves_paths_and_keeps_definition_contents(
     tmp_path: Path,
     http_transport: Mock,
 ) -> None:
+    profile = configuration.parent / "components/workflows.yaml"
+    document = yaml.safe_load(profile.read_text())
+    document["selected"]["metadata"] = {"biotools": "Sage-proteomics"}
+    profile.write_text(yaml.safe_dump(document))
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
     monkeypatch.chdir(elsewhere)
@@ -32,6 +36,11 @@ def test_load_resolves_paths_and_keeps_definition_contents(
     assert len(loaded.snapshot["files"]) == 5
     assert loaded.snapshot["files"][str(configuration)] == configuration.read_text()
     assert loaded.snapshot["experiments"][0]["database"] == "selected"
+    assert loaded.snapshot["metadata_references"]["first"][-1] == {
+        "role": "workflow",
+        "profile": "selected",
+        "biotools_id": "Sage-proteomics",
+    }
     http_transport.assert_not_called()
 
 
@@ -73,7 +82,7 @@ def test_invalid_acceptance_is_rejected_before_setup(
 
 @pytest.mark.parametrize(
     "experiment_id",
-    ["../outside", "/absolute", ".", "", False, "configuration.json"],
+    ["../outside", "/absolute", ".", "", False, "configuration.json", "metadata"],
 )
 def test_ids_cannot_escape_run_directory(
     configuration: Path, experiment_id: object
@@ -104,6 +113,9 @@ def test_duplicate_ids_are_rejected(configuration: Path) -> None:
         ),
         ({"parameters": {"configuration": 42}}, "file path"),
         ({"unexpected": True}, "unknown"),
+        ({"metadata": {"biotools": False}}, "bio.tools entry ID"),
+        ({"metadata": {"biotools": ""}}, "bio.tools entry ID"),
+        ({"metadata": {"other_source": "entry"}}, "Invalid metadata"),
     ],
 )
 def test_invalid_component_settings_fail_before_setup(
@@ -190,6 +202,7 @@ def test_select_ids_across_files_in_requested_order(
     selected = load_experiments(configuration.parent, ["third", "first"])
     assert [e.id for e in selected.experiments] == ["third", "first"]
     assert [c["id"] for c in selected.snapshot["experiments"]] == ["third", "first"]
+    assert list(selected.snapshot["metadata_references"]) == ["third", "first"]
     assert selected.snapshot["sources"] == [str(other), str(configuration)]
     assert len(selected.snapshot["files"]) == 6
     assert selected.experiments[0].workflow is not selected.experiments[1].workflow

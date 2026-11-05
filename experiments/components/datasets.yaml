@@ -1,5 +1,7 @@
 erwinia_tmt:
   type: pride
+  metadata:
+    biotools: pride
   parameters:
     project: PXD000001
     # Verified HEAD size: 5,984,662 bytes (catalogue size is stale).

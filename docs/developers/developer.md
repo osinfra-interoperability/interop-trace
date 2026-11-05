@@ -66,7 +66,10 @@ before execution. The CLI reports the outcome and exits nonzero if any failed.
 the same rows used by the UI and exported as `experiments.csv`. JSON records are
 authoritative. `classification.py` provides explicit experiment/run assessment;
 deterministic rules use saved errors, preserve existing assessments and record
-the applied rule and evidence fields. The runner retains OS error codes,
+the applied rule, evidence fields and detection stage. Its `_diagnose` placeholder
+receives the record and experiment directory for future evidence-based diagnosis,
+including an LLM. It currently leaves the originating stage unknown.
+The runner retains OS error codes,
 subprocess return codes, exception modules and formatted tracebacks with chains
 and notes at its existing exception boundary. `errors.py` defines three small
 exceptions for unsupported formats, missing outputs and invalid result schemas;

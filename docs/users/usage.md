@@ -55,6 +55,11 @@ proven underlying causes or inherent component incompatibility. Logs are not
 interpreted and no external services are called. Original records remain
 unchanged. Exit code `0` means the command completed, not scientific success.
 
+`classification.json` also records `detected_stage`, copied from the experiment
+when an error is recorded, or `null` otherwise. Its separate `diagnosis` contains
+method `placeholder`, `origin_stage: null` and empty evidence. The origin is not
+assumed to be the detection stage; diagnosis currently infers nothing.
+
 The expected-peptide evaluator reports these boundary errors from its existing
 checks. Error records also include the exception module and a formatted traceback
 with chained exceptions and notes, such as available files or observed columns.

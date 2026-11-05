@@ -339,7 +339,7 @@ def test_cli_executes_run(
     http_transport: Mock,
 ) -> None:
     release = Mock(return_value="test-release")
-    monkeypatch.setattr("interop_trace.experiments.runner.platform.release", release)
+    monkeypatch.setattr("interop_trace.environment.platform.release", release)
     document = yaml.safe_load(pipeline.read_text())
     other = pipeline.with_name("other.yml")
     other.write_text(

@@ -149,7 +149,7 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     assert viewer.language == "JSON"
 
 
-async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
+async def test_files_and_logs_stay_within_selected_group(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     directory = checkout / "results/grouped"
@@ -165,6 +165,9 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
         )
     )
     directory.with_name("grouped.console.log").write_text("run-level console")
+    metadata = directory / "metadata/biotools/Sage-proteomics"
+    metadata.mkdir(parents=True)
+    (metadata / "entry.json").write_text('{"note":"public component description"}')
     for name in ("first", "second"):
         folder = directory / name / "workflow"
         folder.mkdir(parents=True)
@@ -181,6 +184,7 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user.find(marker="output-file").click()
     user.find("Console log").click()
     await user.should_see("run-level console")
+
     selector = user.find(marker="output-file").elements.pop()
     assert set(selector.options.values()) == {"configuration.json", "Console log"}
 
@@ -210,6 +214,11 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user.find(marker="output-file").click()
     user.find("Console log").click()
     await user.should_see("run-level console")
+
+    user.find(marker="file-group").click()
+    user.find("Metadata").click()
+    await user.should_see("public component description", retries=10)
+    assert set(selector.options.values()) == {"biotools/Sage-proteomics/entry.json"}
 
 
 async def test_removing_last_run_clears_its_details(

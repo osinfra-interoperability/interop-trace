@@ -228,6 +228,11 @@ class _Dashboard:
             self.file_group,
             {
                 ".": "Run-level files",
+                **(
+                    {"metadata": "Metadata"}
+                    if (saved.directory / "metadata").is_dir()
+                    else {}
+                ),
                 **{r["id"]: f"Experiment: {r['id']}" for r in saved.experiments},
             },
         )

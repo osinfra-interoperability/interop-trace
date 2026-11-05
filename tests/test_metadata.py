@@ -12,7 +12,7 @@ from requests import Response
 from typer.testing import CliRunner
 
 from interop_trace.downloads import DownloadCache
-from interop_trace.edam import EDAM_RELEASE, EDAM_URL
+from interop_trace.edam import OLS_EDAM_URL, term_url
 from interop_trace.experiments import create_run, load_experiments
 from interop_trace.interfaces.cli import app
 from interop_trace.metadata import collect_run_metadata, snapshot_biotools
@@ -115,26 +115,46 @@ def test_run_collection_uses_saved_selection_and_shared_snapshots(
     }
 
     def respond(request):
-        if request.url == EDAM_URL:
-            return http_response(edam_path.read_bytes())
+        if request.url == OLS_EDAM_URL:
+            return http_response(b'{"config":{"version":"test-release"}}')
+        if request.url == term_url("http://edamontology.org/data_2976"):
+            response = next(
+                row
+                for row in json.loads(edam_path.read_text())
+                if row["iri"].endswith("data_2976")
+            )
+            return http_response(json.dumps(response).encode())
         assert request.url.startswith("https://bio.tools/")
         identifier = request.url.split("/")[-1].split("?")[0]
-        return http_response(json.dumps({"biotoolsID": identifier}).encode())
+        return http_response(
+            json.dumps(
+                {
+                    "biotoolsID": identifier,
+                    "function": [
+                        {
+                            "input": [
+                                {"data": {"uri": "http://edamontology.org/data_2976"}}
+                            ]
+                        }
+                    ],
+                }
+            ).encode()
+        )
 
     http_transport.side_effect = respond
     index = json.loads(collect_run_metadata(run).read_text())
     rows = index["components"]
-    assert len(rows) == 6 and http_transport.call_count == 4
-    assert (run / "metadata/edam.owl").read_bytes() == edam_path.read_bytes()
-    assert index["ontology"] == {
-        "status": "collected",
-        "version": EDAM_RELEASE,
-        "url": EDAM_URL,
-        "response": "edam.owl",
-        "retrieved_at": next(
-            e for e in DownloadCache(tmp_path / "cache").entries() if e.url == EDAM_URL
-        ).downloaded_at,
-    }
+    assert len(rows) == 6 and http_transport.call_count == 5
+    assert index["ontology"]["status"] == "collected"
+    requests = index["ontology"]["requests"]
+    assert len(requests) == 2
+    cached = {e.url: e for e in DownloadCache(tmp_path / "cache").entries()}
+    for request in requests:
+        assert request["retrieved_at"] == cached[request["url"]].downloaded_at
+        assert json.loads(
+            (run / "metadata" / request["response"]).read_text()
+        ) == json.loads(cached[request["url"]].path.read_text())
+    assert not list((run / "metadata").rglob("*.owl"))
     assert {row["experiment"] for row in rows} == {"first", "second"}
     assert all(
         row["status"] == "collected" and row["profile"] == "selected" for row in rows
@@ -179,8 +199,11 @@ def test_run_collection_records_unavailable_metadata_and_continues(
     )
     http_transport.side_effect = [
         http_response(b"unavailable", status=status),
-        http_response(b'{"name":"Sage"}'),
+        http_response(
+            b'{"function":[{"input":[{"data":{"uri":"http://edamontology.org/data_2976"}}]}]}'
+        ),
         http_response(b"ontology unavailable", status=503),
+        http_response(b"term unavailable", status=503),
     ]
     result = CliRunner().invoke(app, ["metadata", "collect", str(run)])
     assert result.exit_code == 1
@@ -196,5 +219,5 @@ def test_run_collection_records_unavailable_metadata_and_continues(
     assert (run / "metadata" / rows[2]["directory"] / "source.json").is_file()
     ontology = json.loads((run / "metadata/index.json").read_text())["ontology"]
     assert ontology["status"] == "retrieval_failed"
-    assert ontology["error"]["http_status"] == 503
-    assert http_transport.call_count == 3
+    assert all(row["error"]["http_status"] == 503 for row in ontology["requests"])
+    assert http_transport.call_count == 4

@@ -47,7 +47,7 @@ def http_transport(
 
 @pytest.fixture
 def edam_path() -> Path:
-    return Path(__file__).parent / "fixtures/edam.owl"
+    return Path(__file__).parent / "fixtures/edam.json"
 
 
 @pytest.fixture

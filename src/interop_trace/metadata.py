@@ -1,13 +1,12 @@
 """Preserve public component descriptions independently of execution."""
 
 import json
-import shutil
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from interop_trace.downloads import DownloadCache
-from interop_trace.edam import EDAM_RELEASE, EDAM_URL
+from interop_trace.edam import OLS_EDAM_URL, referenced_terms, term_url
 from interop_trace.status import MetadataStatus
 
 
@@ -88,31 +87,59 @@ def collect_run_metadata(directory: Path) -> Path:
             (output / "index.json").write_text(
                 json.dumps(index, indent=2) + "\n", encoding="utf-8"
             )
-    index["ontology"] = _collect_edam(output, cache)
+    terms = set().union(
+        *(
+            referenced_terms(
+                json.loads((output / row["directory"] / "entry.json").read_text())
+            )
+            for row in collected.values()
+            if row["status"] == MetadataStatus.COLLECTED
+        )
+    )
+    index["ontology"] = _collect_edam(output, cache, terms)
     (output / "index.json").write_text(
         json.dumps(index, indent=2) + "\n", encoding="utf-8"
     )
     return output / "index.json"
 
 
-def _collect_edam(output: Path, cache: DownloadCache) -> dict[str, Any]:
-    result: dict[str, Any] = {"version": EDAM_RELEASE, "url": EDAM_URL}
-    try:
-        download = cache.fetch(
-            EDAM_URL,
-            name="EDAM",
-            kind="metadata",
-            filename="edam.owl",
-            metadata={"version": EDAM_RELEASE},
-        )
-        shutil.copyfile(download.path, output / "edam.owl")
-        result.update(
-            status=MetadataStatus.COLLECTED,
-            response="edam.owl",
-            retrieved_at=download.downloaded_at,
-        )
-    except Exception as error:
-        result.update(_retrieval_failure(error))
+def _collect_edam(
+    output: Path, cache: DownloadCache, terms: set[str]
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "source": "OLS",
+        "status": MetadataStatus.COLLECTED,
+        "requests": [],
+    }
+    if not terms:
+        return result
+    (output / "edam").mkdir()
+    queries = [("ontology", OLS_EDAM_URL, None)] + [
+        (uri.rsplit("/", 1)[1], term_url(uri), uri) for uri in sorted(terms)
+    ]
+    for name, url, uri in queries:
+        row: dict[str, Any] = {"url": url, "term": uri}
+        try:
+            download = cache.fetch(
+                url, name=f"EDAM:{name}", kind="metadata", filename=f"{name}.json"
+            )
+            response = Path("edam") / f"{name}.json"
+            (output / response).write_text(
+                json.dumps(
+                    json.loads(download.path.read_bytes()), indent=2, ensure_ascii=False
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            row.update(
+                status=MetadataStatus.COLLECTED,
+                response=str(response),
+                retrieved_at=download.downloaded_at,
+            )
+        except Exception as error:
+            row.update(_retrieval_failure(error))
+            result["status"] = MetadataStatus.RETRIEVAL_FAILED
+        result["requests"].append(row)
     return result
 
 

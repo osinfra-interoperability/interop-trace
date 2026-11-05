@@ -41,6 +41,10 @@
 
 ::: interop_trace.classification
 
+## Metadata predictions
+
+::: interop_trace.prediction
+
 ## Local run browser
 
 ::: interop_trace.interfaces.web.runs

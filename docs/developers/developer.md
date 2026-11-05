@@ -75,6 +75,13 @@ validity. See [assessment behavior](../users/usage.md#assessment-results).
 configuration, without constructing components. Its index links selected profiles
 to deduplicated snapshots and records availability errors; execution is independent.
 
+`prediction.py` compares those snapshots with a separately captured pre-run host.
+The pure predictor accepts only metadata and environment dictionaries; it never
+receives execution records or assessments. `predict_run` rejects runs whose
+execution has started and preserves existing predictions. Interfaces update the
+summary table separately. Rule coverage is not calibrated confidence; no failure
+probability is estimated. See [prediction scope](../users/usage.md#metadata-predictions).
+
 ## Add a component
 
 1. Implement the relevant protocol and keep native settings as constructor

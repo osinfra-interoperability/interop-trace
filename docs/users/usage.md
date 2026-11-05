@@ -34,6 +34,8 @@ Create a run without downloads or execution, then execute its saved selection:
 
 ```bash
 poetry run interop-trace run erwinia_sage --prepare-only --output results/run-002
+poetry run interop-trace metadata collect results/run-002
+poetry run interop-trace predict results/run-002
 poetry run interop-trace execute results/run-002
 poetry run interop-trace classify results/run-002
 ```
@@ -41,6 +43,34 @@ poetry run interop-trace classify results/run-002
 Without `--prepare-only`, `run` creates and executes in one command. A created
 run executes once, using its saved YAML. The same stages are available in the
 [local interface](interface.md).
+
+## Metadata predictions
+
+`predict` saves each experiment's `prediction.json` before execution, using only
+collected public descriptions and the current host snapshot in
+`prediction_environment.json`. It neither runs tools nor reads their results.
+Metadata collection and prediction can be skipped when just executing a run.
+
+Two checks compare advertised workflow OS support and declared producer outputs
+against workflow inputs. Interface matching requires exact data URIs and
+overlapping format URIs, one function per entry and distinct workflow inputs.
+Broad portal descriptions do not identify the selected file exports.
+
+- `support`: all applicable checks agree.
+- `conflict`: at least one populated declaration disagrees under these rules.
+- `unknown`: insufficient or ambiguous declarations prevent a conclusion.
+
+Populated declarations are treated as allowed alternatives. A conflict can reflect
+incomplete metadata; support covers only these checks. Missing declarations stay
+unknown. Clearly remote-only workflows exclude the local OS check.
+`evidence_coverage` is the fraction of applicable checks that could be evaluated,
+**not confidence or a probability**. `failure_probability` stays `null`.
+Conclusions do not block execution; exit code `0` means predictions were saved.
+
+Predictions retain reasons, consulted fields and snapshot references. Architecture,
+runtime requirements, ontology relationships, conversions and scientific accuracy
+are not checked. PRIDE/UniProt portal entries currently leave the input-interface
+check unknown. Predictions are never overwritten; create a new run to repeat them.
 
 ## Assessment results
 

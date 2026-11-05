@@ -38,6 +38,8 @@ uses deterministic rules on the recorded error:
 | Consumer does not support the supplied result format | `failure` | `unsupported_format` |
 | Required workflow output is absent | `failure` | `missing_output` |
 | Result table lacks required columns | `failure` | `schema_mismatch` |
+| Supplied information or reader capabilities cannot support the requested evaluation | `failure` | `unsupported_evaluation` |
+| Dataset identifiers do not match the benchmark's required reference selection | `failure` | `benchmark_input_mismatch` |
 | Permission error | `failure` | `permission` |
 | Executable architecture/format error (`EBADARCH` or `ENOEXEC`) | `failure` | `environment` |
 | Nonzero subprocess exit | `failure` | `process_error` |
@@ -60,8 +62,11 @@ when an error is recorded, or `null` otherwise. Its separate `diagnosis` contain
 method `placeholder`, `origin_stage: null` and empty evidence. The origin is not
 assumed to be the detection stage; diagnosis currently infers nothing.
 
-The expected-peptide evaluator reports these boundary errors from its existing
-checks. Error records also include the exception module and a formatted traceback
+The expected-peptide and ProteoBench evaluators report boundary errors from their
+existing checks. These describe requirements of supplied inputs, without
+diagnosing upstream workflow settings. The reference selection check uses run
+identifiers; it does not establish the dataset's biological identity.
+Error records also include the exception module and a formatted traceback
 with chained exceptions and notes, such as available files or observed columns.
 Assessments use exception types and error codes, not the traceback text.
 

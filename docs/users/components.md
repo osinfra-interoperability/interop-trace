@@ -127,8 +127,8 @@ when configuring native decoy generation.
 
 Sage reports recovery before and after filtering on `spectrum_q`; exact Sage
 modification notation is required unless `sequence_only: true` is selected.
-Comet and Amanda require **`sequence_only: true` and `max_q_value: null`**:
-their native scores are not q-values. Reports explicitly label this recovery as
+The Comet and Amanda readers require **`sequence_only: true` and `max_q_value: null`**;
+they provide sequence-only recovery without q-value filtering. Reports label it as
 unfiltered and omit confidence-threshold metrics. An empty, correctly headed table
 gives zero recovery; missing columns or invalid target rows raise an error.
 

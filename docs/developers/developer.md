@@ -71,9 +71,10 @@ receives the record and experiment directory for future evidence-based diagnosis
 including an LLM. It currently leaves the originating stage unknown.
 The runner retains OS error codes,
 subprocess return codes, exception modules and formatted tracebacks with chains
-and notes at its existing exception boundary. `errors.py` defines three small
-exceptions for unsupported formats, missing outputs and invalid result schemas;
-the expected-peptide evaluator raises them at its existing consumer checks.
+and notes at its existing exception boundary. `errors.py` defines small exceptions
+for consumer requirements, including formats, outputs, schemas, evaluation
+capabilities and reference selections. Evaluators raise them at existing checks
+against supplied inputs, without inspecting other component implementations.
 Use `add_note()` for diagnostic context and `raise ... from error` when translating
 an exception. Components contain no classification logic; error-free execution
 does not imply scientific success.

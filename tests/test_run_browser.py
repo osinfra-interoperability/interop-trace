@@ -125,7 +125,7 @@ def test_history_uses_records_and_does_not_claim_old_jobs_are_live(
     assert run.status is (ExecutionStatus(expected) if expected else None)
     assert [record["id"] for record in run.experiments] == ["first", "second"]
     if statuses[1] is None:
-        assert run.experiments[1]["status"] == "not_started"
+        assert run.experiments[1]["status"] is None
 
 
 def test_partial_record_and_large_log_are_safe_to_poll(tmp_path: Path) -> None:

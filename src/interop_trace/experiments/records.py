@@ -6,8 +6,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-from interop_trace.status import ExecutionStatus
-
 TABLE_FIELDS = (
     "id",
     "dataset",
@@ -44,7 +42,7 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
         rows.append(
             {
                 **{field: choice.get(field, "") for field in TABLE_FIELDS},
-                "status": record.get("status", ExecutionStatus.NOT_STARTED),
+                "status": record.get("status"),
                 "stage": record.get("stage", ""),
                 "error": record.get("error", {}).get("type", ""),
                 "assessment_outcome": assessment.get("outcome", ""),

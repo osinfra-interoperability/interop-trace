@@ -8,6 +8,9 @@ from interop_trace.experiments.records import experiment_rows, save_table
 from interop_trace.status import AssessmentCategory, AssessmentOutcome, ExecutionStatus
 
 _ERROR_CATEGORIES = {
+    "UnsupportedFormatError": AssessmentCategory.UNSUPPORTED_FORMAT,
+    "MissingOutputError": AssessmentCategory.MISSING_OUTPUT,
+    "ResultSchemaError": AssessmentCategory.SCHEMA_MISMATCH,
     "FileNotFoundError": AssessmentCategory.MISSING_FILE,
     "NotADirectoryError": AssessmentCategory.FILESYSTEM,
     "IsADirectoryError": AssessmentCategory.FILESYSTEM,

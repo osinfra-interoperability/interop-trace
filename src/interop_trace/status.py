@@ -30,4 +30,7 @@ class AssessmentCategory(StrEnum):
     RESOURCE_LIMIT = "resource_limit"
     TIMEOUT = "timeout"
     NETWORK = "network"
+    UNSUPPORTED_FORMAT = "unsupported_format"
+    MISSING_OUTPUT = "missing_output"
+    SCHEMA_MISMATCH = "schema_mismatch"
     UNKNOWN = "unknown"

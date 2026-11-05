@@ -14,6 +14,23 @@ from interop_trace.interfaces.cli import app
     [
         (None, ("unknown", "unknown", "no_recorded_error", [])),
         (
+            {"type": "UnsupportedFormatError"},
+            (
+                "failure",
+                "unsupported_format",
+                "unsupported_format_error",
+                ["error.type"],
+            ),
+        ),
+        (
+            {"type": "MissingOutputError"},
+            ("failure", "missing_output", "missing_output_error", ["error.type"]),
+        ),
+        (
+            {"type": "ResultSchemaError"},
+            ("failure", "schema_mismatch", "schema_mismatch_error", ["error.type"]),
+        ),
+        (
             {"type": "KeyboardInterrupt"},
             ("unknown", "unknown", "execution_interrupted", ["error.type"]),
         ),

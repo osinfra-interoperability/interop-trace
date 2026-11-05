@@ -49,7 +49,7 @@ uses deterministic rules on the recorded error:
 | Other recorded error | `failure` | `unknown` |
 | Interruption or no recorded error | `unknown` | `unknown` |
 
-Each assessment saves method `deterministic`, the rule identifier and evidence
+Each assessment saves the rule identifier and evidence
 references to fields in `experiment.json`. Categories describe observed errors, not
 proven underlying causes or inherent component incompatibility. Logs are not
 interpreted and no external services are called. Original records remain

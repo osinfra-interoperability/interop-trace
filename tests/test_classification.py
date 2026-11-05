@@ -119,7 +119,6 @@ def test_classification_preserves_records(
     assessment = json.loads(output.read_text())
     assert assessment == {
         "source": "experiment.json",
-        "method": "deterministic",
         "rule": rule,
         "outcome": outcome,
         "category": category,

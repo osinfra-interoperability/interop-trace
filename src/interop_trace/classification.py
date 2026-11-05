@@ -96,7 +96,6 @@ def _assess(record: dict[str, Any]) -> dict[str, object]:
             rule, evidence = f"{category}_error", ["error.errno_name"]
     return {
         "source": "experiment.json",
-        "method": "deterministic",
         "rule": rule,
         "outcome": outcome,
         "category": category,

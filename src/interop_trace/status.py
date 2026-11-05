@@ -36,6 +36,13 @@ class PredictionConclusion(StrEnum):
     UNKNOWN = "unknown"
 
 
+class PredictionAspect(StrEnum):
+    """Technical requirements and semantic descriptions, assessed separately."""
+
+    TECHNICAL = "technical"
+    SEMANTIC = "semantic"
+
+
 class AssessmentCategory(StrEnum):
     """Observed error category, without claiming an underlying cause."""
 

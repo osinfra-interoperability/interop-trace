@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from interop_trace.edam import Edam
 from interop_trace.prediction import predict_interoperability, predict_run
 
 
@@ -20,70 +21,126 @@ SPECTRUM = port("data_0943", "format_3244")
 PROTEIN = port("data_2976", "format_1929")
 
 
+@pytest.fixture
+def ontology(edam_path: Path) -> Edam:
+    return Edam.from_responses(json.loads(edam_path.read_text()))
+
+
 @pytest.mark.parametrize(
     "systems,types,expected,coverage,applicable",
     [
         (["Mac", "Linux"], [], "support", 1, True),
         (["Windows"], [], "conflict", 1, True),
-        ([], [], "unknown", 0.5, True),
-        (["Other"], [], "unknown", 0.5, True),
+        ([], [], "support", 0.8, True),
+        (["Other"], [], "support", 0.8, True),
         (["Windows"], ["Web API"], "support", 1, False),
-        (["Windows"], ["Web API", "Command-line tool"], "unknown", 0.5, True),
+        (["Windows"], ["Web API", "Command-line tool"], "support", 0.8, True),
     ],
 )
-def test_platform_and_coverage(systems, types, expected, coverage, applicable) -> None:
+def test_platform_and_coverage(
+    ontology, systems, types, expected, coverage, applicable
+) -> None:
     entries = {
-        "dataset": {"function": [{"output": [SPECTRUM]}]},
+        "dataset": {
+            "function": [{"output": [port("data_9999", "format_9999"), SPECTRUM]}]
+        },
         "database": {"function": [{"output": [PROTEIN]}]},
         "workflow": {
-            "function": [{"input": [PROTEIN, SPECTRUM]}],
+            "function": [
+                {"input": []},
+                {"input": [PROTEIN, SPECTRUM, port("data_9999", "format_9999")]},
+            ],
             "operatingSystem": systems,
             "toolType": types,
         },
     }
-    result = predict_interoperability(entries, {"operating_system": "Darwin"})
+    result = predict_interoperability(entries, {"operating_system": "Darwin"}, ontology)
     assert result["conclusion"] == expected
     assert result["evidence_coverage"] == coverage
     assert result["failure_probability"] is None
     assert result["checks"]["workflow_platform"]["applicable"] is applicable
+    assert result["aspects"]["semantic"] == {
+        "conclusion": "support",
+        "evidence_coverage": 1,
+    }
+    assert result["checks"]["dataset_data"]["pair"] == {
+        "output": "dataset#/function/0/output/1",
+        "input": "workflow#/function/1/input/1",
+    }
 
 
 @pytest.mark.parametrize(
     "dataset,expected,coverage",
     [
-        ({"function": [{"output": [PROTEIN]}]}, "conflict", 0.5),
+        ({"function": [{"output": [PROTEIN]}]}, "support", 0.8),
         (
             {"function": [{"output": [port("data_0943", "format_1062")]}]},
-            "conflict",
-            0.5,
+            "support",
+            0.6,
         ),
         (
             {"function": [{"output": [{"data": SPECTRUM["data"], "format": []}]}]},
-            "unknown",
-            0,
+            "support",
+            0.6,
         ),
-        ({"function": [{"output": [SPECTRUM]}, {"output": [SPECTRUM]}]}, "unknown", 0),
+        (
+            {"function": [{"output": [SPECTRUM]}, {"output": [SPECTRUM]}]},
+            "support",
+            0.8,
+        ),
         (
             {"toolType": ["Database portal"], "function": [{"output": [SPECTRUM]}]},
-            "unknown",
-            0,
+            "support",
+            0.4,
         ),
-        ({}, "unknown", 0),
+        ({}, "support", 0.4),
     ],
 )
-def test_interfaces_require_distinct_inputs_and_unambiguous_exports(
-    dataset, expected, coverage
+def test_connections_preserve_partial_evidence(
+    ontology, dataset, expected, coverage
 ) -> None:
     result = predict_interoperability(
         {
             "dataset": dataset,
             "database": {"function": [{"output": [PROTEIN]}]},
-            "workflow": {"function": [{"input": [SPECTRUM, PROTEIN]}]},
+            "workflow": {
+                "function": [{"input": [SPECTRUM, port("data_2044", "format_2330")]}]
+            },
         },
         {},
+        ontology,
     )
     assert result["conclusion"] == expected
     assert result["evidence_coverage"] == coverage
+    assert result["checks"]["database_data"]["match"]["relation"] == "subclass"
+    assert result["checks"]["database_format"]["match"]["relation"] == "subclass"
+
+
+def test_data_and_format_support_must_come_from_the_same_pair(ontology) -> None:
+    result = predict_interoperability(
+        {
+            "dataset": {"function": [{"output": [SPECTRUM]}]},
+            "workflow": {
+                "function": [
+                    {
+                        "input": [
+                            port("data_0943", "format_1929"),
+                            port("data_2976", "format_3244"),
+                        ]
+                    }
+                ]
+            },
+        },
+        {},
+        ontology,
+    )
+    assert result["checks"]["dataset_data"]["conclusion"] == "support"
+    assert result["checks"]["dataset_format"]["conclusion"] == "unknown"
+    assert (
+        result["checks"]["dataset_data"]["pair"]
+        == result["checks"]["dataset_format"]["pair"]
+    )
+    assert result["evidence_coverage"] == 0.2
 
 
 def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
@@ -94,10 +151,23 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     )
     metadata = tmp_path / "metadata"
     metadata.mkdir()
+    (metadata / "term.json").write_text(
+        '{"iri":"http://edamontology.org/data_0943","isObsolete":false,"directAncestor":[]}'
+    )
     (metadata / "entry.json").write_text('{"operatingSystem":["Linux"]}')
     (metadata / "index.json").write_text(
         json.dumps(
             {
+                "ontology": {
+                    "status": "collected",
+                    "requests": [
+                        {
+                            "status": "collected",
+                            "term": "http://edamontology.org/data_0943",
+                            "response": "term.json",
+                        }
+                    ],
+                },
                 "components": [
                     {
                         "experiment": "first",
@@ -106,7 +176,7 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
                         "directory": ".",
                     },
                     {"experiment": "second", "role": "workflow", "status": "not_found"},
-                ]
+                ],
             }
         )
     )
@@ -129,7 +199,8 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     monkeypatch.setattr(Path, "read_text", read_inputs_only)
     outputs = predict_run(tmp_path)
     first, second = [json.loads(output.read_text()) for output in outputs]
-    assert first["evidence_coverage"] == 0.5
+    assert first["conclusion"] == "support"
+    assert first["evidence_coverage"] == 0.2
     assert second["evidence_coverage"] == 0
     assert first["metadata"]["workflow"] == {
         "index": "../metadata/index.json",
@@ -139,6 +210,10 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     }
     assert second["metadata"]["workflow"]["status"] == "not_found"
     assert first["environment"] == "../prediction_environment.json"
+    assert first["ontology"] == {
+        "index": "../metadata/index.json#/ontology",
+        "unreadable": [],
+    }
     assert json.loads((tmp_path / "prediction_environment.json").read_text()) == {
         "operating_system": "Linux"
     }

@@ -2,12 +2,13 @@
 
 import json
 from datetime import UTC, datetime
-from itertools import permutations
+from itertools import product
 from pathlib import Path
 from typing import Any
 
+from interop_trace.edam import Edam, edam_uri
 from interop_trace.environment import capture_environment
-from interop_trace.status import MetadataStatus
+from interop_trace.status import MetadataStatus, PredictionAspect
 from interop_trace.status import PredictionConclusion as Conclusion
 
 _ROLES = ("dataset", "database", "workflow")
@@ -23,35 +24,55 @@ _PORTALS = {"Database portal", "Bioinformatics portal"}
 
 
 def predict_interoperability(
-    entries: dict[str, dict[str, Any]], environment: dict[str, str]
+    entries: dict[str, dict[str, Any]], environment: dict[str, str], ontology: Edam
 ) -> dict[str, Any]:
-    """Compare declarations only; execution records are never prediction inputs.
+    """Report partial positive evidence separately from coverage and probability.
 
-    Coverage counts evaluable applicable checks, not confidence or probability.
-    Support is limited to these checks. Populated declarations are treated as
-    alternatives; a conflict may reflect incomplete metadata rather than failure.
+    Data is semantic; platform and format are technical. Each connection uses
+    its strongest single input/output pair (data preferred when tied), so data
+    and format evidence cannot be combined across unrelated declarations.
     """
     checks = {
         "workflow_platform": _platform_check(entries.get("workflow", {}), environment),
-        "input_interfaces": _interface_check(entries),
     }
-    applicable = [c["conclusion"] for c in checks.values() if c["applicable"]]
+    for role in ("dataset", "database"):
+        checks.update(
+            {
+                f"{role}_{axis}": check
+                for axis, check in _connection_checks(entries, role, ontology).items()
+            }
+        )
+    return {
+        **_summary(list(checks.values())),
+        "aspects": {
+            aspect: _summary([c for c in checks.values() if c["aspect"] == aspect])
+            for aspect in PredictionAspect
+        },
+        "failure_probability": None,
+        "assumption": "Support is positive evidence, not proof of executability. "
+        "Populated OS declarations are treated as allowed alternatives. "
+        "A subtype is assumed acceptable where a broader input is declared. "
+        "The strongest single pair per producer is reported, preferring data "
+        "when tied. Additional inputs and joint workflow-mode requirements "
+        "are not established.",
+        "checks": checks,
+    }
+
+
+def _summary(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    conclusions = [c["conclusion"] for c in checks if c["applicable"]]
     conclusion = Conclusion.UNKNOWN
-    if Conclusion.CONFLICT in applicable:
+    if Conclusion.CONFLICT in conclusions:
         conclusion = Conclusion.CONFLICT
-    elif applicable and all(c == Conclusion.SUPPORT for c in applicable):
+    elif Conclusion.SUPPORT in conclusions:
         conclusion = Conclusion.SUPPORT
     return {
         "conclusion": conclusion,
-        "failure_probability": None,
         "evidence_coverage": (
-            sum(c != Conclusion.UNKNOWN for c in applicable) / len(applicable)
-            if applicable
+            sum(c != Conclusion.UNKNOWN for c in conclusions) / len(conclusions)
+            if conclusions
             else None
         ),
-        "assumption": "Populated declarations are compared as allowed alternatives; "
-        "a conflict is not proof of execution failure.",
-        "checks": checks,
     }
 
 
@@ -67,6 +88,7 @@ def _platform_check(
     entry: dict[str, Any], environment: dict[str, str]
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
+        "aspect": PredictionAspect.TECHNICAL,
         "applicable": True,
         "conclusion": Conclusion.UNKNOWN,
         "reason": "Missing or ambiguous host/platform declarations.",
@@ -96,74 +118,88 @@ def _platform_check(
     return result
 
 
-def _ports(
-    entry: dict[str, Any], direction: str, count: int
-) -> list[tuple[str, set[str]]] | None:
-    """Require one unambiguous function; portals do not identify file exports."""
-    if _strings(entry.get("toolType")) & _PORTALS:
-        return None
+def _ports(entry: dict[str, Any], direction: str) -> list[tuple[str, dict[str, Any]]]:
+    """Keep function/port references; portal annotations do not identify exports."""
     functions = entry.get("function")
-    if (
-        not isinstance(functions, list)
-        or len(functions) != 1
-        or not isinstance(functions[0], dict)
-    ):
-        return None
-    ports = functions[0].get(direction)
-    if not isinstance(ports, list) or len(ports) != count:
-        return None
-    result = []
-    for port in ports:
-        if not isinstance(port, dict) or not isinstance(port.get("data"), dict):
-            return None
-        data = port["data"].get("uri")
-        formats = port.get("format")
-        if (
-            not isinstance(data, str)
-            or not data
-            or not isinstance(formats, list)
-            or not formats
-        ):
-            return None
-        if any(
-            not isinstance(f, dict) or not isinstance(f.get("uri"), str) or not f["uri"]
-            for f in formats
-        ):
-            return None
-        result.append((data, {f["uri"] for f in formats}))
+    if _strings(entry.get("toolType")) & _PORTALS or not isinstance(functions, list):
+        return []
+    result: list[tuple[str, dict[str, Any]]] = []
+    for fi, function in enumerate(functions):
+        ports = function.get(direction) if isinstance(function, dict) else None
+        if isinstance(ports, list):
+            result.extend(
+                (f"#/function/{fi}/{direction}/{pi}", port)
+                for pi, port in enumerate(ports)
+                if isinstance(port, dict)
+            )
     return result
 
 
-def _interface_check(entries: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "applicable": True,
-        "conclusion": Conclusion.UNKNOWN,
-        "reason": "Requires one function per entry, one output per producer and "
-        "two workflow inputs, with data and format URIs. "
-        "Portal descriptions do not identify selected exports.",
-        "evidence": {role: ["toolType", "function"] for role in _ROLES},
-    }
-    dataset = _ports(entries.get("dataset", {}), "output", 1)
-    database = _ports(entries.get("database", {}), "output", 1)
-    inputs = _ports(entries.get("workflow", {}), "input", 2)
-    if dataset is None or database is None or inputs is None:
-        return result
-    matches = any(
-        all(
-            output[0] == port[0] and output[1] & port[1]
-            for output, port in zip(dataset + database, assignment, strict=True)
+def _concepts(port: dict[str, Any], axis: str) -> list[str]:
+    values = [port.get("data")] if axis == "data" else port.get("format", [])
+    if not isinstance(values, list):
+        return []
+    return [
+        uri
+        for value in values
+        if isinstance(value, dict) and (uri := edam_uri(value.get("uri")))
+    ]
+
+
+def _match(
+    output: dict[str, Any], accepted: dict[str, Any], axis: str, ontology: Edam
+) -> dict[str, str] | None:
+    for source, target in product(_concepts(output, axis), _concepts(accepted, axis)):
+        if relation := ontology.match(source, target, axis):
+            return {"output_uri": source, "input_uri": target, "relation": relation}
+    return None
+
+
+def _connection_checks(
+    entries: dict[str, dict[str, Any]], role: str, ontology: Edam
+) -> dict[str, dict[str, Any]]:
+    checks: dict[str, dict[str, Any]] = {
+        axis: {
+            "aspect": aspect,
+            "applicable": True,
+            "conclusion": Conclusion.UNKNOWN,
+            "reason": "No supporting declared input/output pair. Missing, broad "
+            "or unrelated concepts do not establish incompatibility. "
+            "Portal descriptions do not identify selected file exports.",
+            "evidence": {
+                role: ["toolType", "function"],
+                "workflow": ["function"],
+                "ontology": ["iri", "isObsolete", "directAncestor"],
+            },
+        }
+        for axis, aspect in (
+            ("data", PredictionAspect.SEMANTIC),
+            ("format", PredictionAspect.TECHNICAL),
         )
-        for assignment in permutations(inputs)
-    )
-    result.update(
-        conclusion=Conclusion.SUPPORT if matches else Conclusion.CONFLICT,
-        reason="Distinct workflow inputs match both producers by exact data URI "
-        "and overlapping format URIs."
-        if matches
-        else "No distinct-input assignment matches the declared data and format "
-        "URIs. No ontology hierarchy or conversion is inferred.",
-    )
-    return result
+    }
+    best = (False, False, False)
+    for (output_ref, output), (input_ref, accepted) in product(
+        _ports(entries.get(role, {}), "output"),
+        _ports(entries.get("workflow", {}), "input"),
+    ):
+        matches = {axis: _match(output, accepted, axis, ontology) for axis in checks}
+        data, format_ = matches["data"] is not None, matches["format"] is not None
+        score = (data and format_, data, format_)
+        if score <= best:
+            continue
+        best = score
+        for axis, check in checks.items():
+            match = matches[axis]
+            check.update(
+                conclusion=Conclusion.SUPPORT if match else Conclusion.UNKNOWN,
+                reason="Same concept or output specialises the accepted input."
+                if match
+                else "The selected pair has no supporting EDAM relation "
+                "for this aspect.",
+                pair={"output": role + output_ref, "input": "workflow" + input_ref},
+                match=match,
+            )
+    return checks
 
 
 def predict_run(directory: Path) -> list[Path]:
@@ -181,6 +217,7 @@ def predict_run(directory: Path) -> list[Path]:
     outputs = [directory / name / "prediction.json" for name in names]
     if any(output.exists() for output in outputs):
         raise FileExistsError("Existing predictions are preserved; create a new run.")
+    ontology, ontology_source = _read_ontology(directory / "metadata", index)
     environment = capture_environment()
     environment_path = directory / "prediction_environment.json"
     with environment_path.open("x", encoding="utf-8") as stream:
@@ -205,7 +242,8 @@ def predict_run(directory: Path) -> list[Path]:
             "created_at": datetime.now(UTC).isoformat(),
             "environment": "../prediction_environment.json",
             "metadata": sources,
-            **predict_interoperability(entries, environment),
+            "ontology": ontology_source,
+            **predict_interoperability(entries, environment, ontology),
         }
         with output.open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(prediction, indent=2) + "\n")
@@ -228,3 +266,36 @@ def _read_entry(
     if not isinstance(value, dict):
         return {}, {**source, "status": "invalid_entry"}
     return value, {**source, "status": row["status"]}
+
+
+def _read_ontology(
+    metadata: Path, index: dict[str, Any]
+) -> tuple[Edam, dict[str, Any]]:
+    if "ontology" not in index:
+        raise ValueError(
+            "Collect metadata with EDAM term responses in a new run first."
+        )
+    responses = []
+    source: dict[str, Any] = {
+        "index": "../metadata/index.json#/ontology",
+        "unreadable": [],
+    }
+    for row in index["ontology"]["requests"]:
+        if row["status"] != MetadataStatus.COLLECTED or not row["term"]:
+            continue
+        path = (metadata / row["response"]).resolve()
+        if not path.is_relative_to(metadata):
+            raise ValueError("EDAM response must stay inside the metadata directory.")
+        try:
+            response = json.loads(path.read_text())
+            if (
+                not isinstance(response, dict)
+                or edam_uri(response.get("iri")) != row["term"]
+            ):
+                raise ValueError("OLS response does not identify the requested term.")
+            responses.append(response)
+        except (OSError, ValueError) as error:
+            source["unreadable"].append(
+                {"response": row["response"], "error": str(error)}
+            )
+    return Edam.from_responses(responses), source

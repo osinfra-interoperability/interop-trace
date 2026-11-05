@@ -88,6 +88,7 @@ async def test_create_collect_predict_execute_and_assess_a_named_run(
     assert prediction["conclusion"] == "unknown"
     assert prediction["evidence_coverage"] == 0
     assert prediction["failure_probability"] is None
+    assert set(prediction["aspects"]) == {"technical", "semantic"}
     assert not user.find(marker="predict-run").elements.pop().enabled
     user.find(marker="start-run").click()
     await user.should_see("Status: running", retries=20)

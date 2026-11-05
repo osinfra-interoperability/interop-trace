@@ -20,6 +20,9 @@ class AssessmentOutcome(StrEnum):
 
 
 class AssessmentCategory(StrEnum):
-    """Cause category; only unknown is defined until classification is developed."""
+    """Observed error category, without claiming an underlying cause."""
 
+    PERMISSION = "permission"
+    ENVIRONMENT = "environment"
+    PROCESS_ERROR = "process_error"
     UNKNOWN = "unknown"

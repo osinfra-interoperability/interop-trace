@@ -120,7 +120,7 @@ def classify(
         ),
     ],
 ) -> None:
-    """Save post-run assessments (currently always unknown)."""
+    """Save post-run assessments using deterministic error rules."""
     from interop_trace.classification import assess_experiment, assess_run
 
     try:

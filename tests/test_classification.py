@@ -9,14 +9,55 @@ from typer.testing import CliRunner
 from interop_trace.interfaces.cli import app
 
 
-@pytest.mark.parametrize("has_error", [False, True])
-def test_unknown_classification_preserves_records(
-    tmp_path: Path, has_error: bool
+@pytest.mark.parametrize(
+    "error,expected",
+    [
+        (None, ("unknown", "unknown", "no_recorded_error", [])),
+        (
+            {"type": "KeyboardInterrupt"},
+            ("unknown", "unknown", "execution_interrupted", ["error.type"]),
+        ),
+        (
+            {"type": "SystemExit"},
+            ("unknown", "unknown", "execution_interrupted", ["error.type"]),
+        ),
+        (
+            {"type": "PermissionError"},
+            ("failure", "permission", "permission_error", ["error.type"]),
+        ),
+        (
+            {"type": "OSError", "errno_name": "EBADARCH"},
+            ("failure", "environment", "executable_launch_error", ["error.errno_name"]),
+        ),
+        (
+            {"type": "OSError", "errno_name": "ENOEXEC"},
+            ("failure", "environment", "executable_launch_error", ["error.errno_name"]),
+        ),
+        (
+            {"type": "CalledProcessError", "returncode": 2},
+            (
+                "failure",
+                "process_error",
+                "process_nonzero_exit",
+                ["error.type", "error.returncode"],
+            ),
+        ),
+        (
+            {"type": "FileNotFoundError", "message": "missing output"},
+            ("failure", "unknown", "unclassified_error", ["error"]),
+        ),
+    ],
+)
+def test_classification_preserves_records(
+    tmp_path: Path,
+    error: dict[str, object] | None,
+    expected: tuple[str, str, str, list[str]],
 ) -> None:
+    outcome, category, rule, evidence = expected
     source = tmp_path / "experiment.json"
-    record = {"status": "finished", "stage": "evaluation"}
-    if has_error:
-        record["error"] = {"message": "missing"}
+    record: dict[str, object] = {"status": "finished", "stage": "evaluation"}
+    if error is not None:
+        record["error"] = error
     original = json.dumps(record)
     source.write_text(original)
     result = CliRunner().invoke(app, ["classify", str(tmp_path)])
@@ -25,11 +66,11 @@ def test_unknown_classification_preserves_records(
     assessment = json.loads(output.read_text())
     assert assessment == {
         "source": "experiment.json",
-        "method": "placeholder",
-        "outcome": "unknown",
-        "category": "unknown",
-        "cause": None,
-        "evidence": [],
+        "method": "deterministic",
+        "rule": rule,
+        "outcome": outcome,
+        "category": category,
+        "evidence": evidence,
     }
     output.write_text('{"outcome":"success"}')
     assert CliRunner().invoke(app, ["classify", str(tmp_path)]).exit_code == 1

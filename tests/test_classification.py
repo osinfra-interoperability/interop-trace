@@ -63,6 +63,22 @@ from interop_trace.interfaces.cli import app
             ("failure", "resource_limit", "resource_limit_error", ["error.type"]),
         ),
         (
+            {"type": "TimeoutExpired"},
+            ("failure", "timeout", "timeout_error", ["error.type"]),
+        ),
+        (
+            {"type": "ReadTimeout"},
+            ("failure", "timeout", "timeout_error", ["error.type"]),
+        ),
+        (
+            {"type": "ConnectionError"},
+            ("failure", "network", "network_error", ["error.type"]),
+        ),
+        (
+            {"type": "OSError", "errno_name": "ENETUNREACH"},
+            ("failure", "network", "network_error", ["error.errno_name"]),
+        ),
+        (
             {"type": "ValueError", "message": "missing output"},
             ("failure", "unknown", "unclassified_error", ["error"]),
         ),

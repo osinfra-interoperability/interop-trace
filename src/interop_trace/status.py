@@ -28,4 +28,6 @@ class AssessmentCategory(StrEnum):
     MISSING_FILE = "missing_file"
     FILESYSTEM = "filesystem"
     RESOURCE_LIMIT = "resource_limit"
+    TIMEOUT = "timeout"
+    NETWORK = "network"
     UNKNOWN = "unknown"

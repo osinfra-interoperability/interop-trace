@@ -12,6 +12,16 @@ _ERROR_CATEGORIES = {
     "NotADirectoryError": AssessmentCategory.FILESYSTEM,
     "IsADirectoryError": AssessmentCategory.FILESYSTEM,
     "MemoryError": AssessmentCategory.RESOURCE_LIMIT,
+    "TimeoutError": AssessmentCategory.TIMEOUT,
+    "TimeoutExpired": AssessmentCategory.TIMEOUT,
+    "Timeout": AssessmentCategory.TIMEOUT,
+    "ConnectTimeout": AssessmentCategory.TIMEOUT,
+    "ReadTimeout": AssessmentCategory.TIMEOUT,
+    "ConnectionError": AssessmentCategory.NETWORK,
+    "ConnectionRefusedError": AssessmentCategory.NETWORK,
+    "ConnectionResetError": AssessmentCategory.NETWORK,
+    "ConnectionAbortedError": AssessmentCategory.NETWORK,
+    "ProxyError": AssessmentCategory.NETWORK,
 }
 _ERRNO_CATEGORIES = {
     "ENOENT": AssessmentCategory.MISSING_FILE,
@@ -23,6 +33,13 @@ _ERRNO_CATEGORIES = {
     "ENOMEM": AssessmentCategory.RESOURCE_LIMIT,
     "EMFILE": AssessmentCategory.RESOURCE_LIMIT,
     "ENFILE": AssessmentCategory.RESOURCE_LIMIT,
+    "ETIMEDOUT": AssessmentCategory.TIMEOUT,
+    "ENETDOWN": AssessmentCategory.NETWORK,
+    "ENETUNREACH": AssessmentCategory.NETWORK,
+    "EHOSTUNREACH": AssessmentCategory.NETWORK,
+    "ECONNREFUSED": AssessmentCategory.NETWORK,
+    "ECONNRESET": AssessmentCategory.NETWORK,
+    "ECONNABORTED": AssessmentCategory.NETWORK,
 }
 
 

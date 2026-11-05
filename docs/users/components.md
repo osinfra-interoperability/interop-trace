@@ -171,7 +171,5 @@ Reports contain metrics and provenance (`proteobench.json`), a per-ion table
 ratio error and within-condition variation; undefined metrics are named separately.
 Evaluation is local, with no leaderboard submission or reference download.
 
-This adapter cannot score the first experiment's MGF peptide-identification output. ProteoBench also offers a
-[small offline walkthrough](https://proteobench.readthedocs.io/en/stable/contributing/local-usage/)
-using bundled **precomputed MaxQuant output**. That exercises its scorer on a laptop,
-but does not rerun Sage on a smaller version of the six-run reference experiment.
+This adapter requires the six-run reference inputs; it cannot score the first
+experiment's MGF peptide-identification output.

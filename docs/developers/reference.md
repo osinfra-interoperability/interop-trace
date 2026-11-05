@@ -1,9 +1,5 @@
 # Technical reference
 
-## Implementation language
-
-Python >=3.12.
-
 ## Interfaces
 
 - CLI help, experiment selection, component listing and cache commands through
@@ -22,6 +18,8 @@ Python >=3.12.
 ## Status and assessment values
 
 ::: interop_trace.status
+
+::: interop_trace.errors
 
 ## Setup and registration
 

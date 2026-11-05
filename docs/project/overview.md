@@ -1,16 +1,16 @@
 # Project scope
 
-Interop Trace investigates whether independently developed bioinformatics
-components can exchange usable data. Experiments make the selected sources,
-formats, software and parameters explicit, then retain native outputs and failure
-records so outcomes can be explained and compared.
+Interop Trace tests whether configured bioinformatics datasets, databases and
+workflows can execute together and meet declared reference criteria. Records
+retain the resource versions, settings, platform, native outputs and failures
+needed to explain each observation.
 
-The current implementation covers proteomics: PRIDE measurements, UniProt
-exports, Sage searches and evaluation. The small example establishes a
-working combination; it does not certify other datasets, formats or tools.
-Scientific benchmarking requires reference expectations appropriate to the data.
+The current implementation covers proteomics through the registered
+[components](../users/components.md). Runs execute locally and sequentially.
+Consumers interpret native formats; no automatic conversion or workflow-result
+reuse is performed.
 
-Experiments execute locally and sequentially. There is no automatic format
-conversion, compatibility matrix, workflow-result reuse or benchmark leaderboard
-submission. Python 3.12+ is required; native workflows have their own platform
-requirements. See [components](../users/components.md) for supported scope.
+A successful assessment applies to the tested configuration and its criteria,
+not every possible connection or general scientific accuracy. Reference evidence
+must suit the scientific question. See [the first experiment](../users/first-experiment.md)
+for a small worked example and its limits.

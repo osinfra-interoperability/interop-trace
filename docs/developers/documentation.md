@@ -1,36 +1,31 @@
-# Build and view the documentation
+# Documentation maintenance
 
-Install the documentation dependencies:
-
-```bash
-poetry install --extras "docs"
-```
-
-Preview the documentation locally:
+Install dependencies and preview locally at <http://127.0.0.1:8000/>:
 
 ```bash
+poetry install --extras docs
 poetry run zensical serve
 ```
 
-Build the static site and treat warnings as errors:
+Build the site in `site/`, treating warnings as errors:
 
 ```bash
 poetry run zensical build --strict
 ```
 
-The local preview is available at <http://127.0.0.1:8000/> by default. The
-static site is written to `site/`.
+## Component tables
 
-## Continuous integration
-
-The documentation workflow runs on pushes to any branch and pull requests targeting
-`main`. It generates the component tables from the layer registries before building
-the site. Only pushes to `main` deploy the site to GitHub Pages.
-
-CI does not commit generated Markdown back to the repository. Tests check that the
-committed tables match the registries. When changing registrations, regenerate and
-include the refreshed tables in the same change:
+Registry changes update marked sections in the README and component reference:
 
 ```bash
 poetry run python scripts/update_component_tables.py
 ```
+
+Pre-commit runs this automatically and requires Poetry on `PATH`. Review and
+stage generated changes, then retry the commit. Tests reject stale tables.
+
+## Continuous integration
+
+Documentation builds run on branch pushes and pull requests to `main`. CI
+generates component tables before building, without committing them back.
+Only pushes to `main` deploy to GitHub Pages.

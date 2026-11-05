@@ -7,6 +7,24 @@ from typing import Any
 from interop_trace.experiments.records import experiment_rows, save_table
 from interop_trace.status import AssessmentCategory, AssessmentOutcome, ExecutionStatus
 
+_ERROR_CATEGORIES = {
+    "FileNotFoundError": AssessmentCategory.MISSING_FILE,
+    "NotADirectoryError": AssessmentCategory.FILESYSTEM,
+    "IsADirectoryError": AssessmentCategory.FILESYSTEM,
+    "MemoryError": AssessmentCategory.RESOURCE_LIMIT,
+}
+_ERRNO_CATEGORIES = {
+    "ENOENT": AssessmentCategory.MISSING_FILE,
+    "ENOTDIR": AssessmentCategory.FILESYSTEM,
+    "EISDIR": AssessmentCategory.FILESYSTEM,
+    "EROFS": AssessmentCategory.FILESYSTEM,
+    "ENOSPC": AssessmentCategory.RESOURCE_LIMIT,
+    "EDQUOT": AssessmentCategory.RESOURCE_LIMIT,
+    "ENOMEM": AssessmentCategory.RESOURCE_LIMIT,
+    "EMFILE": AssessmentCategory.RESOURCE_LIMIT,
+    "ENFILE": AssessmentCategory.RESOURCE_LIMIT,
+}
+
 
 def assess_experiment(directory: Path) -> Path:
     """Assess a finished experiment using deterministic error rules.
@@ -46,6 +64,12 @@ def _assess(record: dict[str, Any]) -> dict[str, object]:
         elif error.get("type") == "CalledProcessError":
             category = AssessmentCategory.PROCESS_ERROR
             rule, evidence = "process_nonzero_exit", ["error.type", "error.returncode"]
+        elif error.get("type") in _ERROR_CATEGORIES:
+            category = _ERROR_CATEGORIES[error["type"]]
+            rule, evidence = f"{category}_error", ["error.type"]
+        elif error.get("errno_name") in _ERRNO_CATEGORIES:
+            category = _ERRNO_CATEGORIES[error["errno_name"]]
+            rule, evidence = f"{category}_error", ["error.errno_name"]
     return {
         "source": "experiment.json",
         "method": "deterministic",

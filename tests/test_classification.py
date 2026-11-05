@@ -44,6 +44,26 @@ from interop_trace.interfaces.cli import app
         ),
         (
             {"type": "FileNotFoundError", "message": "missing output"},
+            ("failure", "missing_file", "missing_file_error", ["error.type"]),
+        ),
+        (
+            {"type": "NotADirectoryError"},
+            ("failure", "filesystem", "filesystem_error", ["error.type"]),
+        ),
+        (
+            {"type": "OSError", "errno_name": "EROFS"},
+            ("failure", "filesystem", "filesystem_error", ["error.errno_name"]),
+        ),
+        (
+            {"type": "OSError", "errno_name": "ENOSPC"},
+            ("failure", "resource_limit", "resource_limit_error", ["error.errno_name"]),
+        ),
+        (
+            {"type": "MemoryError"},
+            ("failure", "resource_limit", "resource_limit_error", ["error.type"]),
+        ),
+        (
+            {"type": "ValueError", "message": "missing output"},
             ("failure", "unknown", "unclassified_error", ["error"]),
         ),
     ],

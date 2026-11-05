@@ -7,12 +7,14 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+import yaml
 from requests import Response
 from typer.testing import CliRunner
 
 from interop_trace.downloads import DownloadCache
+from interop_trace.experiments import create_run, load_experiments
 from interop_trace.interfaces.cli import app
-from interop_trace.metadata import snapshot_biotools
+from interop_trace.metadata import collect_run_metadata, snapshot_biotools
 
 
 def test_snapshot_preserves_response_and_cached_provenance(
@@ -72,3 +74,105 @@ def test_collection_failure_is_not_reported_as_a_snapshot(
     assert str(status) in result.output
     assert not (output / "entry.json").exists()
     assert not (output / "source.json").exists()
+
+
+def test_run_collection_uses_saved_selection_and_shared_snapshots(
+    configuration: Path,
+    tmp_path: Path,
+    http_transport: Mock,
+    http_response: Callable[..., Response],
+) -> None:
+    for layer, identifier in (
+        ("datasets", "pride"),
+        ("databases", "uniprotkb"),
+        ("workflows", "Sage-proteomics"),
+    ):
+        path = configuration.parent / f"components/{layer}.yaml"
+        definition = yaml.safe_load(path.read_text())
+        definition["selected"]["metadata"] = {"biotools": identifier}
+        path.write_text(yaml.safe_dump(definition))
+    document = yaml.safe_load(configuration.read_text())
+    choice = document["experiments"][0]
+    document["experiments"].append({**choice, "id": "second"})
+    configuration.write_text(yaml.safe_dump(document))
+    run = tmp_path / "run"
+    create_run(
+        load_experiments(configuration.parent, ["first", "second"]),
+        output_dir=run,
+        cache_dir=tmp_path / "cache",
+    )
+    http_transport.assert_not_called()
+    configuration.write_text("changed after run creation")
+    before = {
+        name: (run / name / "experiment.json").read_bytes()
+        for name in ("first", "second")
+    }
+
+    def respond(request):
+        assert request.url.startswith("https://bio.tools/")
+        identifier = request.url.split("/")[-1].split("?")[0]
+        return http_response(json.dumps({"biotoolsID": identifier}).encode())
+
+    http_transport.side_effect = respond
+    index = json.loads(collect_run_metadata(run).read_text())
+    rows = index["components"]
+    assert len(rows) == 6 and http_transport.call_count == 3
+    assert {row["experiment"] for row in rows} == {"first", "second"}
+    assert all(
+        row["status"] == "collected" and row["profile"] == "selected" for row in rows
+    )
+    assert [row["directory"] for row in rows[:3]] == [
+        row["directory"] for row in rows[3:]
+    ]
+    for row in rows:
+        entry = run / "metadata" / row["directory"] / "entry.json"
+        assert json.loads(entry.read_text())["biotoolsID"] == row["biotools_id"]
+    with pytest.raises(FileExistsError):
+        collect_run_metadata(run)
+    assert {
+        name: (run / name / "experiment.json").read_bytes() for name in before
+    } == before
+
+
+@pytest.mark.parametrize(
+    "status,expected", [(404, "not_found"), (503, "retrieval_failed")]
+)
+def test_run_collection_records_unavailable_metadata_and_continues(
+    configuration: Path,
+    tmp_path: Path,
+    status: int,
+    expected: str,
+    http_transport: Mock,
+    http_response: Callable[..., Response],
+) -> None:
+    for layer, identifier in (
+        ("databases", "missing"),
+        ("workflows", "Sage-proteomics"),
+    ):
+        path = configuration.parent / f"components/{layer}.yaml"
+        definition = yaml.safe_load(path.read_text())
+        definition["selected"]["metadata"] = {"biotools": identifier}
+        path.write_text(yaml.safe_dump(definition))
+    run = tmp_path / "run"
+    create_run(
+        load_experiments(configuration.parent),
+        output_dir=run,
+        cache_dir=tmp_path / "cache",
+    )
+    http_transport.side_effect = [
+        http_response(b"unavailable", status=status),
+        http_response(b'{"name":"Sage"}'),
+    ]
+    result = CliRunner().invoke(app, ["metadata", "collect", str(run)])
+    assert result.exit_code == 1
+    rows = json.loads((run / "metadata/index.json").read_text())["components"]
+    assert [row["status"] for row in rows] == [
+        "missing_reference",
+        expected,
+        "collected",
+    ]
+    assert rows[0]["biotools_id"] is None
+    assert rows[1]["error"]["http_status"] == status
+    assert rows[1]["error"]["type"] == "HTTPError"
+    assert (run / "metadata" / rows[2]["directory"] / "source.json").is_file()
+    assert http_transport.call_count == 2

@@ -11,6 +11,15 @@ class ExecutionStatus(StrEnum):
     FINISHED = "finished"
 
 
+class MetadataStatus(StrEnum):
+    """Public metadata availability, separate from experiment execution."""
+
+    COLLECTED = "collected"
+    MISSING_REFERENCE = "missing_reference"
+    NOT_FOUND = "not_found"
+    RETRIEVAL_FAILED = "retrieval_failed"
+
+
 class AssessmentOutcome(StrEnum):
     """Assessor conclusion, separate from whether execution completed."""
 

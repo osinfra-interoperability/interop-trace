@@ -1,5 +1,6 @@
 """Command-line entry point for Interop Trace."""
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -211,6 +212,31 @@ def collect_biotools(
         typer.echo(f"Metadata collection failed: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(f"Saved bio.tools snapshot: {directory}")
+
+
+@metadata_app.command("collect")
+def collect_metadata(
+    directory: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=False, help="Created run directory."),
+    ],
+) -> None:
+    """Collect public descriptions selected by a run's saved configuration."""
+    from interop_trace.metadata import collect_run_metadata
+    from interop_trace.status import MetadataStatus
+
+    try:
+        index = collect_run_metadata(directory)
+        statuses = {
+            row["status"] for row in json.loads(index.read_text())["components"]
+        }
+    except Exception as error:
+        typer.echo(f"Metadata collection failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved metadata index: {index}")
+    if statuses & {MetadataStatus.NOT_FOUND, MetadataStatus.RETRIEVAL_FAILED}:
+        typer.echo("Some metadata could not be retrieved; see the index.", err=True)
+        raise typer.Exit(code=1)
 
 
 @cache_app.command("list")

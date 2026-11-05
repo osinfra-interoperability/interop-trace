@@ -51,26 +51,42 @@ collected public descriptions and the current host snapshot in
 `prediction_environment.json`. It neither runs tools nor reads their results.
 Metadata collection and prediction can be skipped when just executing a run.
 
-Two checks compare advertised workflow OS support and declared producer outputs
-against workflow inputs. Interface matching requires exact data URIs and
-overlapping format URIs, one function per entry and distinct workflow inputs.
-Broad portal descriptions do not identify the selected file exports.
+Five checks are recorded, with separate summaries for two aspects:
 
-- `support`: all applicable checks agree.
-- `conflict`: at least one populated declaration disagrees under these rules.
-- `unknown`: insufficient or ambiguous declarations prevent a conclusion.
+| Aspect | Checks |
+| --- | --- |
+| Technical/practical | Workflow OS; dataset format; database format |
+| Semantic | Dataset data type; database data type |
 
-Populated declarations are treated as allowed alternatives. A conflict can reflect
-incomplete metadata; support covers only these checks. Missing declarations stay
-unknown. Clearly remote-only workflows exclude the local OS check.
-`evidence_coverage` is the fraction of applicable checks that could be evaluated,
-**not confidence or a probability**. `failure_probability` stays `null`.
-Conclusions do not block execution; exit code `0` means predictions were saved.
+Each producer's outputs are compared with workflow inputs across their declared
+functions. Extra inputs/outputs are allowed. A concept matches if it is identical
+to, or a subclass of, the accepted concept in saved OLS EDAM responses. Reverse
+ancestry, a shared parent or an unavailable term gives no support; lack of a
+subclass relationship is not evidence of incompatibility.
 
-Predictions retain reasons, consulted fields and snapshot references. Architecture,
-runtime requirements, ontology relationships, conversions and scientific accuracy
-are not checked. PRIDE/UniProt portal entries currently leave the input-interface
-check unknown. Predictions are never overwritten; create a new run to repeat them.
+For each producer, the strongest single input/output pair is reported: both data
+and format matches are preferred, then a data-only match, then a format-only match.
+This keeps the two aspects tied to the same declarations. References identify the
+functions, ports, URIs and matching relation. Separate producers can match different
+workflow functions; this does not establish a common executable mode or that all
+required inputs have been supplied. Broad PRIDE/UniProt portal descriptions leave
+the selected file exports unknown.
+
+- `conflict`: at least one applicable check conflicts (currently an OS mismatch).
+- `support`: at least one check supports the connection and none conflicts.
+- `unknown`: no applicable check provides support or conflict.
+
+Coverage is the fraction of applicable checks returning support or conflict,
+**not confidence or a probability**. One supported check out of five gives
+`support` with `0.2` coverage. Clearly remote-only workflows exclude the OS check.
+The same aggregation is used for each aspect. `failure_probability` stays `null`.
+
+OS declarations are treated as allowed alternatives; omissions can cause false
+conflicts. Subtype acceptance is a prediction assumption, not a parser guarantee.
+Architecture, runtimes, conversions and scientific accuracy are not checked.
+Execution and evaluation provide separate observations. Predictions are preserved;
+create a new run to repeat them. Conclusions do not block execution; exit code `0`
+means predictions were saved.
 
 ## Assessment results
 

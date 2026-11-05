@@ -73,12 +73,18 @@ validity. See [assessment behavior](../users/usage.md#assessment-results).
 
 `metadata.py` collects the explicit public references frozen in a run's
 configuration, without constructing components. Its index links selected profiles
-to deduplicated snapshots and records availability errors; execution is independent.
+to deduplicated snapshots, captures referenced EDAM terms through OLS and records
+availability errors; execution is independent. Each API response is cached and
+saved with its original retrieval time; no full ontology download is needed.
 
 `prediction.py` compares those snapshots with a separately captured pre-run host.
-The pure predictor accepts only metadata and environment dictionaries; it never
-receives execution records or assessments. `predict_run` rejects runs whose
-execution has started and preserves existing predictions. Interfaces update the
+The pure predictor accepts only component metadata, environment and saved EDAM
+ancestry; it never receives execution records or assessments. `edam.py` interprets
+OLS `directAncestor` subclass assertions, excluding obsolete/unresolved concepts.
+Technical and semantic checks share aggregation: any conflict wins, then any
+support, otherwise unknown; coverage counts individual applicable checks.
+`predict_run` rejects runs whose execution has started and preserves existing
+predictions. Interfaces update the
 summary table separately. Rule coverage is not calibrated confidence; no failure
 probability is estimated. See [prediction scope](../users/usage.md#metadata-predictions).
 

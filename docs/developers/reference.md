@@ -45,6 +45,8 @@
 
 ::: interop_trace.prediction
 
+::: interop_trace.edam
+
 ## Local run browser
 
 ::: interop_trace.interfaces.web.runs

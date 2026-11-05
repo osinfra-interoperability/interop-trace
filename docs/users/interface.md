@@ -36,8 +36,10 @@ Expand **Files and provenance**. Choose a run-level or experiment **File group**
 then an **Output file** to preview or download. Each experiment's
 `classification.json` contains its assessment and criterion checks.
 Its `prediction.json` contains the pre-run checks and supporting references;
+technical and semantic summaries are separate within that file.
 `prediction_environment.json` is a run-level file.
-Collected descriptions and their index appear in the **Metadata** file group.
+Collected descriptions, OLS term responses and their index appear in the
+**Metadata** file group.
 
 JSON, YAML, XML and TOML have syntax highlighting. Previews show the first 32 KiB
 of text or the last 32 KiB of logs; download a file for its complete contents.

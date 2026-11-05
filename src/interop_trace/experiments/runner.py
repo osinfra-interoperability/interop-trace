@@ -67,6 +67,7 @@ def create_run(
             {
                 "id": experiment.id,
                 "status": ExecutionStatus.NOT_STARTED,
+                "acceptance": experiment.acceptance,
             },
         )
     save_table(output_dir)
@@ -130,6 +131,7 @@ def _run_experiment(
     record: dict[str, Any] = {
         "id": experiment.id,
         "stage": "setup",
+        "acceptance": experiment.acceptance,
     }
     with _status(path, record):
         for role, component in (

@@ -151,6 +151,10 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
 ) -> None:
     pytest.importorskip("proteobench")
     output = tmp_path / "results"
+    document = yaml.safe_load(pipeline.read_text())
+    for choice in document["experiments"]:
+        choice["acceptance"] = {"nr_feature": {"min": 3}}
+    pipeline.write_text(yaml.safe_dump(document))
     configuration = load_configuration(pipeline)
     http_transport.assert_not_called()
     create_run(configuration, output_dir=output, cache_dir=tmp_path / "cache")
@@ -181,6 +185,7 @@ def test_two_experiments_share_downloads_and_use_real_scoring(
     assert [choice["id"] for choice in snapshot["experiments"]] == ["first", "second"]
     for name in ("first", "second"):
         record = json.loads((output / name / "experiment.json").read_text())
+        assert record["acceptance"] == {"nr_feature": {"min": 3}}
         assert record["status"] == "finished"
         assert "error" not in record
         assert record["started_at"] <= record["finished_at"]

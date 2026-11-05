@@ -1,7 +1,8 @@
 """Load separate component definitions and construct selected experiments."""
 
+import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,7 @@ class Experiment:
     database: DatabaseProvider
     workflow: Workflow
     benchmark: Benchmark
+    acceptance: dict[str, dict[str, float]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if (
@@ -48,6 +50,7 @@ class Experiment:
                 "starting with a letter or digit, "
                 "excluding run-level filenames."
             )
+        _validate_acceptance(self.acceptance)
 
 
 @dataclass(frozen=True)
@@ -127,7 +130,12 @@ def _build_experiment(
     choice: object, definitions: dict[str, tuple[Path, dict[str, Any]]]
 ) -> Experiment:
     choice = _mapping(choice, "experiment")
-    _keys(choice, {"id", "dataset", "database", "workflow", "benchmark"}, "experiment")
+    _keys(
+        choice,
+        {"id", "dataset", "database", "workflow", "benchmark"},
+        "experiment",
+        optional={"acceptance"},
+    )
     return Experiment(
         id=choice["id"],
         dataset=_build_component(datasets, choice["dataset"], definitions["datasets"]),
@@ -140,7 +148,23 @@ def _build_experiment(
         benchmark=_build_component(
             benchmarks, choice["benchmark"], definitions["benchmarks"]
         ),
+        acceptance=choice.get("acceptance", {}),
     )
+
+
+def _validate_acceptance(criteria: object) -> None:
+    for metric, limits in _mapping(criteria, "acceptance").items():
+        limits = _mapping(limits, f"acceptance.{metric}")
+        if not metric.strip() or not limits:
+            raise ValueError("acceptance requires metric names and numeric bounds.")
+        _keys(limits, set(), f"acceptance.{metric}", optional={"min", "max"})
+        if any(
+            type(value) not in {int, float} or not math.isfinite(value)
+            for value in limits.values()
+        ):
+            raise ValueError("acceptance bounds must be finite numbers.")
+        if limits.get("min", -math.inf) > limits.get("max", math.inf):
+            raise ValueError("acceptance min must not exceed max.")
 
 
 def _build_component[T](

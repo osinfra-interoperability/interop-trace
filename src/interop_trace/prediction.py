@@ -33,7 +33,8 @@ def predict_interoperability(
     and format evidence cannot be combined across unrelated declarations.
     """
     checks = {
-        "workflow_platform": _platform_check(entries.get("workflow", {}), environment),
+        f"{role}_platform": _platform_check(role, entries.get(role, {}), environment)
+        for role in _ROLES
     }
     for role in ("dataset", "database"):
         checks.update(
@@ -85,7 +86,7 @@ def _strings(value: Any) -> set[str]:
 
 
 def _platform_check(
-    entry: dict[str, Any], environment: dict[str, str]
+    role: str, entry: dict[str, Any], environment: dict[str, str]
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "aspect": PredictionAspect.TECHNICAL,
@@ -93,7 +94,7 @@ def _platform_check(
         "conclusion": Conclusion.UNKNOWN,
         "reason": "Missing or ambiguous host/platform declarations.",
         "evidence": {
-            "workflow": ["toolType", "operatingSystem"],
+            role: ["toolType", "operatingSystem"],
             "environment": ["operating_system"],
         },
     }

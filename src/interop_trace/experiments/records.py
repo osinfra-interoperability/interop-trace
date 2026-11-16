@@ -18,6 +18,8 @@ TABLE_FIELDS = (
     "technical_coverage",
     "semantic_prediction",
     "semantic_coverage",
+    "host_prediction",
+    "host_coverage",
     "status",
     "stage",
     "error",
@@ -46,8 +48,11 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
         record = read_record(folder / "experiment.json")
         assessment = read_record(folder / "classification.json")
         prediction = read_record(folder / "prediction.json")
-        technical = prediction.get("aspects", {}).get("technical", {})
-        semantic = prediction.get("aspects", {}).get("semantic", {})
+        aspects = prediction.get("aspects", {})
+        # Earlier technical summaries combined formats and host OS checks.
+        technical = aspects.get("technical", {}) if "host" in aspects else {}
+        semantic = aspects.get("semantic", {})
+        host = aspects.get("host", {})
         rows.append(
             {
                 **{field: choice.get(field, "") for field in TABLE_FIELDS},
@@ -57,6 +62,8 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
                 "technical_coverage": _coverage(technical),
                 "semantic_prediction": semantic.get("conclusion", ""),
                 "semantic_coverage": _coverage(semantic),
+                "host_prediction": host.get("conclusion", ""),
+                "host_coverage": _coverage(host),
                 "status": record.get("status"),
                 "stage": record.get("stage", ""),
                 "error": record.get("error", {}).get("type", ""),

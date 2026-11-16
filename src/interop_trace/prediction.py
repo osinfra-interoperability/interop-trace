@@ -28,14 +28,21 @@ def predict_interoperability(
 ) -> dict[str, Any]:
     """Report partial positive evidence separately from coverage and probability.
 
-    Data is semantic; platform and format are technical. Each connection uses
-    its strongest single input/output pair (data preferred when tied), so data
-    and format evidence cannot be combined across unrelated declarations.
+    Data is semantic, formats and shared OS support are technical, and run OS
+    checks are host-specific. Each connection uses its strongest input/output
+    pair (data preferred when tied) to keep evidence on the same declaration.
     """
-    checks = {
-        f"{role}_platform": _platform_check(role, entries.get(role, {}), environment)
-        for role in _ROLES
-    }
+    systems = {role: _local_systems(entries.get(role, {})) for role in _ROLES}
+    host = {"Darwin": "Mac", "Linux": "Linux", "Windows": "Windows"}.get(
+        environment.get("operating_system", "")
+    )
+    checks = {"shared_platform": _shared_platform_check(systems)}
+    checks.update(
+        {
+            f"{role}_platform": _platform_check(role, oses, host)
+            for role, oses in systems.items()
+        }
+    )
     for role in ("dataset", "database"):
         checks.update(
             {
@@ -85,11 +92,52 @@ def _strings(value: Any) -> set[str]:
     )
 
 
-def _platform_check(
-    role: str, entry: dict[str, Any], environment: dict[str, str]
-) -> dict[str, Any]:
+def _local_systems(entry: dict[str, Any]) -> set[str] | None:
+    """Return advertised systems, an empty set if unknown, or None if remote."""
+    types = _strings(entry.get("toolType"))
+    if types & _REMOTE:
+        return None if types <= _REMOTE else set()
+    systems = _strings(entry.get("operatingSystem"))
+    return systems if systems <= {"Mac", "Linux", "Windows"} else set()
+
+
+def _shared_platform_check(systems: dict[str, set[str] | None]) -> dict[str, Any]:
+    local = [oses for oses in systems.values() if oses is not None]
+    declared = [oses for oses in local if oses]
     result: dict[str, Any] = {
         "aspect": PredictionAspect.TECHNICAL,
+        "applicable": len(local) >= 2,
+        "conclusion": Conclusion.UNKNOWN,
+        "reason": "Local OS declarations are incomplete or ambiguous.",
+        "shared_operating_systems": None,
+        "evidence": {role: ["toolType", "operatingSystem"] for role in systems},
+    }
+    if len(local) < 2:
+        result["reason"] = (
+            "Fewer than two components have an applicable local OS check."
+        )
+    elif len(declared) >= 2:
+        common = set.intersection(*declared)
+        if not common:
+            result.update(
+                conclusion=Conclusion.CONFLICT,
+                reason="The advertised OS sets have no common system.",
+                shared_operating_systems=[],
+            )
+        elif len(declared) == len(local):
+            result.update(
+                conclusion=Conclusion.SUPPORT,
+                reason="All local components advertise at least one common OS.",
+                shared_operating_systems=sorted(common),
+            )
+    return result
+
+
+def _platform_check(
+    role: str, systems: set[str] | None, host: str | None
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "aspect": PredictionAspect.HOST,
         "applicable": True,
         "conclusion": Conclusion.UNKNOWN,
         "reason": "Missing or ambiguous host/platform declarations.",
@@ -98,20 +146,12 @@ def _platform_check(
             "environment": ["operating_system"],
         },
     }
-    types = _strings(entry.get("toolType"))
-    if types & _REMOTE:
-        if types <= _REMOTE:
-            result.update(
-                applicable=False,
-                reason="Only remote interfaces are declared; "
-                "local OS support is inapplicable.",
-            )
-        return result
-    host = {"Darwin": "Mac", "Linux": "Linux", "Windows": "Windows"}.get(
-        environment.get("operating_system", "")
-    )
-    systems = _strings(entry.get("operatingSystem"))
-    if host and systems and systems <= {"Mac", "Linux", "Windows"}:
+    if systems is None:
+        result.update(
+            applicable=False,
+            reason="Only remote interfaces are declared.",
+        )
+    elif host and systems:
         result.update(
             conclusion=Conclusion.SUPPORT if host in systems else Conclusion.CONFLICT,
             reason=f"Host {host}; advertised systems: {', '.join(sorted(systems))}.",

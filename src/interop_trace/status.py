@@ -37,10 +37,11 @@ class PredictionConclusion(StrEnum):
 
 
 class PredictionAspect(StrEnum):
-    """Technical requirements and semantic descriptions, assessed separately."""
+    """The aspects of interoperability reported by the predictor."""
 
     TECHNICAL = "technical"
     SEMANTIC = "semantic"
+    HOST = "host"
 
 
 class AssessmentCategory(StrEnum):

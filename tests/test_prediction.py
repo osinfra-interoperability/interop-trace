@@ -31,12 +31,12 @@ def ontology(edam_path: Path) -> Edam:
 @pytest.mark.parametrize(
     "systems,types,expected,coverage,applicable",
     [
-        (["Mac", "Linux"], [], "support", 5 / 7, True),
-        (["Windows"], [], "conflict", 5 / 7, True),
-        ([], [], "support", 4 / 7, True),
-        (["Other"], [], "support", 4 / 7, True),
-        (["Windows"], ["Web API"], "support", 4 / 6, False),
-        (["Windows"], ["Web API", "Command-line tool"], "support", 4 / 7, True),
+        (["Mac", "Linux"], [], "support", 5 / 8, True),
+        (["Windows"], [], "conflict", 5 / 8, True),
+        ([], [], "support", 4 / 8, True),
+        (["Other"], [], "support", 4 / 8, True),
+        (["Windows"], ["Web API"], "support", 4 / 7, False),
+        (["Windows"], ["Web API", "Command-line tool"], "support", 4 / 8, True),
     ],
 )
 def test_platform_and_coverage(
@@ -71,7 +71,13 @@ def test_platform_and_coverage(
     }
 
 
-def test_local_producer_os_conflict_and_remote_exclusion(ontology) -> None:
+@pytest.mark.parametrize(
+    "workflow_os,shared,technical",
+    [(["Mac", "Linux"], ["Linux"], "support"), (["Mac"], [], "conflict")],
+)
+def test_shared_os_is_independent_of_host(
+    ontology, workflow_os, shared, technical
+) -> None:
     result = predict_interoperability(
         {
             "dataset": {
@@ -82,44 +88,49 @@ def test_local_producer_os_conflict_and_remote_exclusion(ontology) -> None:
                 "toolType": ["Database portal"],
                 "operatingSystem": ["Windows"],
             },
-            "workflow": {"operatingSystem": ["Mac"]},
+            "workflow": {"operatingSystem": workflow_os},
         },
         {"operating_system": "Darwin"},
         ontology,
     )
     assert result["checks"]["dataset_platform"]["conclusion"] == "conflict"
     assert result["checks"]["database_platform"]["applicable"] is False
+    assert result["checks"]["shared_platform"]["shared_operating_systems"] == shared
     assert result["aspects"]["technical"] == {
+        "conclusion": technical,
+        "evidence_coverage": 1 / 3,
+    }
+    assert result["aspects"]["host"] == {
         "conclusion": "conflict",
-        "evidence_coverage": 0.5,
+        "evidence_coverage": 1.0,
     }
 
 
 @pytest.mark.parametrize(
     "dataset,expected,coverage",
     [
-        ({"function": [{"output": [PROTEIN]}]}, "support", 4 / 7),
+        ({"function": [{"output": [PROTEIN]}]}, "support", 4 / 8),
         (
             {"function": [{"output": [port("data_0943", "format_1062")]}]},
             "support",
-            3 / 7,
+            3 / 8,
         ),
         (
             {"function": [{"output": [{"data": SPECTRUM["data"], "format": []}]}]},
             "support",
-            3 / 7,
+            3 / 8,
         ),
         (
             {"function": [{"output": [SPECTRUM]}, {"output": [SPECTRUM]}]},
             "support",
-            4 / 7,
+            4 / 8,
         ),
         (
             {"toolType": ["Database portal"], "function": [{"output": [SPECTRUM]}]},
             "support",
-            2 / 6,
+            2 / 7,
         ),
-        ({}, "support", 2 / 7),
+        ({}, "support", 2 / 8),
     ],
 )
 def test_connections_preserve_partial_evidence(
@@ -166,7 +177,7 @@ def test_data_and_format_support_must_come_from_the_same_pair(ontology) -> None:
         result["checks"]["dataset_data"]["pair"]
         == result["checks"]["dataset_format"]["pair"]
     )
-    assert result["evidence_coverage"] == 1 / 7
+    assert result["evidence_coverage"] == 1 / 8
 
 
 def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
@@ -226,7 +237,7 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     outputs = predict_run(tmp_path)
     first, second = [json.loads(output.read_text()) for output in outputs]
     assert first["conclusion"] == "support"
-    assert first["evidence_coverage"] == 1 / 7
+    assert first["evidence_coverage"] == 1 / 8
     assert second["evidence_coverage"] == 0
     assert first["metadata"]["workflow"] == {
         "index": "../metadata/index.json",
@@ -255,7 +266,9 @@ def test_run_predictions_preserve_sources_and_do_not_read_outcomes(
     with (tmp_path / "experiments.csv").open() as stream:
         saved = list(csv.DictReader(stream))
     for row in (saved[0], experiment_rows(tmp_path)[0]):
-        assert row["technical_prediction"] == "support"
-        assert row["technical_coverage"] == str(1 / 5)
+        assert row["technical_prediction"] == "unknown"
+        assert row["technical_coverage"] == "0.0"
+        assert row["host_prediction"] == "support"
+        assert row["host_coverage"] == str(1 / 3)
         assert row["semantic_prediction"] == "unknown"
         assert row["semantic_coverage"] == "0.0"

@@ -51,12 +51,13 @@ collected public descriptions and the current host snapshot in
 `prediction_environment.json`. It neither runs tools nor reads their results.
 Metadata collection and prediction can be skipped when just executing a run.
 
-Prediction records checks for two aspects.
+Prediction records checks for three aspects.
 
 | Aspect | Checks |
 | --- | --- |
-| Technical/practical | Host OS support for the dataset provider, database provider and workflow, plus format matches from each provider to the workflow |
-| Semantic | Dataset data type; database data type |
+| Semantic | Data-type matches from each provider to the workflow |
+| Technical | Format matches and the OSes the local components advertise in common |
+| Host | OS support for each local component on the selected run host |
 
 Each producer's outputs are compared with workflow inputs across their declared
 functions. Extra inputs/outputs are allowed. A concept matches if it is identical
@@ -76,16 +77,22 @@ the selected file exports unknown.
 - `support`: at least one check supports the connection and none conflicts.
 - `unknown`: no applicable check provides support or conflict.
 
-Each component's advertised OS support is compared with the shared run host.
-Components advertised only as remote services or portals are excluded from OS
-coverage. Mixed deployment modes and missing OS declarations leave the check unknown.
+The technical OS check intersects the advertised lists for the local components.
+An empty intersection among known lists gives a conflict. A shared OS gives support
+when all applicable lists are known. With fewer than two applicable components,
+the shared OS check is excluded. The host check compares each advertised list with
+the run host. Remote-only services and portals are excluded from both OS checks.
+Mixed deployment modes and missing OS declarations leave the corresponding host
+check unknown.
 
 Coverage is the fraction of applicable checks returning support or conflict.
 For example, with two remote providers, one supported workflow OS check and no
 other conclusions, overall coverage is `0.2`.
 The same aggregation is used for each aspect. `failure_probability` stays `null`.
-The UI table and `experiments.csv` include the overall, technical and semantic
-conclusions with their respective coverage values.
+The UI table and `experiments.csv` include the overall, semantic, technical and
+host conclusions with their respective coverage values. Earlier predictions keep
+their combined technical result in `prediction.json`. The table leaves the new
+technical and host columns blank for those records.
 
 OS declarations are treated as allowed alternatives; omissions can cause false
 conflicts. Subtype acceptance is a prediction assumption, not a parser guarantee.

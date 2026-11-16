@@ -88,7 +88,7 @@ async def test_create_collect_predict_execute_and_assess_a_named_run(
     assert prediction["conclusion"] == "unknown"
     assert prediction["evidence_coverage"] == 0
     assert prediction["failure_probability"] is None
-    assert set(prediction["aspects"]) == {"technical", "semantic"}
+    assert set(prediction["aspects"]) == {"technical", "semantic", "host"}
     assert not user.find(marker="predict-run").elements.pop().enabled
     user.find(marker="start-run").click()
     await user.should_see("Status: running", retries=20)
@@ -124,7 +124,7 @@ async def test_create_collect_predict_execute_and_assess_a_named_run(
     assert saved_rows[0]["assessment_outcome"] == "success"
     assert saved_rows[0]["prediction_conclusion"] == "unknown"
     assert saved_rows[0]["prediction_coverage"] == "0.0"
-    for aspect in ("technical", "semantic"):
+    for aspect in ("technical", "semantic", "host"):
         assert saved_rows[0][f"{aspect}_prediction"] == "unknown"
         assert saved_rows[0][f"{aspect}_coverage"] == "0.0"
     assert any(

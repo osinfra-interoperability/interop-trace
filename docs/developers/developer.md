@@ -81,8 +81,9 @@ saved with its original retrieval time; no full ontology download is needed.
 The pure predictor accepts only component metadata, environment and saved EDAM
 ancestry; it never receives execution records or assessments. `edam.py` interprets
 OLS `directAncestor` subclass assertions, excluding obsolete/unresolved concepts.
-Technical and semantic checks share aggregation: any conflict wins, then any
-support, otherwise unknown; coverage counts individual applicable checks.
+Semantic, technical and host checks use the same aggregation. Conflict takes
+precedence over support. Without either, the conclusion is unknown. Coverage
+counts individual applicable checks.
 `predict_run` rejects runs whose execution has started and preserves existing
 predictions. Interfaces update the
 summary table separately. Rule coverage is not calibrated confidence; no failure

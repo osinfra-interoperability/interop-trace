@@ -107,34 +107,39 @@ def test_shared_os_is_independent_of_host(
 
 
 @pytest.mark.parametrize(
-    "dataset,expected,coverage",
+    "dataset,coverage,format_reason",
     [
-        ({"function": [{"output": [PROTEIN]}]}, "support", 4 / 8),
+        ({"function": [{"output": [PROTEIN]}]}, 4 / 8, "specialises"),
         (
             {"function": [{"output": [port("data_0943", "format_1062")]}]},
-            "support",
             3 / 8,
+            "No declared output format URI resolved",
         ),
         (
             {"function": [{"output": [{"data": SPECTRUM["data"], "format": []}]}]},
-            "support",
             3 / 8,
+            "No usable EDAM format URI is declared on the output side",
         ),
         (
             {"function": [{"output": [SPECTRUM]}, {"output": [SPECTRUM]}]},
-            "support",
             4 / 8,
+            "specialises",
         ),
         (
             {"toolType": ["Database portal"], "function": [{"output": [SPECTRUM]}]},
-            "support",
             2 / 7,
+            "describes a portal",
         ),
-        ({}, "support", 2 / 8),
+        (
+            {"toolType": ["Database portal"], "function": [{"output": []}]},
+            2 / 7,
+            "declares no output ports",
+        ),
+        ({}, 2 / 8, "No saved bio.tools description for the dataset"),
     ],
 )
 def test_connections_preserve_partial_evidence(
-    ontology, dataset, expected, coverage
+    ontology, dataset, coverage, format_reason
 ) -> None:
     result = predict_interoperability(
         {
@@ -147,8 +152,9 @@ def test_connections_preserve_partial_evidence(
         {},
         ontology,
     )
-    assert result["conclusion"] == expected
+    assert result["conclusion"] == "support"
     assert result["evidence_coverage"] == coverage
+    assert format_reason in result["checks"]["dataset_format"]["reason"]
     assert result["checks"]["database_data"]["match"]["relation"] == "subclass"
     assert result["checks"]["database_format"]["match"]["relation"] == "subclass"
 
@@ -173,6 +179,10 @@ def test_data_and_format_support_must_come_from_the_same_pair(ontology) -> None:
     )
     assert result["checks"]["dataset_data"]["conclusion"] == "support"
     assert result["checks"]["dataset_format"]["conclusion"] == "unknown"
+    assert (
+        "no supported output-to-input EDAM match"
+        in (result["checks"]["dataset_format"]["reason"])
+    )
     assert (
         result["checks"]["dataset_data"]["pair"]
         == result["checks"]["dataset_format"]["pair"]

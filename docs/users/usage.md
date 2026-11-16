@@ -71,7 +71,9 @@ This keeps the two aspects tied to the same declarations. References identify th
 functions, ports, URIs and matching relation. Separate producers can match different
 workflow functions; this does not establish a common executable mode or that all
 required inputs have been supplied. Broad PRIDE/UniProt portal descriptions leave
-the selected file exports unknown.
+the selected file exports unknown. Each check reason in `prediction.json`
+distinguishes portal descriptions, missing declarations, unresolved EDAM terms
+and terms with no supported match.
 
 - `conflict`: at least one applicable check conflicts (currently an OS mismatch).
 - `support`: at least one check supports the connection and none conflicts.

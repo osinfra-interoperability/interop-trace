@@ -159,13 +159,16 @@ def _platform_check(
     return result
 
 
-def _ports(entry: dict[str, Any], direction: str) -> list[tuple[str, dict[str, Any]]]:
-    """Keep function/port references; portal annotations do not identify exports."""
+def _ports(
+    entry: dict[str, Any], role: str, direction: str
+) -> tuple[list[tuple[str, dict[str, Any]]], str]:
+    """Return declared ports and explain when they cannot be used."""
+    label = role.capitalize()
+    if not entry:
+        return [], f"No saved bio.tools description for the {role}."
     functions = entry.get("function")
-    if _strings(entry.get("toolType")) & _PORTALS or not isinstance(functions, list):
-        return []
     result: list[tuple[str, dict[str, Any]]] = []
-    for fi, function in enumerate(functions):
+    for fi, function in enumerate(functions if isinstance(functions, list) else []):
         ports = function.get(direction) if isinstance(function, dict) else None
         if isinstance(ports, list):
             result.extend(
@@ -173,7 +176,14 @@ def _ports(entry: dict[str, Any], direction: str) -> list[tuple[str, dict[str, A
                 for pi, port in enumerate(ports)
                 if isinstance(port, dict)
             )
-    return result
+    if not result:
+        return [], f"{label} bio.tools entry declares no {direction} ports."
+    if _strings(entry.get("toolType")) & _PORTALS:
+        return [], (
+            f"{label} bio.tools entry describes a portal and its {direction} ports "
+            "do not identify the file used in this connection."
+        )
+    return result, ""
 
 
 def _concepts(port: dict[str, Any], axis: str) -> list[str]:
@@ -196,20 +206,37 @@ def _match(
     return None
 
 
+def _unmatched_reason(
+    outputs: list[dict[str, Any]],
+    inputs: list[dict[str, Any]],
+    axis: str,
+    ontology: Edam,
+) -> str:
+    output_terms = {uri for port in outputs for uri in _concepts(port, axis)}
+    input_terms = {uri for port in inputs for uri in _concepts(port, axis)}
+    label = "data type" if axis == "data" else "format"
+    for side, terms in (("output", output_terms), ("input", input_terms)):
+        if not terms:
+            return f"No usable EDAM {label} URI is declared on the {side} side."
+        if not terms.intersection(ontology.ancestors):
+            return f"No declared {side} {label} URI resolved in the saved EDAM terms."
+    return f"The declared {label} terms have no supported output-to-input EDAM match."
+
+
 def _connection_checks(
     entries: dict[str, dict[str, Any]], role: str, ontology: Edam
 ) -> dict[str, dict[str, Any]]:
+    outputs, output_blocker = _ports(entries.get(role, {}), role, "output")
+    inputs, input_blocker = _ports(entries.get("workflow", {}), "workflow", "input")
     checks: dict[str, dict[str, Any]] = {
         axis: {
             "aspect": aspect,
             "applicable": True,
             "conclusion": Conclusion.UNKNOWN,
-            "reason": "No supporting declared input/output pair. Missing, broad "
-            "or unrelated concepts do not establish incompatibility. "
-            "Portal descriptions do not identify selected file exports.",
+            "reason": " ".join(filter(None, (output_blocker, input_blocker))),
             "evidence": {
                 role: ["toolType", "function"],
-                "workflow": ["function"],
+                "workflow": ["toolType", "function"],
                 "ontology": ["iri", "isObsolete", "directAncestor"],
             },
         }
@@ -219,10 +246,7 @@ def _connection_checks(
         )
     }
     best = (False, False, False)
-    for (output_ref, output), (input_ref, accepted) in product(
-        _ports(entries.get(role, {}), "output"),
-        _ports(entries.get("workflow", {}), "input"),
-    ):
+    for (output_ref, output), (input_ref, accepted) in product(outputs, inputs):
         matches = {axis: _match(output, accepted, axis, ontology) for axis in checks}
         data, format_ = matches["data"] is not None, matches["format"] is not None
         score = (data and format_, data, format_)
@@ -235,10 +259,17 @@ def _connection_checks(
                 conclusion=Conclusion.SUPPORT if match else Conclusion.UNKNOWN,
                 reason="Same concept or output specialises the accepted input."
                 if match
-                else "The selected pair has no supporting EDAM relation "
-                "for this aspect.",
+                else _unmatched_reason([output], [accepted], axis, ontology),
                 pair={"output": role + output_ref, "input": "workflow" + input_ref},
                 match=match,
+            )
+    for axis, check in checks.items():
+        if not check["reason"]:
+            check["reason"] = _unmatched_reason(
+                [port for _, port in outputs],
+                [port for _, port in inputs],
+                axis,
+                ontology,
             )
     return checks
 

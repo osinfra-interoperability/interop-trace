@@ -11,12 +11,37 @@ class ExecutionStatus(StrEnum):
     FINISHED = "finished"
 
 
+class MetadataStatus(StrEnum):
+    """Public metadata availability, separate from experiment execution."""
+
+    COLLECTED = "collected"
+    MISSING_REFERENCE = "missing_reference"
+    NOT_FOUND = "not_found"
+    RETRIEVAL_FAILED = "retrieval_failed"
+
+
 class AssessmentOutcome(StrEnum):
     """Assessor conclusion, separate from whether execution completed."""
 
     SUCCESS = "success"
     FAILURE = "failure"
     UNKNOWN = "unknown"
+
+
+class PredictionConclusion(StrEnum):
+    """Agreement of declarations under a rule, not observed interoperability."""
+
+    SUPPORT = "support"
+    CONFLICT = "conflict"
+    UNKNOWN = "unknown"
+
+
+class PredictionAspect(StrEnum):
+    """The aspects of interoperability reported by the predictor."""
+
+    TECHNICAL = "technical"
+    SEMANTIC = "semantic"
+    HOST = "host"
 
 
 class AssessmentCategory(StrEnum):

@@ -2,7 +2,6 @@
 
 import errno
 import json
-import platform
 import subprocess
 import traceback
 from collections.abc import Iterator
@@ -15,6 +14,7 @@ from typing import Any
 from interop_trace import __version__
 from interop_trace.components import RequiresSetup
 from interop_trace.downloads import DEFAULT_CACHE_DIR, DownloadCache
+from interop_trace.environment import capture_environment
 from interop_trace.evaluation import EvaluationResult
 from interop_trace.experiments.config import Experiment, RunConfiguration, load_snapshot
 from interop_trace.experiments.records import read_record, save_table
@@ -89,7 +89,7 @@ def execute_run(output_dir: Path) -> RunResult:
         )
     (output_dir / "execution.json").touch(exist_ok=False)
     with _status(output_dir / "execution.json", {}):
-        _write(output_dir / "environment.json", _environment())
+        _write(output_dir / "environment.json", capture_environment())
         return _execute(
             configuration, output_dir, DownloadCache(Path(snapshot["cache"]))
         )
@@ -112,16 +112,6 @@ def _execute(
         {"completed": list(completed), "failed": failed},
     )
     return RunResult(completed, failed)
-
-
-def _environment() -> dict[str, str]:
-    """Describe the runner's environment, not its external tools or runtimes."""
-    return {
-        "operating_system": platform.system(),
-        "os_release": platform.release(),
-        "architecture": platform.machine(),
-        "python_version": platform.python_version(),
-    }
 
 
 def _run_experiment(

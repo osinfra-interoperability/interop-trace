@@ -1,5 +1,7 @@
 sage_erwinia_tmt:
   type: sage
+  metadata:
+    biotools: Sage-proteomics
   parameters:
     version: "0.14.7"
     configuration: ../settings/sage/erwinia_tmt.json
@@ -7,12 +9,16 @@ sage_erwinia_tmt:
 
 comet_erwinia_tmt:
   type: comet
+  metadata:
+    biotools: comet
   parameters:
     version: "2026.03.0"
     configuration: ../settings/comet/erwinia_tmt.params
 
 msamanda_erwinia_tmt:
   type: msamanda
+  metadata:
+    biotools: ms_amanda
   parameters:
     version: "3.0.22.864"
     configuration: ../settings/msamanda/erwinia_tmt.xml

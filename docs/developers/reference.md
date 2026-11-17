@@ -41,6 +41,12 @@
 
 ::: interop_trace.classification
 
+## Metadata predictions
+
+::: interop_trace.prediction
+
+::: interop_trace.edam
+
 ## Local run browser
 
 ::: interop_trace.interfaces.web.runs
@@ -74,6 +80,10 @@
 ::: interop_trace.evaluation.expected_peptides
 
 ::: interop_trace.evaluation.proteobench
+
+## Public metadata
+
+::: interop_trace.metadata
 
 ## Download cache
 

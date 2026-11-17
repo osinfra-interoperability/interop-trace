@@ -71,6 +71,24 @@ Metric meanings belong to their benchmark; criteria refer to metric names withou
 inspecting implementations. Passing criteria does not establish general scientific
 validity. See [assessment behavior](../users/usage.md#assessment-results).
 
+`metadata.py` collects the explicit public references frozen in a run's
+configuration, without constructing components. Its index links selected profiles
+to deduplicated snapshots, captures referenced EDAM terms through OLS and records
+availability errors; execution is independent. Each API response is cached and
+saved with its original retrieval time; no full ontology download is needed.
+
+`prediction.py` compares those snapshots with a separately captured pre-run host.
+The pure predictor accepts only component metadata, environment and saved EDAM
+ancestry; it never receives execution records or assessments. `edam.py` interprets
+OLS `directAncestor` subclass assertions, excluding obsolete/unresolved concepts.
+Semantic, technical and host checks use the same aggregation. Conflict takes
+precedence over support. Without either, the conclusion is unknown. Coverage
+counts individual applicable checks.
+`predict_run` rejects runs whose execution has started and preserves existing
+predictions. Interfaces update the
+summary table separately. Rule coverage is not calibrated confidence; no failure
+probability is estimated. See [prediction scope](../users/usage.md#metadata-predictions).
+
 ## Add a component
 
 1. Implement the relevant protocol and keep native settings as constructor

@@ -42,8 +42,11 @@ def checkout(configuration: Path) -> Path:
     return configuration.parent.parent
 
 
-async def test_create_execute_and_assess_a_named_run(
-    user, checkout: Path, monkeypatch: pytest.MonkeyPatch, http_transport: Mock
+async def test_create_collect_predict_execute_and_assess_a_named_run(
+    user,
+    checkout: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    http_transport: Mock,
 ) -> None:
     process = Mock()
     process.poll.return_value = None
@@ -74,6 +77,19 @@ async def test_create_execute_and_assess_a_named_run(
     popen.assert_not_called()
     http_transport.assert_not_called()
     assert not user.find(marker="assess-run").elements.pop().enabled
+    assert not user.find(marker="predict-run").elements.pop().enabled
+    user.find(marker="collect-metadata").click()
+    await user.should_see("Metadata index saved", retries=20)
+    assert (output / "metadata/index.json").is_file()
+    assert not user.find(marker="collect-metadata").elements.pop().enabled
+    user.find(marker="predict-run").click()
+    await user.should_see("Saved 1 prediction(s).", retries=20)
+    prediction = json.loads((output / "first/prediction.json").read_text())
+    assert prediction["conclusion"] == "unknown"
+    assert prediction["evidence_coverage"] == 0
+    assert prediction["failure_probability"] is None
+    assert set(prediction["aspects"]) == {"technical", "semantic", "host"}
+    assert not user.find(marker="predict-run").elements.pop().enabled
     user.find(marker="start-run").click()
     await user.should_see("Status: running", retries=20)
     assert not user.find(marker="start-run").elements.pop().enabled
@@ -106,6 +122,11 @@ async def test_create_execute_and_assess_a_named_run(
     with (output / "experiments.csv").open() as stream:
         saved_rows = list(csv.DictReader(stream))
     assert saved_rows[0]["assessment_outcome"] == "success"
+    assert saved_rows[0]["prediction_conclusion"] == "unknown"
+    assert saved_rows[0]["prediction_coverage"] == "0.0"
+    for aspect in ("technical", "semantic", "host"):
+        assert saved_rows[0][f"{aspect}_prediction"] == "unknown"
+        assert saved_rows[0][f"{aspect}_coverage"] == "0.0"
     assert any(
         table.rows == saved_rows for table in user.find(nicegui.ui.table).elements
     )
@@ -149,7 +170,7 @@ async def test_selecting_an_output_displays_its_content(user, checkout: Path) ->
     assert viewer.language == "JSON"
 
 
-async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
+async def test_files_and_logs_stay_within_selected_group(
     user, checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     directory = checkout / "results/grouped"
@@ -165,6 +186,9 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
         )
     )
     directory.with_name("grouped.console.log").write_text("run-level console")
+    metadata = directory / "metadata/biotools/Sage-proteomics"
+    metadata.mkdir(parents=True)
+    (metadata / "entry.json").write_text('{"note":"public component description"}')
     for name in ("first", "second"):
         folder = directory / name / "workflow"
         folder.mkdir(parents=True)
@@ -181,6 +205,7 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user.find(marker="output-file").click()
     user.find("Console log").click()
     await user.should_see("run-level console")
+
     selector = user.find(marker="output-file").elements.pop()
     assert set(selector.options.values()) == {"configuration.json", "Console log"}
 
@@ -210,6 +235,11 @@ async def test_files_and_logs_are_scoped_to_root_or_one_experiment(
     user.find(marker="output-file").click()
     user.find("Console log").click()
     await user.should_see("run-level console")
+
+    user.find(marker="file-group").click()
+    user.find("Metadata").click()
+    await user.should_see("public component description", retries=10)
+    assert set(selector.options.values()) == {"biotools/Sage-proteomics/entry.json"}
 
 
 async def test_removing_last_run_clears_its_details(

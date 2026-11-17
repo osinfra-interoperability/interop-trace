@@ -34,6 +34,8 @@ Create a run without downloads or execution, then execute its saved selection:
 
 ```bash
 poetry run interop-trace run erwinia_sage --prepare-only --output results/run-002
+poetry run interop-trace metadata collect results/run-002
+poetry run interop-trace predict results/run-002
 poetry run interop-trace execute results/run-002
 poetry run interop-trace classify results/run-002
 ```
@@ -41,6 +43,65 @@ poetry run interop-trace classify results/run-002
 Without `--prepare-only`, `run` creates and executes in one command. A created
 run executes once, using its saved YAML. The same stages are available in the
 [local interface](interface.md).
+
+## Metadata predictions
+
+`predict` saves each experiment's `prediction.json` before execution, using only
+collected public descriptions and the current host snapshot in
+`prediction_environment.json`. It neither runs tools nor reads their results.
+Metadata collection and prediction can be skipped when just executing a run.
+
+Prediction records checks for three aspects.
+
+| Aspect | Checks |
+| --- | --- |
+| Semantic | Data-type matches from each provider to the workflow |
+| Technical | Format matches and the OSes the local components advertise in common |
+| Host | OS support for each local component on the selected run host |
+
+Each producer's outputs are compared with workflow inputs across their declared
+functions. Extra inputs/outputs are allowed. A concept matches if it is identical
+to, or a subclass of, the accepted concept in saved OLS EDAM responses. Reverse
+ancestry, a shared parent or an unavailable term gives no support; lack of a
+subclass relationship is not evidence of incompatibility.
+
+For each producer, the strongest single input/output pair is reported: both data
+and format matches are preferred, then a data-only match, then a format-only match.
+This keeps the two aspects tied to the same declarations. References identify the
+functions, ports, URIs and matching relation. Separate producers can match different
+workflow functions; this does not establish a common executable mode or that all
+required inputs have been supplied. Broad PRIDE/UniProt portal descriptions leave
+the selected file exports unknown. Each check reason in `prediction.json`
+distinguishes portal descriptions, missing declarations, unresolved EDAM terms
+and terms with no supported match.
+
+- `conflict`: at least one applicable check conflicts (currently an OS mismatch).
+- `support`: at least one check supports the connection and none conflicts.
+- `unknown`: no applicable check provides support or conflict.
+
+The technical OS check intersects the advertised lists for the local components.
+An empty intersection among known lists gives a conflict. A shared OS gives support
+when all applicable lists are known. With fewer than two applicable components,
+the shared OS check is excluded. The host check compares each advertised list with
+the run host. Remote-only services and portals are excluded from both OS checks.
+Mixed deployment modes and missing OS declarations leave the corresponding host
+check unknown.
+
+Coverage is the fraction of applicable checks returning support or conflict.
+For example, with two remote providers, one supported workflow OS check and no
+other conclusions, overall coverage is `0.2`.
+The same aggregation is used for each aspect. `failure_probability` stays `null`.
+The UI table and `experiments.csv` include the overall, semantic, technical and
+host conclusions with their respective coverage values. Earlier predictions keep
+their combined technical result in `prediction.json`. The table leaves the new
+technical and host columns blank for those records.
+
+OS declarations are treated as allowed alternatives; omissions can cause false
+conflicts. Subtype acceptance is a prediction assumption, not a parser guarantee.
+Architecture, runtimes, conversions and scientific accuracy are not checked.
+Execution and evaluation provide separate observations. Predictions are preserved;
+create a new run to repeat them. Conclusions do not block execution; exit code `0`
+means predictions were saved.
 
 ## Assessment results
 
@@ -66,6 +127,42 @@ logs are not interpreted and no external services are called.
 Existing assessments and execution records are preserved. Use a new run after
 changing criteria. Exit code `0` from `classify` means the command completed,
 regardless of the recorded assessment outcome.
+
+## Public metadata
+
+Collect the references saved with a created run, before or after execution:
+
+```bash
+poetry run interop-trace metadata collect results/run-002
+```
+
+This saves `metadata/index.json`, linking experiment roles and profiles to
+snapshots under `metadata/biotools/<entry-id>/`. Shared IDs use one snapshot.
+Collection also queries the [OLS API](https://www.ebi.ac.uk/ols4/api-docs) for the
+EDAM data/format terms appearing in these descriptions. Only the relevant JSON
+responses and ontology version information are saved under `metadata/edam/`;
+the full ontology is not downloaded. The index records request URLs and original
+retrieval times. Responses are cached by URL, so clearing the cache is required
+to collect fresh descriptions. Saved responses, rather than a pinned release,
+provide the evidence used for reproduction.
+The index distinguishes `collected`, `missing_reference`, `not_found` (HTTP 404)
+and `retrieval_failed`, retaining error details. Other entries are still collected
+after a retrieval failure; the command then exits with code `1`. Collection leaves
+execution and assessment records unchanged. Existing metadata is never overwritten.
+
+For an individual bio.tools entry:
+
+```bash
+poetry run interop-trace metadata biotools Sage-proteomics --output results/metadata-sage-001
+```
+
+Use the exact entry ID: `Sage-proteomics` is the proteomics engine; `sage` is a
+different resource. Each new folder contains the response as indented JSON in
+`entry.json`, preserving its fields and values, and its source URL, ID and original
+retrieval time in `source.json`.
+Snapshots survive cache cleanup. Cached entries are reused without checking for
+updates, retaining their original retrieval time. Use `--cache-directory` for a
+dedicated metadata cache that can be cleared independently of tool/input downloads.
 
 ## Download cache
 

@@ -1,0 +1,11 @@
+[
+  {"iri": "http://edamontology.org/data_0006", "isObsolete": false, "directAncestor": []},
+  {"iri": "http://edamontology.org/data_2044", "isObsolete": false, "directAncestor": ["http://edamontology.org/data_0006"]},
+  {"iri": "http://edamontology.org/data_2976", "isObsolete": false, "directAncestor": ["http://edamontology.org/data_2044", "http://edamontology.org/data_0006"]},
+  {"iri": "http://edamontology.org/data_0943", "isObsolete": false, "directAncestor": ["http://edamontology.org/data_0006"]},
+  {"iri": "http://edamontology.org/format_1915", "isObsolete": false, "directAncestor": []},
+  {"iri": "http://edamontology.org/format_2330", "isObsolete": false, "directAncestor": ["http://edamontology.org/format_1915"]},
+  {"iri": "http://edamontology.org/format_1929", "isObsolete": false, "directAncestor": ["http://edamontology.org/format_2330", "http://edamontology.org/format_1915"]},
+  {"iri": "http://edamontology.org/format_3244", "isObsolete": false, "directAncestor": ["http://edamontology.org/format_2330", "http://edamontology.org/format_1915"]},
+  {"iri": "http://edamontology.org/format_9999", "isObsolete": true, "directAncestor": []}
+]

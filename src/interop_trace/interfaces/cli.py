@@ -1,5 +1,6 @@
 """Command-line entry point for Interop Trace."""
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -17,6 +18,8 @@ app = typer.Typer(
 )
 cache_app = typer.Typer(help="Inspect and clear downloaded files.")
 app.add_typer(cache_app, name="cache")
+metadata_app = typer.Typer(help="Save public component descriptions.")
+app.add_typer(metadata_app, name="metadata")
 
 
 @app.command("run")
@@ -109,6 +112,28 @@ def _report_run(results: "RunResult", output: Path) -> None:
         raise typer.Exit(code=1)
 
 
+@app.command("predict")
+def predict(
+    directory: Annotated[
+        Path,
+        typer.Argument(
+            exists=True, file_okay=False, help="Created, unexecuted run directory."
+        ),
+    ],
+) -> None:
+    """Compare collected public declarations before execution, without running tools."""
+    from interop_trace.experiments.records import save_table
+    from interop_trace.prediction import predict_run
+
+    try:
+        outputs = predict_run(directory)
+        save_table(directory)
+    except (OSError, ValueError) as error:
+        typer.echo(f"Cannot predict interoperability: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved {len(outputs)} prediction(s): {directory.resolve()}")
+
+
 @app.command("classify")
 def classify(
     directory: Annotated[
@@ -188,6 +213,52 @@ def launch_interface(
         typer.echo("Install the interface with: poetry install --extras ui", err=True)
         raise typer.Exit(code=1) from error
     serve(directory.resolve(), port)
+
+
+@metadata_app.command("biotools")
+def collect_biotools(
+    biotools_id: Annotated[str, typer.Argument(help="Exact bio.tools entry ID.")],
+    output: Annotated[Path, typer.Option(help="New snapshot directory.")],
+    cache_directory: Annotated[
+        Path, typer.Option("--cache-directory", help="Download cache directory.")
+    ] = DEFAULT_CACHE_DIR,
+) -> None:
+    """Save the original bio.tools response and retrieval provenance."""
+    from interop_trace.metadata import snapshot_biotools
+
+    try:
+        directory = snapshot_biotools(
+            biotools_id, output_dir=output, cache=DownloadCache(cache_directory)
+        )
+    except Exception as error:
+        typer.echo(f"Metadata collection failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved bio.tools snapshot: {directory}")
+
+
+@metadata_app.command("collect")
+def collect_metadata(
+    directory: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=False, help="Created run directory."),
+    ],
+) -> None:
+    """Collect public descriptions selected by a run's saved configuration."""
+    from interop_trace.metadata import collect_run_metadata
+    from interop_trace.status import MetadataStatus
+
+    try:
+        index = collect_run_metadata(directory)
+        collected = json.loads(index.read_text())
+        statuses = {row["status"] for row in collected["components"]}
+        statuses.add(collected["ontology"]["status"])
+    except Exception as error:
+        typer.echo(f"Metadata collection failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Saved metadata index: {index}")
+    if statuses & {MetadataStatus.NOT_FOUND, MetadataStatus.RETRIEVAL_FAILED}:
+        typer.echo("Some metadata could not be retrieved; see the index.", err=True)
+        raise typer.Exit(code=1)
 
 
 @cache_app.command("list")

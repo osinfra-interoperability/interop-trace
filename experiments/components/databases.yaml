@@ -1,5 +1,7 @@
 erwinia_and_spikes:
   type: uniprot
+  metadata:
+    biotools: uniprotkb
   parameters:
     # SCRI 1043 background plus the four spikes documented in PXD000001.
     query: >-

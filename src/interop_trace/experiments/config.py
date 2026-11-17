@@ -40,15 +40,17 @@ class Experiment:
             in {
                 "configuration.json",
                 "environment.json",
+                "prediction_environment.json",
                 "summary.json",
                 "execution.json",
                 "experiments.csv",
+                "metadata",
             }
         ):
             raise ValueError(
                 "Experiment id must be a simple directory name "
                 "starting with a letter or digit, "
-                "excluding run-level filenames."
+                "excluding run-level paths."
             )
         _validate_acceptance(self.acceptance)
 
@@ -91,6 +93,7 @@ def load_configuration(
             "source": str(path),
             "files": {str(path): text, **contents},
             "experiments": choices,
+            "metadata_references": _metadata_references(choices, definitions),
         },
     )
 
@@ -167,6 +170,29 @@ def _validate_acceptance(criteria: object) -> None:
             raise ValueError("acceptance min must not exceed max.")
 
 
+def _metadata_references(
+    choices: list[dict[str, Any]],
+    definitions: dict[str, tuple[Path, dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    references: dict[str, list[dict[str, Any]]] = {}
+    for choice in choices:
+        references[choice["id"]] = []
+        for role, layer in (
+            ("dataset", "datasets"),
+            ("database", "databases"),
+            ("workflow", "workflows"),
+        ):
+            definition = definitions[layer][1][choice[role]]
+            references[choice["id"]].append(
+                {
+                    "role": role,
+                    "profile": choice[role],
+                    "biotools_id": definition.get("metadata", {}).get("biotools"),
+                }
+            )
+    return references
+
+
 def _build_component[T](
     registry: Registry[T], reference: object, definitions: tuple[Path, dict[str, Any]]
 ) -> T:
@@ -174,7 +200,15 @@ def _build_component[T](
     if not isinstance(reference, str) or reference not in available:
         raise ValueError(f"Unknown component definition {reference!r} in {source}.")
     definition = _mapping(available[reference], f"{source}:{reference}")
-    _keys(definition, {"type"}, reference, optional={"parameters"})
+    _keys(definition, {"type"}, reference, optional={"parameters", "metadata"})
+    metadata = _mapping(definition.get("metadata", {}), "metadata")
+    _keys(metadata, set(), "metadata", optional={"biotools"})
+    if "biotools" in metadata and (
+        not isinstance(metadata["biotools"], str)
+        or not metadata["biotools"].strip()
+        or metadata["biotools"] in {".", ".."}
+    ):
+        raise ValueError("metadata.biotools must be a nonempty bio.tools entry ID.")
     implementation = definition["type"]
     if not isinstance(implementation, str):
         raise ValueError(f"{reference}.type must be a registered name.")

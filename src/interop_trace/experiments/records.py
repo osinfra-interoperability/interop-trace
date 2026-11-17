@@ -12,6 +12,14 @@ TABLE_FIELDS = (
     "database",
     "workflow",
     "benchmark",
+    "prediction_conclusion",
+    "prediction_coverage",
+    "technical_prediction",
+    "technical_coverage",
+    "semantic_prediction",
+    "semantic_coverage",
+    "host_prediction",
+    "host_coverage",
     "status",
     "stage",
     "error",
@@ -39,9 +47,23 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
         folder = directory / name
         record = read_record(folder / "experiment.json")
         assessment = read_record(folder / "classification.json")
+        prediction = read_record(folder / "prediction.json")
+        aspects = prediction.get("aspects", {})
+        # Earlier technical summaries combined formats and host OS checks.
+        technical = aspects.get("technical", {}) if "host" in aspects else {}
+        semantic = aspects.get("semantic", {})
+        host = aspects.get("host", {})
         rows.append(
             {
                 **{field: choice.get(field, "") for field in TABLE_FIELDS},
+                "prediction_conclusion": prediction.get("conclusion", ""),
+                "prediction_coverage": _coverage(prediction),
+                "technical_prediction": technical.get("conclusion", ""),
+                "technical_coverage": _coverage(technical),
+                "semantic_prediction": semantic.get("conclusion", ""),
+                "semantic_coverage": _coverage(semantic),
+                "host_prediction": host.get("conclusion", ""),
+                "host_coverage": _coverage(host),
                 "status": record.get("status"),
                 "stage": record.get("stage", ""),
                 "error": record.get("error", {}).get("type", ""),
@@ -50,6 +72,11 @@ def experiment_rows(directory: Path) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def _coverage(summary: dict[str, Any]) -> str:
+    value = summary.get("evidence_coverage")
+    return "" if value is None else str(value)
 
 
 def save_table(directory: Path) -> None:
